@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir -p src/engine src/components src/data src/audio src/effects src/save)",
+      "Bash(mkdir -p assets/bg assets/chara assets/cg assets/bgm assets/se assets/ui assets/font)"
+    ]
+  }
+}
