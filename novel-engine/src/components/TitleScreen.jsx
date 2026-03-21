@@ -1,5 +1,5 @@
-// タイトル画面 — NEW GAME / CONTINUE / EDITOR / CG GALLERY / CONFIG / EXIT
-export default function TitleScreen({ onNewGame, onContinue, onEditor, hasSaveData }) {
+// タイトル画面 — NEW GAME / CONTINUE / EDITOR / CG GALLERY / CONFIG
+export default function TitleScreen({ title, onNewGame, onContinue, onEditor, onBack, hasSaveData }) {
   const menuItems = [
     { label: "NEW GAME", action: onNewGame, enabled: true },
     { label: "CONTINUE", action: onContinue, enabled: hasSaveData },
@@ -13,10 +13,17 @@ export default function TitleScreen({ onNewGame, onContinue, onEditor, hasSaveDa
       {/* 背景装飾 */}
       <div style={styles.bgOverlay} />
 
+      {/* 戻るボタン */}
+      {onBack && (
+        <button onClick={onBack} style={styles.backBtn}>
+          ← プロジェクト一覧
+        </button>
+      )}
+
       {/* タイトルエリア */}
       <div style={styles.titleArea}>
-        <h1 style={styles.title}>Novel Engine</h1>
-        <p style={styles.subtitle}>— Visual Novel Game Engine —</p>
+        <h1 style={styles.title}>{title || "Doujin Engine"}</h1>
+        <p style={styles.subtitle}>— 同人ゲーム作成エンジン —</p>
       </div>
 
       {/* メニュー */}
@@ -50,7 +57,7 @@ export default function TitleScreen({ onNewGame, onContinue, onEditor, hasSaveDa
 
       {/* フッター */}
       <div style={styles.footer}>
-        <span>Novel Engine v0.1.0</span>
+        <span>Doujin Engine v0.1.0</span>
       </div>
     </div>
   );
@@ -117,6 +124,22 @@ const styles = {
     fontFamily: "'Noto Serif JP', serif",
     transition: "all 0.3s ease",
     minWidth: 280,
+  },
+  backBtn: {
+    position: "absolute",
+    top: 16,
+    left: 20,
+    background: "transparent",
+    border: "1px solid rgba(200,180,140,0.2)",
+    color: "rgba(200,180,140,0.5)",
+    padding: "5px 14px",
+    borderRadius: 3,
+    fontSize: 11,
+    cursor: "pointer",
+    fontFamily: "'Noto Serif JP', serif",
+    letterSpacing: 1,
+    zIndex: 2,
+    transition: "all 0.2s",
   },
   footer: {
     position: "absolute",

@@ -1,7 +1,8 @@
-import { BG_STYLES } from "../data/config";
+import { BG_STYLES as DEFAULT_BG_STYLES } from "../data/config";
 
-export default function Background({ currentBg, bgTransition }) {
-  const bgStyle = BG_STYLES[currentBg] || BG_STYLES.school_gate;
+export default function Background({ currentBg, bgTransition, bgStyles }) {
+  const styles = bgStyles || DEFAULT_BG_STYLES;
+  const bgStyle = styles[currentBg] || Object.values(styles)[0] || {};
 
   return (
     <div

@@ -2,7 +2,7 @@ import { useEffect, useRef, useCallback, useReducer } from "react";
 import { ACTION, CMD } from "./constants";
 import { engineReducer, initialState } from "./reducer";
 import { processCommand } from "./commands";
-import SCRIPT from "../data/script";
+import DEFAULT_SCRIPT from "../data/script";
 import Background from "../components/Background";
 import Character from "../components/Character";
 import TextBox from "../components/TextBox";
@@ -12,23 +12,26 @@ import BacklogView from "../components/BacklogView";
 import SaveLoadView from "../components/SaveLoadView";
 import ConfigView from "../components/ConfigView";
 
-export default function NovelEngine() {
+export default function NovelEngine({ script, characters, bgStyles, onBack }) {
+  const SCRIPT = script || DEFAULT_SCRIPT;
   const [state, dispatch] = useReducer(engineReducer, initialState);
   const typingRef = useRef(null);
   const autoRef = useRef(null);
   const fullTextRef = useRef("");
   const containerRef = useRef(null);
+  const scriptRef = useRef(SCRIPT);
+  scriptRef.current = SCRIPT;
 
   // dialog / choice 以外を連続処理
   const runCommands = useCallback(
-    (index) => processCommand(SCRIPT, index, dispatch),
+    (index) => processCommand(scriptRef.current, index, dispatch),
     []
   );
 
   // テキストのタイプライター表示開始
   const startDialog = useCallback(
     (index) => {
-      const cmd = SCRIPT[index];
+      const cmd = scriptRef.current[index];
       if (!cmd || cmd.type !== CMD.DIALOG) return;
       dispatch({ type: ACTION.SET_SPEAKER, payload: cmd.speaker });
       dispatch({ type: ACTION.SET_DISPLAYED_TEXT, payload: "" });
@@ -60,17 +63,17 @@ export default function NovelEngine() {
       typingRef.current = null;
       dispatch({ type: ACTION.SET_DISPLAYED_TEXT, payload: fullTextRef.current });
       dispatch({ type: ACTION.SET_TYPING, payload: false });
-      const cmd = SCRIPT[state.scriptIndex];
+      const cmd = scriptRef.current[state.scriptIndex];
       if (cmd && cmd.type === CMD.DIALOG) {
         dispatch({ type: ACTION.ADD_BACKLOG, payload: { speaker: cmd.speaker, text: cmd.text } });
       }
       return;
     }
     let nextIndex = state.scriptIndex + 1;
-    if (nextIndex >= SCRIPT.length) return;
+    if (nextIndex >= scriptRef.current.length) return;
     nextIndex = runCommands(nextIndex);
-    if (nextIndex >= SCRIPT.length) return;
-    const cmd = SCRIPT[nextIndex];
+    if (nextIndex >= scriptRef.current.length) return;
+    const cmd = scriptRef.current[nextIndex];
     dispatch({ type: ACTION.SET_SCRIPT_INDEX, payload: nextIndex });
     if (cmd.type === CMD.DIALOG) {
       startDialog(nextIndex);
@@ -90,9 +93,9 @@ export default function NovelEngine() {
       dispatch({ type: ACTION.ADD_BACKLOG, payload: { speaker: "選択", text: option.text } });
       let nextIndex = option.jump;
       nextIndex = runCommands(nextIndex);
-      if (nextIndex >= SCRIPT.length) return;
+      if (nextIndex >= scriptRef.current.length) return;
       dispatch({ type: ACTION.SET_SCRIPT_INDEX, payload: nextIndex });
-      const cmd = SCRIPT[nextIndex];
+      const cmd = scriptRef.current[nextIndex];
       if (cmd.type === CMD.DIALOG) startDialog(nextIndex);
       else if (cmd.type === CMD.CHOICE) dispatch({ type: ACTION.SHOW_CHOICE, payload: cmd.options });
     },
@@ -102,9 +105,9 @@ export default function NovelEngine() {
   // 初回シーン処理
   useEffect(() => {
     let i = runCommands(0);
-    if (i < SCRIPT.length) {
+    if (i < scriptRef.current.length) {
       dispatch({ type: ACTION.SET_SCRIPT_INDEX, payload: i });
-      if (SCRIPT[i].type === CMD.DIALOG) startDialog(i);
+      if (scriptRef.current[i].type === CMD.DIALOG) startDialog(i);
     }
   }, []);
 
@@ -157,10 +160,10 @@ export default function NovelEngine() {
       }}
       onClick={advance}
     >
-      <Background currentBg={state.currentBg} bgTransition={state.bgTransition} />
+      <Background currentBg={state.currentBg} bgTransition={state.bgTransition} bgStyles={bgStyles} />
 
       {Object.entries(state.characters).map(([id, chara]) => (
-        <Character key={id} id={id} position={chara.position} expression={chara.expression} />
+        <Character key={id} id={id} position={chara.position} expression={chara.expression} charaData={characters} />
       ))}
 
       {/* BGM インジケーター */}
@@ -187,6 +190,21 @@ export default function NovelEngine() {
           }}
         >
           ▶ AUTO
+        </div>
+      )}
+
+      {/* 戻るボタン（プロジェクト管理へ） */}
+      {onBack && (
+        <div
+          onClick={(e) => { e.stopPropagation(); onBack(); }}
+          style={{
+            position: "absolute", top: 12, left: onBack && state.bgmPlaying ? 140 : 16,
+            zIndex: 20, fontSize: 11, color: "rgba(255,255,255,0.4)", fontFamily: "monospace",
+            background: "rgba(0,0,0,0.3)", padding: "3px 10px", borderRadius: 12,
+            cursor: "pointer",
+          }}
+        >
+          ← BACK
         </div>
       )}
 

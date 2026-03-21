@@ -1,9 +1,10 @@
-import CHARA_DATA from "../data/characters";
+import DEFAULT_CHARA_DATA from "../data/characters";
 
 const POS_MAP = { left: "20%", center: "50%", right: "80%" };
 
-export default function Character({ id, position, expression }) {
-  const data = CHARA_DATA[id];
+export default function Character({ id, position, expression, charaData }) {
+  const allData = charaData || DEFAULT_CHARA_DATA;
+  const data = allData[id];
   if (!data) return null;
 
   return (

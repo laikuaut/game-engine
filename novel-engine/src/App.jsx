@@ -1,13 +1,29 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
+import ProjectManager from "./project/ProjectManager";
 import TitleScreen from "./components/TitleScreen";
 import NovelEngine from "./engine/NovelEngine";
 import EditorScreen from "./editor/EditorScreen";
-import SCRIPT from "./data/script";
+import { getProject, setActiveProjectId } from "./project/ProjectStore";
 
-// 画面状態: "title" | "game" | "editor"
+// 画面状態: "projects" | "title" | "game" | "editor"
 function App() {
-  const [screen, setScreen] = useState("title");
-  const [hasSaveData] = useState(false); // TODO: 永続化後に実装
+  const [screen, setScreen] = useState("projects");
+  const [project, setProject] = useState(null);
+
+  // プロジェクト選択
+  const handleSelectProject = useCallback((id) => {
+    const p = getProject(id);
+    if (!p) return;
+    setActiveProjectId(id);
+    setProject(p);
+    setScreen("title");
+  }, []);
+
+  // プロジェクト一覧へ戻る
+  const backToProjects = useCallback(() => {
+    setProject(null);
+    setScreen("projects");
+  }, []);
 
   const containerStyle = {
     width: "100vw",
@@ -18,26 +34,46 @@ function App() {
     background: "#111",
   };
 
-  if (screen === "editor") {
+  // エディタ画面（フルスクリーン）
+  if (screen === "editor" && project) {
     return (
       <EditorScreen
         onBack={() => setScreen("title")}
-        initialScript={SCRIPT}
+        initialScript={project.script}
+        projectId={project.id}
+        projectName={project.name}
       />
     );
   }
 
   return (
     <div style={containerStyle}>
-      {screen === "title" && (
+      {/* プロジェクト管理画面 */}
+      {screen === "projects" && (
+        <ProjectManager onSelectProject={handleSelectProject} />
+      )}
+
+      {/* タイトル画面 */}
+      {screen === "title" && project && (
         <TitleScreen
+          title={project.name}
           onNewGame={() => setScreen("game")}
           onContinue={() => setScreen("game")}
           onEditor={() => setScreen("editor")}
-          hasSaveData={hasSaveData}
+          onBack={backToProjects}
+          hasSaveData={project.saves?.some((s) => s !== null)}
         />
       )}
-      {screen === "game" && <NovelEngine />}
+
+      {/* ゲーム画面 */}
+      {screen === "game" && project && (
+        <NovelEngine
+          script={project.script}
+          characters={project.characters}
+          bgStyles={project.bgStyles}
+          onBack={() => setScreen("title")}
+        />
+      )}
     </div>
   );
 }

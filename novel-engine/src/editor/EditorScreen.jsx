@@ -1,8 +1,17 @@
 import { useState, useCallback } from "react";
 import { CMD } from "../engine/constants";
+import { updateProject, getProject } from "../project/ProjectStore";
 import ScriptList from "./ScriptList";
 import CommandEditor from "./CommandEditor";
 import PreviewPanel from "./PreviewPanel";
+import TextEditor from "./TextEditor";
+import FlowGraph from "./FlowGraph";
+import DebugPanel from "./DebugPanel";
+import SaveDataEditor from "./SaveDataEditor";
+import MapEditor from "./rpg/MapEditor";
+import BattleEditor from "./rpg/BattleEditor";
+import MinigameEditor from "./minigame/MinigameEditor";
+import DeployPanel from "./DeployPanel";
 
 // 編集用の初期スクリプト（空テンプレート）
 const DEFAULT_SCRIPT = [
@@ -10,19 +19,47 @@ const DEFAULT_SCRIPT = [
   { type: "dialog", speaker: "", text: "ここにテキストを入力…" },
 ];
 
-export default function EditorScreen({ onBack, initialScript }) {
+// タブ定義
+const TABS = [
+  { id: "script",   label: "スクリプト", group: "novel" },
+  { id: "text",     label: "テキスト",   group: "novel" },
+  { id: "flow",     label: "フロー",     group: "novel" },
+  { id: "map",      label: "マップ",     group: "rpg" },
+  { id: "battle",   label: "バトル",     group: "rpg" },
+  { id: "minigame", label: "ミニゲーム", group: "extra" },
+  { id: "preview",  label: "プレビュー", group: "tool" },
+  { id: "debug",    label: "DEBUG",      group: "tool" },
+  { id: "save",     label: "セーブ",     group: "tool" },
+  { id: "deploy",   label: "Deploy",     group: "tool" },
+];
+
+export default function EditorScreen({ onBack, initialScript, projectId, projectName }) {
+  // プロジェクトから追加データを取得
+  const proj = projectId ? getProject(projectId) : null;
   const [script, setScript] = useState(initialScript || DEFAULT_SCRIPT);
   const [selectedIndex, setSelectedIndex] = useState(0);
-  const [previewIndex, setPreviewIndex] = useState(null);
+  const [activeTab, setActiveTab] = useState("script");
+  const [maps, setMaps] = useState(proj?.maps || []);
+  const [battleData, setBattleData] = useState(proj?.battleData || { enemies: [], skills: [], battles: [] });
+  const [minigames, setMinigames] = useState(proj?.minigames || []);
+
+  // スクリプト更新（ProjectStore にも自動保存）
+  const persistScript = useCallback((newScript) => {
+    setScript(newScript);
+    if (projectId) {
+      updateProject(projectId, { script: newScript });
+    }
+  }, [projectId]);
 
   // コマンド更新
   const updateCommand = useCallback((index, updated) => {
     setScript((prev) => {
       const next = [...prev];
       next[index] = { ...next[index], ...updated };
+      if (projectId) updateProject(projectId, { script: next });
       return next;
     });
-  }, []);
+  }, [projectId]);
 
   // コマンド追加
   const addCommand = useCallback((type, afterIndex) => {
@@ -45,10 +82,11 @@ export default function EditorScreen({ onBack, initialScript }) {
     setScript((prev) => {
       const next = [...prev];
       next.splice(afterIndex + 1, 0, newCmd);
+      if (projectId) updateProject(projectId, { script: next });
       return next;
     });
     setSelectedIndex(afterIndex + 1);
-  }, []);
+  }, [projectId]);
 
   // コマンド削除
   const removeCommand = useCallback((index) => {
@@ -56,10 +94,11 @@ export default function EditorScreen({ onBack, initialScript }) {
       if (prev.length <= 1) return prev;
       const next = [...prev];
       next.splice(index, 1);
+      if (projectId) updateProject(projectId, { script: next });
       return next;
     });
     setSelectedIndex((prev) => Math.max(0, prev - 1));
-  }, []);
+  }, [projectId]);
 
   // コマンド並べ替え
   const moveCommand = useCallback((index, direction) => {
@@ -68,13 +107,14 @@ export default function EditorScreen({ onBack, initialScript }) {
       if (target < 0 || target >= prev.length) return prev;
       const next = [...prev];
       [next[index], next[target]] = [next[target], next[index]];
+      if (projectId) updateProject(projectId, { script: next });
       return next;
     });
     setSelectedIndex((prev) => {
       const target = prev + direction;
       return Math.max(0, Math.min(script.length - 1, target));
     });
-  }, [script.length]);
+  }, [script.length, projectId]);
 
   // JSON エクスポート
   const exportScript = useCallback(() => {
@@ -88,61 +128,110 @@ export default function EditorScreen({ onBack, initialScript }) {
     URL.revokeObjectURL(url);
   }, [script]);
 
-  return (
-    <div style={styles.container}>
-      {/* ヘッダー */}
-      <div style={styles.header}>
-        <button onClick={onBack} style={styles.headerBtn}>
-          ← 戻る
-        </button>
-        <span style={styles.headerTitle}>スクリプトエディタ</span>
-        <div style={styles.headerRight}>
-          <span style={styles.cmdCount}>{script.length} コマンド</span>
-          <button onClick={exportScript} style={styles.headerBtn}>
-            エクスポート
-          </button>
-          <button
-            onClick={() => setPreviewIndex(previewIndex !== null ? null : 0)}
-            style={{ ...styles.headerBtn, ...(previewIndex !== null ? styles.headerBtnActive : {}) }}
-          >
-            プレビュー
-          </button>
-        </div>
-      </div>
-
-      {/* メインエリア */}
-      <div style={styles.main}>
-        {/* 左: スクリプトリスト */}
-        <div style={styles.leftPanel}>
-          <ScriptList
-            script={script}
-            selectedIndex={selectedIndex}
-            onSelect={setSelectedIndex}
-            onAdd={addCommand}
-            onRemove={removeCommand}
-            onMove={moveCommand}
+  // 中央パネルの表示内容
+  const renderCenter = () => {
+    switch (activeTab) {
+      case "text":
+        return <TextEditor script={script} onUpdateScript={persistScript} />;
+      case "flow":
+        return <FlowGraph script={script} />;
+      case "preview":
+        return (
+          <div style={{ padding: 16, height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <PreviewPanel script={script} startIndex={0} />
+          </div>
+        );
+      case "debug":
+        return <DebugPanel engineState={{}} script={script} />;
+      case "save":
+        return <SaveDataEditor projectId={projectId} />;
+      case "map":
+        return (
+          <MapEditor
+            maps={maps}
+            onUpdateMaps={(m) => { setMaps(m); if (projectId) updateProject(projectId, { maps: m }); }}
           />
-        </div>
-
-        {/* 中央: コマンド編集 */}
-        <div style={styles.centerPanel}>
-          {script[selectedIndex] ? (
+        );
+      case "battle":
+        return (
+          <BattleEditor
+            battleData={battleData}
+            onUpdateBattleData={(d) => { setBattleData(d); if (projectId) updateProject(projectId, { battleData: d }); }}
+          />
+        );
+      case "minigame":
+        return (
+          <MinigameEditor
+            minigames={minigames}
+            onUpdateMinigames={(m) => { setMinigames(m); if (projectId) updateProject(projectId, { minigames: m }); }}
+          />
+        );
+      case "deploy":
+        return <DeployPanel projectId={projectId} projectName={projectName} />;
+      case "script":
+      default:
+        return script[selectedIndex] ? (
+          <div style={{ padding: 20 }}>
             <CommandEditor
               command={script[selectedIndex]}
               index={selectedIndex}
               onChange={(updated) => updateCommand(selectedIndex, updated)}
             />
-          ) : (
-            <div style={styles.emptyState}>コマンドを選択してください</div>
-          )}
-        </div>
+          </div>
+        ) : (
+          <div style={styles.emptyState}>コマンドを選択してください</div>
+        );
+    }
+  };
 
-        {/* 右: プレビュー（トグル） */}
-        {previewIndex !== null && (
-          <div style={styles.rightPanel}>
-            <PreviewPanel script={script} startIndex={previewIndex} />
+  return (
+    <div style={styles.container}>
+      {/* ヘッダー */}
+      <div style={styles.header}>
+        <div style={styles.headerLeft}>
+          <button onClick={onBack} style={styles.headerBtn}>← 戻る</button>
+          {projectName && <span style={styles.projectName}>{projectName}</span>}
+        </div>
+        <div style={styles.tabs}>
+          {TABS.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              style={{
+                ...styles.tabBtn,
+                ...(activeTab === tab.id ? styles.tabBtnActive : {}),
+              }}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+        <div style={styles.headerRight}>
+          <span style={styles.cmdCount}>{script.length} cmd</span>
+          <button onClick={exportScript} style={styles.headerBtn}>エクスポート</button>
+        </div>
+      </div>
+
+      {/* メインエリア */}
+      <div style={styles.main}>
+        {/* 左: スクリプトリスト（ノベル系タブのみ表示） */}
+        {["script", "text", "flow", "preview", "debug", "save", "deploy"].includes(activeTab) && (
+          <div style={styles.leftPanel}>
+            <ScriptList
+              script={script}
+              selectedIndex={selectedIndex}
+              onSelect={(i) => { setSelectedIndex(i); setActiveTab("script"); }}
+              onAdd={addCommand}
+              onRemove={removeCommand}
+              onMove={moveCommand}
+            />
           </div>
         )}
+
+        {/* 中央: タブごとの内容 */}
+        <div style={styles.centerPanel}>
+          {renderCenter()}
+        </div>
       </div>
     </div>
   );
@@ -162,42 +251,67 @@ const styles = {
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
-    padding: "8px 16px",
+    padding: "6px 12px",
     background: "#0f0f1a",
     borderBottom: "1px solid rgba(200,180,140,0.15)",
     flexShrink: 0,
+    gap: 8,
   },
-  headerTitle: {
-    fontSize: 15,
+  headerLeft: {
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+    flexShrink: 0,
+  },
+  projectName: {
+    fontSize: 13,
     color: "#E8D4B0",
-    letterSpacing: 2,
+    letterSpacing: 1,
   },
   headerRight: {
     display: "flex",
     alignItems: "center",
     gap: 8,
+    flexShrink: 0,
   },
   headerBtn: {
     background: "rgba(255,255,255,0.06)",
     border: "1px solid rgba(255,255,255,0.12)",
     color: "#ccc",
-    padding: "5px 14px",
+    padding: "4px 12px",
     borderRadius: 3,
-    fontSize: 12,
+    fontSize: 11,
     cursor: "pointer",
     fontFamily: "inherit",
     transition: "all 0.2s",
   },
-  headerBtnActive: {
-    background: "rgba(90,180,255,0.2)",
-    borderColor: "rgba(90,180,255,0.4)",
-    color: "#5BF",
+  tabs: {
+    display: "flex",
+    gap: 2,
+    flex: 1,
+    justifyContent: "center",
+  },
+  tabBtn: {
+    background: "transparent",
+    border: "1px solid transparent",
+    color: "#888",
+    padding: "4px 14px",
+    borderRadius: 3,
+    fontSize: 11,
+    cursor: "pointer",
+    fontFamily: "inherit",
+    letterSpacing: 1,
+    transition: "all 0.2s",
+  },
+  tabBtnActive: {
+    background: "rgba(200,180,140,0.1)",
+    borderColor: "rgba(200,180,140,0.3)",
+    color: "#E8D4B0",
   },
   cmdCount: {
-    fontSize: 11,
-    color: "#888",
+    fontSize: 10,
+    color: "#666",
     fontFamily: "monospace",
-    marginRight: 8,
   },
   main: {
     display: "flex",
@@ -205,7 +319,7 @@ const styles = {
     overflow: "hidden",
   },
   leftPanel: {
-    width: 280,
+    width: 260,
     flexShrink: 0,
     borderRight: "1px solid rgba(200,180,140,0.1)",
     overflowY: "auto",
@@ -214,16 +328,6 @@ const styles = {
   centerPanel: {
     flex: 1,
     overflowY: "auto",
-    padding: 20,
-  },
-  rightPanel: {
-    width: 400,
-    flexShrink: 0,
-    borderLeft: "1px solid rgba(200,180,140,0.1)",
-    background: "#111",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
   },
   emptyState: {
     color: "#555",

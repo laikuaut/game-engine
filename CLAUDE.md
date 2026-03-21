@@ -159,7 +159,7 @@ showSaveLoad      セーブ/ロードUI表示
 ## ディレクトリ構成（目標）
 
 ```
-novel-engine/
+doujin-engine/
 ├── CLAUDE.md                 ← このファイル
 ├── package.json
 ├── electron/
@@ -316,18 +316,3 @@ app.on("window-all-closed", () => app.quit());
 | 画像素材 | Stable Diffusion でキャラ立ち絵・背景・イベントCG生成。image-prompt スキルでプロンプト管理 |
 | コーディング | Claude Code でエンジン機能の実装・デバッグ |
 | テスト | AI にバランス調整やテキスト校正を依頼 |
-
----
-
-## 現在のプロトタイプ
-
-`novel-engine-prototype.jsx` が単一ファイルのプロトタイプ。
-全機能が1ファイルに入っているので、Claude Code で分割・リファクタリングする。
-
-### 移行手順
-
-1. `npm create vite@latest novel-engine -- --template react` でプロジェクト作成
-2. プロトタイプを上記ディレクトリ構成に分割
-3. `npm install electron electron-builder --save-dev` で Electron 追加
-4. 各機能をコンポーネント/モジュールに切り出し
-5. 実際の画像・音声素材を assets/ に配置してテスト
