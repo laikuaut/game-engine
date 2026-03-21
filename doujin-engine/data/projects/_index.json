@@ -34,5 +34,29 @@
     "scriptLength": 3,
     "mapCount": 0,
     "minigameCount": 0
+  },
+  {
+    "id": "mn0a4s9avd92ga",
+    "name": "bbb",
+    "dirName": "bbb",
+    "description": "",
+    "gameType": "novel",
+    "createdAt": "2026-03-21T12:03:43.246Z",
+    "updatedAt": "2026-03-21T12:04:19.515Z",
+    "scriptLength": 6,
+    "mapCount": 0,
+    "minigameCount": 0
+  },
+  {
+    "id": "mn0a7iaiopj878",
+    "name": "ccc",
+    "dirName": "ccc",
+    "description": "",
+    "gameType": "novel",
+    "createdAt": "2026-03-21T12:05:50.298Z",
+    "updatedAt": "2026-03-21T12:06:30.345Z",
+    "scriptLength": 5,
+    "mapCount": 0,
+    "minigameCount": 0
   }
 ]

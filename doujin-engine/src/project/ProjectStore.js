@@ -114,7 +114,7 @@ const DEFAULT_BG_STYLES = {
 };
 
 const DEFAULT_BGM_CATALOG = [
-  { id: "bgm_hirusagari", name: "昼下がりのハバネラ", filename: "昼下がりのハバネラ.mp3", description: "穏やかな午後（甘茶の音楽工房）", volume: 0.8, loop: true, fadeIn: 500, fadeOut: 500 },
+  { id: "bgm_hirusagari", name: "昼下がりのハバネラ", filename: "hirusagarinohabanera.mp3", description: "穏やかな午後（甘茶の音楽工房）", volume: 0.8, loop: true, fadeIn: 500, fadeOut: 500 },
 ];
 
 const DEFAULT_SE_CATALOG = [
