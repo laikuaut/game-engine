@@ -10,7 +10,14 @@
       "Bash(rm -rf \"c:/Users/syout/OneDrive/ドキュメント/20：開発/20：ゲーム/game-engine/novel-engine/release\")",
       "Bash(rm -rf \"c:/Users/syout/AppData/Local/electron-builder/Cache/winCodeSign\")",
       "Bash(CSC_IDENTITY_AUTO_DISCOVERY=false npx electron-builder --win portable --x64)",
-      "Bash(ls -la \"c:/Users/syout/OneDrive/ドキュメント/20：開発/20：ゲーム/game-engine/novel-engine/release/\"*.exe)"
+      "Bash(ls -la \"c:/Users/syout/OneDrive/ドキュメント/20：開発/20：ゲーム/game-engine/novel-engine/release/\"*.exe)",
+      "Bash(find /c/Users/syout/OneDrive/ドキュメント/20：開発/20：ゲーム/game-engine/novel-engine/src -type f \\\\\\(-name *.jsx -o -name *.js -o -name *.ts -o -name *.tsx \\\\\\))",
+      "Bash(wc -l /c/Users/syout/OneDrive/ドキュメント/20：開発/20：ゲーム/game-engine/novel-engine/src/editor/*.jsx)",
+      "Bash(wc -l /c/Users/syout/OneDrive/ドキュメント/20：開発/20：ゲーム/game-engine/novel-engine/src/**/*.jsx)",
+      "Bash(grep -l \"TODO\\\\|FIXME\\\\|XXX\\\\|STUB\\\\|HACK\" /c/Users/syout/OneDrive/ドキュメント/20：開発/20：ゲーム/game-engine/novel-engine/src/**/*.jsx)"
+    ],
+    "additionalDirectories": [
+      "c:\\Users\\syout\\OneDrive\\ドキュメント\\20：開発\\20：ゲーム\\game-engine\\novel-engine\\docs"
     ]
   }
 }
