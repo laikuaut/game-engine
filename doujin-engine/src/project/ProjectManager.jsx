@@ -5,6 +5,7 @@ import { PROJECT_HELP } from "../data/helpContent";
 import {
   getProjects,
   createProject,
+  createProjectFromPreset,
   deleteProject,
   duplicateProject,
   exportProject,
@@ -12,6 +13,7 @@ import {
   ensureDemoProject,
   restoreDemoProjects,
   GAME_TYPE_LABELS,
+  WORK_PRESETS,
 } from "./ProjectStore";
 
 const BADGE_COLORS = {
@@ -26,6 +28,7 @@ export default function ProjectManager({ onSelectProject, onEditProject, onExit,
   const [newName, setNewName] = useState("");
   const [newDesc, setNewDesc] = useState("");
   const [newGameType, setNewGameType] = useState("novel");
+  const [selectedPreset, setSelectedPreset] = useState("blank");
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [importError, setImportError] = useState(null);
   const [showHelp, setShowHelp] = useState(false);
@@ -44,13 +47,20 @@ export default function ProjectManager({ onSelectProject, onEditProject, onExit,
 
   const handleCreate = async () => {
     if (!newName.trim()) return;
-    const project = await createProject(newName.trim(), newDesc.trim(), newGameType);
+    let project;
+    if (selectedPreset && selectedPreset !== "blank") {
+      project = await createProjectFromPreset(selectedPreset, newName.trim());
+    } else {
+      project = await createProject(newName.trim(), newDesc.trim(), newGameType);
+    }
+    if (!project) return;
     setNewName("");
     setNewDesc("");
     setNewGameType("novel");
+    setSelectedPreset("blank");
     setShowCreate(false);
     await refresh();
-    onSelectProject(project.id);
+    onEditProject(project.id);
   };
 
   const handleDuplicate = async (id) => {
@@ -129,6 +139,30 @@ export default function ProjectManager({ onSelectProject, onEditProject, onExit,
       <div style={styles.topArea}>
         {showCreate ? (
           <div style={styles.createForm}>
+            <div style={styles.gameTypeRow}>
+              <span style={styles.gameTypeLabel}>作品テンプレート:</span>
+              <select
+                value={selectedPreset}
+                onChange={(e) => {
+                  const preset = WORK_PRESETS.find((p) => p.id === e.target.value);
+                  setSelectedPreset(e.target.value);
+                  if (preset) {
+                    setNewGameType(preset.gameType);
+                    if (preset.id !== "blank" && !newName) {
+                      setNewName(preset.label);
+                    }
+                    if (preset.description) setNewDesc(preset.description);
+                  }
+                }}
+                style={styles.select}
+              >
+                {WORK_PRESETS.map((p) => (
+                  <option key={p.id} value={p.id} style={styles.option}>
+                    {p.label}
+                  </option>
+                ))}
+              </select>
+            </div>
             <input
               type="text"
               value={newName}
@@ -146,26 +180,28 @@ export default function ProjectManager({ onSelectProject, onEditProject, onExit,
               style={styles.input}
               onKeyDown={(e) => e.key === "Enter" && handleCreate()}
             />
-            <div style={styles.gameTypeRow}>
-              <span style={styles.gameTypeLabel}>ゲーム種別:</span>
-              {Object.entries(GAME_TYPE_LABELS).map(([key, label]) => (
-                <button
-                  key={key}
-                  onClick={() => setNewGameType(key)}
-                  style={{
-                    ...styles.gameTypeBtn,
-                    ...(newGameType === key ? styles.gameTypeBtnActive : {}),
-                  }}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
+            {selectedPreset === "blank" && (
+              <div style={styles.gameTypeRow}>
+                <span style={styles.gameTypeLabel}>ゲーム種別:</span>
+                {Object.entries(GAME_TYPE_LABELS).map(([key, label]) => (
+                  <button
+                    key={key}
+                    onClick={() => setNewGameType(key)}
+                    style={{
+                      ...styles.gameTypeBtn,
+                      ...(newGameType === key ? styles.gameTypeBtnActive : {}),
+                    }}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            )}
             <div style={styles.formBtns}>
               <button onClick={handleCreate} style={styles.createBtn}>
                 作成
               </button>
-              <button onClick={() => setShowCreate(false)} style={styles.cancelFormBtn}>
+              <button onClick={() => { setShowCreate(false); setSelectedPreset("blank"); }} style={styles.cancelFormBtn}>
                 キャンセル
               </button>
             </div>
@@ -494,6 +530,22 @@ const styles = {
     fontSize: 14,
     fontFamily: "inherit",
     outline: "none",
+  },
+  select: {
+    background: "rgba(255,255,255,0.06)",
+    border: "1px solid rgba(200,180,140,0.2)",
+    color: "#E8E4DC",
+    padding: "8px 12px",
+    borderRadius: 4,
+    fontSize: 13,
+    fontFamily: "inherit",
+    outline: "none",
+    cursor: "pointer",
+    flex: 1,
+  },
+  option: {
+    background: "#1a1a2e",
+    color: "#E8E4DC",
   },
   formBtns: {
     display: "flex",

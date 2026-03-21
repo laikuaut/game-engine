@@ -166,4 +166,25 @@ export const BG_STYLES = {
   rooftop: {
     background: "linear-gradient(180deg, #4A90D9 0%, #87CEEB 40%, #B0C4DE 90%)",
   },
+  hallway: {
+    background: "linear-gradient(180deg, #D5C4A1 0%, #C4B896 40%, #A89060 100%)",
+  },
+  night_room: {
+    background: "linear-gradient(180deg, #0a0a2e 0%, #1a1a3e 40%, #2a2a4e 100%)",
+  },
+  sunset: {
+    background: "linear-gradient(180deg, #FF7E5F 0%, #FEB47B 30%, #FFD194 60%, #1a1a2e 100%)",
+  },
+  park: {
+    background: "linear-gradient(170deg, #87CEEB 0%, #B0E0E6 30%, #98FB98 60%, #228B22 100%)",
+  },
+  night_street: {
+    background: "linear-gradient(180deg, #0C1445 0%, #1A237E 40%, #283593 70%, #1a1a2e 100%)",
+  },
+  cafe: {
+    background: "linear-gradient(180deg, #D7CCC8 0%, #BCAAA4 30%, #8D6E63 70%, #5D4037 100%)",
+  },
+  beach: {
+    background: "linear-gradient(180deg, #87CEEB 0%, #00BCD4 40%, #FFE0B2 70%, #FFCC80 100%)",
+  },
 };

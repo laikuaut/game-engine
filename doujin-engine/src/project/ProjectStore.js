@@ -20,11 +20,37 @@ const DEFAULT_CHARACTERS = {
     name: "桜",
     color: "#FFB7C5",
     expressions: {
+      neutral: "🙂",
       smile: "😊",
       happy: "😄",
       shy: "😳",
       sad: "😢",
+      angry: "😠",
+      surprise: "😲",
+    },
+  },
+  ren: {
+    name: "蓮",
+    color: "#6699CC",
+    expressions: {
       neutral: "🙂",
+      smile: "😊",
+      serious: "😐",
+      angry: "😠",
+      surprise: "😲",
+      sad: "😢",
+    },
+  },
+  saki: {
+    name: "咲希",
+    color: "#FFD700",
+    expressions: {
+      neutral: "🙂",
+      smile: "😊",
+      happy: "😄",
+      tease: "😏",
+      sad: "😢",
+      surprise: "😲",
     },
   },
 };
@@ -39,7 +65,52 @@ const DEFAULT_BG_STYLES = {
   rooftop: {
     background: "linear-gradient(180deg, #4A90D9 0%, #87CEEB 40%, #B0C4DE 90%)",
   },
+  hallway: {
+    background: "linear-gradient(180deg, #D5C4A1 0%, #C4B896 40%, #A89060 100%)",
+  },
+  night_room: {
+    background: "linear-gradient(180deg, #0a0a2e 0%, #1a1a3e 40%, #2a2a4e 100%)",
+  },
+  sunset: {
+    background: "linear-gradient(180deg, #FF7E5F 0%, #FEB47B 30%, #FFD194 60%, #1a1a2e 100%)",
+  },
+  park: {
+    background: "linear-gradient(170deg, #87CEEB 0%, #B0E0E6 30%, #98FB98 60%, #228B22 100%)",
+  },
+  night_street: {
+    background: "linear-gradient(180deg, #0C1445 0%, #1A237E 40%, #283593 70%, #1a1a2e 100%)",
+  },
+  cafe: {
+    background: "linear-gradient(180deg, #D7CCC8 0%, #BCAAA4 30%, #8D6E63 70%, #5D4037 100%)",
+  },
+  beach: {
+    background: "linear-gradient(180deg, #87CEEB 0%, #00BCD4 40%, #FFE0B2 70%, #FFCC80 100%)",
+  },
 };
+
+const DEFAULT_BGM_CATALOG = [
+  { id: "bgm_calm_afternoon", name: "calm_afternoon", filename: null, description: "穏やかな午後", volume: 0.8, loop: true, fadeIn: 500, fadeOut: 500 },
+  { id: "bgm_morning_theme", name: "morning_theme", filename: null, description: "朝のテーマ", volume: 0.8, loop: true, fadeIn: 500, fadeOut: 500 },
+  { id: "bgm_tension", name: "tension", filename: null, description: "緊迫シーン", volume: 0.8, loop: true, fadeIn: 300, fadeOut: 500 },
+  { id: "bgm_sadness", name: "sadness", filename: null, description: "悲しいシーン", volume: 0.7, loop: true, fadeIn: 1000, fadeOut: 1000 },
+  { id: "bgm_romance", name: "romance", filename: null, description: "恋愛シーン", volume: 0.7, loop: true, fadeIn: 500, fadeOut: 500 },
+  { id: "bgm_night", name: "night", filename: null, description: "夜のシーン", volume: 0.6, loop: true, fadeIn: 500, fadeOut: 500 },
+  { id: "bgm_battle", name: "battle", filename: null, description: "バトル曲", volume: 0.9, loop: true, fadeIn: 0, fadeOut: 300 },
+  { id: "bgm_ending", name: "ending", filename: null, description: "エンディング", volume: 0.8, loop: false, fadeIn: 500, fadeOut: 1000 },
+];
+
+const DEFAULT_SE_CATALOG = [
+  { id: "se_click", name: "click", filename: null, description: "決定音", volume: 1.0 },
+  { id: "se_cancel", name: "cancel", filename: null, description: "キャンセル音", volume: 1.0 },
+  { id: "se_chime", name: "chime", filename: null, description: "チャイム", volume: 1.0 },
+  { id: "se_door", name: "door", filename: null, description: "ドア開閉", volume: 0.8 },
+  { id: "se_footstep", name: "footstep", filename: null, description: "足音", volume: 0.7 },
+  { id: "se_surprise", name: "surprise", filename: null, description: "驚き", volume: 1.0 },
+  { id: "se_heartbeat", name: "heartbeat", filename: null, description: "心臓の鼓動", volume: 0.8 },
+  { id: "se_wind", name: "wind", filename: null, description: "風の音", volume: 0.6 },
+  { id: "se_rain", name: "rain", filename: null, description: "雨の音", volume: 0.7 },
+  { id: "se_hit", name: "hit", filename: null, description: "打撃音", volume: 1.0 },
+];
 
 function generateId() {
   return Date.now().toString(36) + Math.random().toString(36).substring(2, 8);
@@ -108,6 +179,8 @@ const GAME_TYPE_TEMPLATES = {
     script: DEFAULT_SCRIPT,
     characters: DEFAULT_CHARACTERS,
     bgStyles: DEFAULT_BG_STYLES,
+    bgmCatalog: DEFAULT_BGM_CATALOG,
+    seCatalog: DEFAULT_SE_CATALOG,
   },
   rpg: {
     script: [
@@ -116,6 +189,8 @@ const GAME_TYPE_TEMPLATES = {
     ],
     characters: {},
     bgStyles: DEFAULT_BG_STYLES,
+    bgmCatalog: DEFAULT_BGM_CATALOG,
+    seCatalog: DEFAULT_SE_CATALOG,
     maps: [
       {
         name: "スタートマップ",
@@ -151,6 +226,8 @@ const GAME_TYPE_TEMPLATES = {
     ],
     characters: {},
     bgStyles: DEFAULT_BG_STYLES,
+    bgmCatalog: DEFAULT_BGM_CATALOG,
+    seCatalog: DEFAULT_SE_CATALOG,
     minigames: [],
   },
 };
@@ -161,6 +238,91 @@ export const GAME_TYPE_LABELS = {
   rpg: "RPG",
   minigame: "ミニゲーム",
 };
+
+// 作品プリセット一覧（プルダウン用）
+export const WORK_PRESETS = [
+  {
+    id: "blank",
+    label: "空のプロジェクト",
+    gameType: "novel",
+    description: "",
+  },
+  {
+    id: "sample_novel",
+    label: "放課後の幽霊少女（ノベルサンプル）",
+    gameType: "novel",
+    description: "ラノベ風サンプルシナリオ（約10分・2ルート完結）",
+    loader: async () => {
+      const { default: script } = await import("../data/sample_scenario.js");
+      return {
+        script,
+        characters: {
+          yukina: {
+            name: "雪菜", color: "#C8D8F0",
+            expressions: { neutral: "🙂", smile: "😊", happy: "😄", shy: "😳", sad: "😢" },
+          },
+          saki: {
+            name: "咲希", color: "#FFD700",
+            expressions: { smile: "😊", happy: "😄", neutral: "🙂", sad: "😢" },
+          },
+        },
+      };
+    },
+  },
+  {
+    id: "sample_ownership",
+    label: "所有（ノベルサンプル）",
+    gameType: "novel",
+    description: "放課後の教室 — 選択肢あり・バッドエンド分岐",
+    loader: async () => {
+      const { default: script } = await import("../data/scenario_ownership.js");
+      return {
+        script,
+        characters: {
+          rin: {
+            name: "凛", color: "#C8D8F0",
+            expressions: {
+              neutral: "🙂", curious: "🤔", perceptive: "👁", thoughtful: "😌",
+              calm: "😶", flushed: "😳", vulnerable: "🥺", soft_smile: "🙂",
+            },
+          },
+        },
+      };
+    },
+  },
+  {
+    id: "sample_rpg",
+    label: "勇者レイの冒険（RPGサンプル）",
+    gameType: "rpg",
+    description: "RPGサンプル（マップ4面・ボス戦付き）",
+    loader: async () => {
+      const { RPG_SCRIPT, RPG_CHARACTERS, RPG_MAPS, RPG_BATTLE_DATA, RPG_MINIGAMES } = await import("../data/sample_rpg.js");
+      return {
+        script: RPG_SCRIPT,
+        characters: RPG_CHARACTERS,
+        maps: RPG_MAPS,
+        battleData: RPG_BATTLE_DATA,
+        minigames: RPG_MINIGAMES,
+      };
+    },
+  },
+];
+
+// プリセットからプロジェクトを作成
+export async function createProjectFromPreset(presetId, nameOverride) {
+  const preset = WORK_PRESETS.find((p) => p.id === presetId);
+  if (!preset) return null;
+
+  const name = nameOverride || preset.label;
+  const project = await createProject(name, preset.description, preset.gameType);
+
+  if (preset.loader) {
+    const data = await preset.loader();
+    await updateProject(project.id, data);
+    return { ...project, ...data };
+  }
+  return project;
+}
 
 // 新規プロジェクト作成
 export async function createProject(name, description = "", gameType = "novel") {
