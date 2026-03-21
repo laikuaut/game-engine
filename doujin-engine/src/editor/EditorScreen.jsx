@@ -85,12 +85,12 @@ export default function EditorScreen({ onBack, initialScript, projectId, project
   const [dirty, setDirty] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const [saveStatus, setSaveStatus] = useState(null); // null | "saving" | "saved"
-  const [previewStartIndex, setPreviewStartIndex] = useState({ index: 0, seq: 0 });
   const [showSplitPreview, setShowSplitPreview] = useState(false);
-  const previewSeq = useRef(0);
-  const setPreviewIndex = useCallback((i) => {
-    previewSeq.current += 1;
-    setPreviewStartIndex({ index: i, seq: previewSeq.current });
+  const previewRef = useRef(null);
+  const splitPreviewRef = useRef(null);
+  const jumpPreview = useCallback((i) => {
+    previewRef.current?.jumpTo(i);
+    splitPreviewRef.current?.jumpTo(i);
   }, []);
   // Undo/Redo 履歴
   const [undoStack, setUndoStack] = useState([]);
@@ -129,9 +129,10 @@ export default function EditorScreen({ onBack, initialScript, projectId, project
 
   // 「この行から再生」ハンドラ
   const handlePlayFrom = useCallback((index) => {
-    setPreviewIndex(index);
     setShowSplitPreview(true);
-  }, [setPreviewIndex]);
+    // 次のレンダー後に ref が利用可能になるので少し遅延
+    setTimeout(() => splitPreviewRef.current?.jumpTo(index), 0);
+  }, []);
 
   // プロジェクトから追加データを非同期ロード
   useEffect(() => {
@@ -402,7 +403,7 @@ export default function EditorScreen({ onBack, initialScript, projectId, project
       case "preview":
         return (
           <div style={{ padding: 16, height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <PreviewPanel script={script} startIndex={previewStartIndex} storyScenes={storyScenes} characters={characters} bgStyles={bgStyles} projectId={projectId} />
+            <PreviewPanel ref={previewRef} script={script} storyScenes={storyScenes} characters={characters} bgStyles={bgStyles} projectId={projectId} />
           </div>
         );
       case "debug":
@@ -510,7 +511,7 @@ export default function EditorScreen({ onBack, initialScript, projectId, project
                     ✕
                   </button>
                 </div>
-                <PreviewPanel script={script} startIndex={previewStartIndex} storyScenes={storyScenes} characters={characters} bgStyles={bgStyles} projectId={projectId} />
+                <PreviewPanel ref={splitPreviewRef} script={script} storyScenes={storyScenes} characters={characters} bgStyles={bgStyles} projectId={projectId} />
               </div>
             )}
           </div>
@@ -559,7 +560,7 @@ export default function EditorScreen({ onBack, initialScript, projectId, project
             ↪
           </button>
           <button
-            onClick={() => { setShowSplitPreview(!showSplitPreview); setPreviewIndex(selectedIndex); }}
+            onClick={() => { const opening = !showSplitPreview; setShowSplitPreview(opening); if (opening) setTimeout(() => splitPreviewRef.current?.jumpTo(selectedIndex), 0); }}
             style={{
               ...styles.headerBtn,
               ...(showSplitPreview ? { background: "rgba(200,180,140,0.15)", color: "#E8D4B0" } : {}),
@@ -595,15 +596,20 @@ export default function EditorScreen({ onBack, initialScript, projectId, project
             <ScriptList
               script={script}
               selectedIndex={selectedIndex}
-              onSelect={(i) => { setSelectedIndex(i); setSelectedSceneChild(null); if (showSplitPreview || activeTab === "preview") setPreviewIndex(i); else setActiveTab("script"); }}
+              onSelect={(i) => { setSelectedIndex(i); setSelectedSceneChild(null); if (showSplitPreview || activeTab === "preview") jumpPreview(i); else setActiveTab("script"); }}
               onAdd={addCommand}
               onRemove={removeCommand}
               onMove={moveCommand}
               onPlayFrom={handlePlayFrom}
               storyScenes={storyScenes}
               selectedSceneChild={selectedSceneChild}
-              onSelectSceneChild={(sceneId, childIndex) => {
+              onSelectSceneChild={(sceneId, childIndex, parentIndex) => {
                 setSelectedSceneChild({ sceneId, childIndex });
+                if (showSplitPreview || activeTab === "preview") {
+                  // 親インデックス + シーン内オフセット（ラベル1つ分 + childIndex）
+                  previewRef.current?.jumpToSceneChild(parentIndex, childIndex);
+                  splitPreviewRef.current?.jumpToSceneChild(parentIndex, childIndex);
+                }
               }}
             />
           </div>

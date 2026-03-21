@@ -1,4 +1,4 @@
-import { useState, useCallback, useReducer, useEffect, useRef, useMemo } from "react";
+import { useState, useCallback, useReducer, useRef, useMemo, useImperativeHandle, forwardRef } from "react";
 import { CMD, ACTION } from "../engine/constants";
 import { engineReducer, initialState } from "../engine/reducer";
 import { processCommand, buildLabelMap, expandScenes } from "../engine/commands";
@@ -6,40 +6,49 @@ import Background from "../components/Background";
 import Character from "../components/Character";
 
 // エディタ内のミニプレビュー（読み取り専用のエンジン表示）
-// 外側ラッパー: key で再マウントを制御
-export default function PreviewPanel({ script, startIndex: startIndexProp, storyScenes, characters, bgStyles, projectId }) {
-  const startIndex = typeof startIndexProp === "object" ? startIndexProp.index : (startIndexProp || 0);
-  const startSeq = typeof startIndexProp === "object" ? startIndexProp.seq : 0;
-  return (
-    <PreviewPanelInner
-      key={startSeq}
-      script={script}
-      startIndex={startIndex}
-      storyScenes={storyScenes}
-      characters={characters}
-      bgStyles={bgStyles}
-      projectId={projectId}
-    />
-  );
-}
-
-function PreviewPanelInner({ script, startIndex, storyScenes, characters, bgStyles, projectId }) {
+const PreviewPanel = forwardRef(function PreviewPanel({ script, storyScenes, characters, bgStyles, projectId }, ref) {
   const [state, dispatch] = useReducer(engineReducer, initialState);
-  const [currentLine, setCurrentLine] = useState(startIndex);
+  const [currentLine, setCurrentLine] = useState(0);
 
-  // シーン参照を展開
-  const expandedScript = useMemo(() => expandScenes(script, storyScenes), [script, storyScenes]);
+  // シーン参照を展開 + インデックスマッピング構築
+  const { expandedScript, indexMap } = useMemo(() => {
+    const expanded = expandScenes(script, storyScenes);
+    const map = [];
+    let ei = 0;
+    for (let si = 0; si < (script || []).length; si++) {
+      map[si] = ei;
+      const cmd = script[si];
+      if (cmd.type === "scene") {
+        const scene = (storyScenes || []).find((s) => s.id === cmd.sceneId);
+        ei += scene ? 1 + scene.commands.length : 0;
+      } else {
+        ei += 1;
+      }
+    }
+    return { expandedScript: expanded, indexMap: map };
+  }, [script, storyScenes]);
   const labelMap = useMemo(() => buildLabelMap(expandedScript), [expandedScript]);
 
+  // ref で最新値を保持（命令的 API 用）
+  const expandedRef = useRef(expandedScript);
+  const labelMapRef = useRef(labelMap);
+  const indexMapRef = useRef(indexMap);
+  expandedRef.current = expandedScript;
+  labelMapRef.current = labelMap;
+  indexMapRef.current = indexMap;
+
+  // 指定 index（展開後）からプレビュー実行
   const runFromIndex = useCallback((fromIndex) => {
+    const es = expandedRef.current;
+    const lm = labelMapRef.current;
     dispatch({ type: ACTION.SET_DISPLAYED_TEXT, payload: "" });
     dispatch({ type: ACTION.SET_SPEAKER, payload: "" });
-    if (expandedScript.length === 0 || fromIndex >= expandedScript.length) return;
-    const result = processCommand(expandedScript, fromIndex, dispatch, labelMap);
+    if (es.length === 0 || fromIndex >= es.length) return;
+    const result = processCommand(es, fromIndex, dispatch, lm);
     const i = result.index;
-    if (i < expandedScript.length && expandedScript[i]?.type === CMD.DIALOG) {
-      dispatch({ type: ACTION.SET_SPEAKER, payload: expandedScript[i].speaker });
-      dispatch({ type: ACTION.SET_DISPLAYED_TEXT, payload: expandedScript[i].text });
+    if (i < es.length && es[i]?.type === CMD.DIALOG) {
+      dispatch({ type: ACTION.SET_SPEAKER, payload: es[i].speaker });
+      dispatch({ type: ACTION.SET_DISPLAYED_TEXT, payload: es[i].text });
     }
     setCurrentLine(i);
     if (result.blocking) {
@@ -47,33 +56,41 @@ function PreviewPanelInner({ script, startIndex, storyScenes, characters, bgStyl
       if (result.blocking === "effect") dispatch({ type: ACTION.EFFECT_END });
       if (result.blocking === "cg") dispatch({ type: ACTION.HIDE_CG });
     }
-  }, [expandedScript, labelMap]);
+  }, []);
 
-  // マウント時に startIndex から実行
-  useEffect(() => {
-    runFromIndex(startIndex);
-  }, [runFromIndex, startIndex]);
+  // 親から呼べる命令的 API
+  useImperativeHandle(ref, () => ({
+    jumpTo: (originalIndex) => {
+      const mapped = indexMapRef.current[originalIndex];
+      runFromIndex(mapped !== undefined ? mapped : originalIndex);
+    },
+    jumpToSceneChild: (parentIndex, childIndex) => {
+      const mapped = indexMapRef.current[parentIndex];
+      runFromIndex((mapped !== undefined ? mapped : parentIndex) + 1 + childIndex);
+    },
+  }), [runFromIndex]);
 
   // 次のコマンドへ進む
   const advancePreview = useCallback(() => {
+    const es = expandedRef.current;
+    const lm = labelMapRef.current;
     let next = currentLine + 1;
-    if (next >= expandedScript.length) return;
-    const result = processCommand(expandedScript, next, dispatch, labelMap);
+    if (next >= es.length) return;
+    const result = processCommand(es, next, dispatch, lm);
     next = result.index;
-    if (next >= expandedScript.length) return;
+    if (next >= es.length) return;
     setCurrentLine(next);
-    const cmd = expandedScript[next];
+    const cmd = es[next];
     if (cmd.type === CMD.DIALOG) {
       dispatch({ type: ACTION.SET_SPEAKER, payload: cmd.speaker });
       dispatch({ type: ACTION.SET_DISPLAYED_TEXT, payload: cmd.text });
     }
-    // blocking コマンド（wait/effect/cg）はプレビューではスキップ
     if (result.blocking) {
       if (result.blocking === "wait") dispatch({ type: ACTION.END_WAIT });
       if (result.blocking === "effect") dispatch({ type: ACTION.EFFECT_END });
       if (result.blocking === "cg") dispatch({ type: ACTION.HIDE_CG });
     }
-  }, [currentLine, expandedScript, labelMap]);
+  }, [currentLine]);
 
   return (
     <div style={styles.wrapper}>
@@ -94,12 +111,10 @@ function PreviewPanelInner({ script, startIndex, storyScenes, characters, bgStyl
           <Character key={id} id={id} position={chara.position} expression={chara.expression} animState={chara.animState} charaData={characters} projectId={projectId} />
         ))}
 
-        {/* BGM インジケーター */}
         {state.bgmPlaying && (
           <div style={styles.bgmIndicator}>♪ {typeof state.bgmPlaying === "string" ? state.bgmPlaying : state.bgmPlaying.name}</div>
         )}
 
-        {/* テキスト表示 */}
         <div style={styles.textBox}>
           {state.currentSpeaker && (
             <div style={styles.speaker}>{state.currentSpeaker}</div>
@@ -107,12 +122,13 @@ function PreviewPanelInner({ script, startIndex, storyScenes, characters, bgStyl
           <div style={styles.text}>{state.displayedText}</div>
         </div>
 
-        {/* クリック誘導 */}
         <div style={styles.clickHint}>click to advance</div>
       </div>
     </div>
   );
-}
+});
+
+export default PreviewPanel;
 
 const styles = {
   wrapper: {

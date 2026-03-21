@@ -222,7 +222,7 @@ export default function ScriptList({ script, selectedIndex, onSelect, onAdd, onR
                       scriptIndex={i}
                       isSelected={selectedSceneChild?.sceneId === cmd.sceneId && selectedSceneChild?.childIndex === ci}
                       onSelect={(si, ci2) => {
-                        if (onSelectSceneChild) onSelectSceneChild(cmd.sceneId, ci2);
+                        if (onSelectSceneChild) onSelectSceneChild(cmd.sceneId, ci2, i);
                       }}
                     />
                   ))}
