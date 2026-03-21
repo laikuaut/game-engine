@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useReducer, useMemo } from "react";
 import { ACTION, CMD } from "./constants";
 import { engineReducer, initialState } from "./reducer";
-import { processCommand, buildLabelMap, resolveTarget } from "./commands";
+import { processCommand, buildLabelMap, resolveTarget, expandScenes } from "./commands";
 import DEFAULT_SCRIPT from "../data/script";
 
 import Background from "../components/Background";
@@ -20,8 +20,12 @@ import { unlock as unlockCG } from "../save/UnlockStore";
 import HelpModal from "../components/HelpModal";
 import { NOVEL_HELP } from "../data/helpContent";
 
-export default function NovelEngine({ script, characters, bgStyles, onBack, projectId, startLabel, initialConfig, onConfigChange }) {
-  const SCRIPT = script || DEFAULT_SCRIPT;
+export default function NovelEngine({ script, characters, bgStyles, onBack, projectId, startLabel, initialConfig, onConfigChange, storyScenes }) {
+  // シーン参照を展開してフラットなスクリプトに変換
+  const SCRIPT = useMemo(
+    () => expandScenes(script || DEFAULT_SCRIPT, storyScenes),
+    [script, storyScenes]
+  );
   const [state, dispatch] = useReducer(engineReducer, {
     ...initialState,
     ...(initialConfig ? {
@@ -32,7 +36,7 @@ export default function NovelEngine({ script, characters, bgStyles, onBack, proj
     } : {}),
   });
   // オーディオフック
-  useAudio(state);
+  useAudio(state, projectId);
 
   const typingRef = useRef(null);
   const autoRef = useRef(null);

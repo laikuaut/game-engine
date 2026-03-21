@@ -219,8 +219,8 @@ export default function ProjectManager({ onSelectProject, onEditProject, onExit,
               onMouseEnter={() => setHoveredCard(p.id)}
               onMouseLeave={() => setHoveredCard(null)}
             >
-              {/* カード本体（クリックで選択） */}
-              <div style={styles.cardMain} onClick={() => onSelectProject(p.id)}>
+              {/* カード本体（クリックで編集画面へ） */}
+              <div style={styles.cardMain} onClick={() => onEditProject(p.id)}>
                 <div style={styles.cardNameRow}>
                   <div style={styles.cardName}>{p.name}</div>
                   <span style={{
@@ -243,11 +243,11 @@ export default function ProjectManager({ onSelectProject, onEditProject, onExit,
               {/* カード操作ボタン */}
               <div style={styles.cardActions} onClick={(e) => e.stopPropagation()}>
                 <button
-                  onClick={() => onEditProject(p.id)}
-                  style={styles.editBtn}
-                  title="編集"
+                  onClick={() => onSelectProject(p.id)}
+                  style={styles.playBtn}
+                  title="プレイ"
                 >
-                  編集
+                  ▶ プレイ
                 </button>
                 <button
                   onClick={() => handleDuplicate(p.id)}
@@ -547,10 +547,10 @@ const styles = {
     borderColor: "rgba(200,180,140,0.5)",
     color: "#E8D4B0",
   },
-  editBtn: {
-    background: "rgba(200,180,140,0.12)",
-    border: "1px solid rgba(200,180,140,0.3)",
-    color: "#C8A870",
+  playBtn: {
+    background: "rgba(100,200,100,0.12)",
+    border: "1px solid rgba(100,200,100,0.3)",
+    color: "#8C4",
     padding: "3px 12px",
     borderRadius: 3,
     fontSize: 11,

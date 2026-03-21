@@ -16,6 +16,7 @@ const CMD_META = {
   [CMD.WAIT]:       { label: "待機",   color: "#90A4AE" },
   [CMD.JUMP]:       { label: "ジャンプ", color: "#EF5350" },
   [CMD.LABEL]:      { label: "ラベル", color: "#A5D6A7" },
+  [CMD.SCENE]:      { label: "シーン", color: "#66BB6A" },
 };
 
 // コマンドの1行サマリー
@@ -37,6 +38,7 @@ function commandSummary(cmd) {
     case CMD.WAIT:      return `${cmd.time || 0}ms`;
     case CMD.JUMP:      return `→ ${cmd.target}`;
     case CMD.LABEL:     return cmd.name || "(未設定)";
+    case CMD.SCENE:     return cmd.label || cmd.sceneId || "(未設定)";
     default:            return cmd.type;
   }
 }

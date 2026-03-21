@@ -28,6 +28,32 @@ export function resolveTarget(target, labelMap) {
   return -1;
 }
 
+// シーン参照を展開して1本のスクリプト配列に変換
+// { type: "scene", sceneId: "scene_xxx" } → ラベル + そのシーンのcommands に置換
+export function expandScenes(script, scenes) {
+  if (!scenes || scenes.length === 0) return script;
+  const sceneMap = {};
+  for (const s of scenes) {
+    sceneMap[s.id] = s;
+  }
+  const result = [];
+  for (const cmd of script) {
+    if (cmd.type === CMD.SCENE) {
+      const scene = sceneMap[cmd.sceneId];
+      if (scene) {
+        result.push({ type: CMD.LABEL, name: cmd.label || scene.name });
+        result.push(...scene.commands);
+      } else {
+        // シーンが見つからない場合はそのまま残す（警告用）
+        console.warn(`シーン未発見: "${cmd.sceneId}"`);
+      }
+    } else {
+      result.push(cmd);
+    }
+  }
+  return result;
+}
+
 // dialog / choice / wait / effect 以外のコマンドを連続処理
 // 戻り値: { index, blocking } — blocking が true のとき NovelEngine 側で非同期処理が必要
 export function processCommand(script, index, dispatch, labelMap) {

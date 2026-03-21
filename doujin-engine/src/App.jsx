@@ -190,6 +190,7 @@ function App() {
               bgStyles={project.bgStyles}
               projectId={project.id}
               startLabel={startLabel}
+              storyScenes={project.storyScenes}
               initialConfig={config}
               onConfigChange={(changes) => setConfig((prev) => ({ ...prev, ...changes }))}
               onBack={() => {

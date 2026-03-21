@@ -222,6 +222,7 @@ export default function EditorScreen({ onBack, initialScript, projectId, project
       [CMD.WAIT]: { type: CMD.WAIT, time: 1000 },
       [CMD.JUMP]: { type: CMD.JUMP, target: 0 },
       [CMD.LABEL]: { type: CMD.LABEL, name: "" },
+      [CMD.SCENE]: { type: CMD.SCENE, sceneId: "", label: "" },
     };
     const newCmd = templates[type] || { type: CMD.DIALOG, speaker: "", text: "" };
     pushUndo(script);
@@ -289,6 +290,10 @@ export default function EditorScreen({ onBack, initialScript, projectId, project
             script={script}
             onUpdateScript={persistScript}
             characters={characters}
+            bgStyles={bgStyles}
+            projectId={projectId}
+            bgmCatalog={bgmCatalog}
+            seCatalog={seCatalog}
           />
         );
       case "text":
@@ -362,7 +367,7 @@ export default function EditorScreen({ onBack, initialScript, projectId, project
       case "preview":
         return (
           <div style={{ padding: 16, height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <PreviewPanel script={script} startIndex={previewStartIndex} />
+            <PreviewPanel script={script} startIndex={previewStartIndex} storyScenes={storyScenes} />
           </div>
         );
       case "debug":
@@ -408,6 +413,11 @@ export default function EditorScreen({ onBack, initialScript, projectId, project
                   onChange={(updated) => updateCommand(selectedIndex, updated)}
                   characters={characters}
                   script={script}
+                  storyScenes={storyScenes}
+                  projectId={projectId}
+                  bgmCatalog={bgmCatalog}
+                  seCatalog={seCatalog}
+                  bgStyles={bgStyles}
                 />
               ) : (
                 <div style={styles.emptyState}>コマンドを選択してください</div>
@@ -425,7 +435,7 @@ export default function EditorScreen({ onBack, initialScript, projectId, project
                     ✕
                   </button>
                 </div>
-                <PreviewPanel script={script} startIndex={previewStartIndex} />
+                <PreviewPanel script={script} startIndex={previewStartIndex} storyScenes={storyScenes} />
               </div>
             )}
           </div>

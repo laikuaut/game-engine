@@ -1,18 +1,20 @@
 import { useState, useCallback, useReducer, useEffect, useRef, useMemo } from "react";
 import { CMD, ACTION } from "../engine/constants";
 import { engineReducer, initialState } from "../engine/reducer";
-import { processCommand, buildLabelMap } from "../engine/commands";
+import { processCommand, buildLabelMap, expandScenes } from "../engine/commands";
 import Background from "../components/Background";
 import Character from "../components/Character";
 
 // エディタ内のミニプレビュー（読み取り専用のエンジン表示）
-export default function PreviewPanel({ script, startIndex }) {
+export default function PreviewPanel({ script, startIndex, storyScenes }) {
   const [state, dispatch] = useReducer(engineReducer, initialState);
   const [currentLine, setCurrentLine] = useState(startIndex || 0);
   const initialized = useRef(false);
   const prevStartIndex = useRef(startIndex || 0);
 
-  const labelMap = useMemo(() => buildLabelMap(script), [script]);
+  // シーン参照を展開
+  const expandedScript = useMemo(() => expandScenes(script, storyScenes), [script, storyScenes]);
+  const labelMap = useMemo(() => buildLabelMap(expandedScript), [expandedScript]);
 
   // startIndex が外部から変更された場合にリセット
   useEffect(() => {
@@ -27,12 +29,12 @@ export default function PreviewPanel({ script, startIndex }) {
     // ステートをリセット
     dispatch({ type: ACTION.SET_DISPLAYED_TEXT, payload: "" });
     dispatch({ type: ACTION.SET_SPEAKER, payload: "" });
-    if (script.length === 0 || fromIndex >= script.length) return;
-    const result = processCommand(script, fromIndex, dispatch, labelMap);
+    if (expandedScript.length === 0 || fromIndex >= expandedScript.length) return;
+    const result = processCommand(expandedScript, fromIndex, dispatch, labelMap);
     const i = result.index;
-    if (i < script.length && script[i].type === CMD.DIALOG) {
-      dispatch({ type: ACTION.SET_SPEAKER, payload: script[i].speaker });
-      dispatch({ type: ACTION.SET_DISPLAYED_TEXT, payload: script[i].text });
+    if (i < expandedScript.length && expandedScript[i].type === CMD.DIALOG) {
+      dispatch({ type: ACTION.SET_SPEAKER, payload: expandedScript[i].speaker });
+      dispatch({ type: ACTION.SET_DISPLAYED_TEXT, payload: expandedScript[i].text });
     }
     setCurrentLine(i);
     if (result.blocking) {
@@ -40,24 +42,24 @@ export default function PreviewPanel({ script, startIndex }) {
       if (result.blocking === "effect") dispatch({ type: ACTION.EFFECT_END });
       if (result.blocking === "cg") dispatch({ type: ACTION.HIDE_CG });
     }
-  }, [script, labelMap]);
+  }, [expandedScript, labelMap]);
 
   // スクリプト変更時にリセット＆再実行
   useEffect(() => {
-    if (script.length === 0) return;
+    if (expandedScript.length === 0) return;
     runFromIndex(startIndex || 0);
     initialized.current = true;
-  }, [script, labelMap]);
+  }, [expandedScript, labelMap]);
 
   // 次のコマンドへ進む
   const advancePreview = useCallback(() => {
     let next = currentLine + 1;
-    if (next >= script.length) return;
-    const result = processCommand(script, next, dispatch, labelMap);
+    if (next >= expandedScript.length) return;
+    const result = processCommand(expandedScript, next, dispatch, labelMap);
     next = result.index;
-    if (next >= script.length) return;
+    if (next >= expandedScript.length) return;
     setCurrentLine(next);
-    const cmd = script[next];
+    const cmd = expandedScript[next];
     if (cmd.type === CMD.DIALOG) {
       dispatch({ type: ACTION.SET_SPEAKER, payload: cmd.speaker });
       dispatch({ type: ACTION.SET_DISPLAYED_TEXT, payload: cmd.text });
@@ -68,12 +70,12 @@ export default function PreviewPanel({ script, startIndex }) {
       if (result.blocking === "effect") dispatch({ type: ACTION.EFFECT_END });
       if (result.blocking === "cg") dispatch({ type: ACTION.HIDE_CG });
     }
-  }, [currentLine, script, labelMap]);
+  }, [currentLine, expandedScript, labelMap]);
 
   return (
     <div style={styles.wrapper}>
       <div style={styles.label}>
-        プレビュー — line {currentLine}/{script.length - 1}
+        プレビュー — line {currentLine}/{expandedScript.length - 1}
       </div>
       <div style={styles.screen} onClick={advancePreview}>
         <Background

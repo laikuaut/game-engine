@@ -11,7 +11,8 @@ export default function SceneEditor({
   scenes, onUpdateScenes,
   sceneOrder, onUpdateSceneOrder,
   script, onUpdateScript,
-  characters,
+  characters, bgStyles,
+  projectId, bgmCatalog, seCatalog,
 }) {
   const [selectedSceneId, setSelectedSceneId] = useState(null);
   const [selectedCmdIndex, setSelectedCmdIndex] = useState(0);
@@ -133,6 +134,7 @@ export default function SceneEditor({
       [CMD.WAIT]: { type: CMD.WAIT, time: 1000 },
       [CMD.JUMP]: { type: CMD.JUMP, target: 0 },
       [CMD.LABEL]: { type: CMD.LABEL, name: "" },
+      [CMD.SCENE]: { type: CMD.SCENE, sceneId: "", label: "" },
     };
     const newCmd = templates[type] || { type: CMD.DIALOG, speaker: "", text: "" };
     const cmds = [...currentScene.commands];
@@ -168,15 +170,25 @@ export default function SceneEditor({
     onUpdateSceneOrder(newOrder);
   }, [order, onUpdateSceneOrder]);
 
-  // 結合スクリプトを生成してメインスクリプトに反映
+  // 結合スクリプトを生成してメインスクリプトに反映（展開方式）
   const buildScript = useCallback(() => {
     const result = [];
     for (const id of order) {
       const scene = allScenes.find((s) => s.id === id);
       if (!scene) continue;
-      // シーンの先頭にラベルを挿入
       result.push({ type: CMD.LABEL, name: scene.name });
       result.push(...scene.commands);
+    }
+    onUpdateScript(result);
+  }, [order, allScenes, onUpdateScript]);
+
+  // シーン参照をスクリプトに挿入（参照方式 — エンジンが実行時に展開）
+  const buildScriptAsRefs = useCallback(() => {
+    const result = [];
+    for (const id of order) {
+      const scene = allScenes.find((s) => s.id === id);
+      if (!scene) continue;
+      result.push({ type: CMD.SCENE, sceneId: id, label: scene.name });
     }
     onUpdateScript(result);
   }, [order, allScenes, onUpdateScript]);
@@ -268,8 +280,11 @@ export default function SceneEditor({
               既存スクリプトからインポート
             </button>
           )}
-          <button onClick={buildScript} style={styles.buildBtn}>
-            スクリプトに結合・反映
+          <button onClick={buildScriptAsRefs} style={styles.buildBtn}>
+            スクリプトに反映（参照）
+          </button>
+          <button onClick={buildScript} style={styles.buildFlatBtn}>
+            スクリプトに反映（展開）
           </button>
         </div>
       </div>
@@ -310,6 +325,10 @@ export default function SceneEditor({
                 onChange={(updated) => updateCommand(selectedCmdIndex, updated)}
                 characters={characters}
                 script={currentScene.commands}
+                projectId={projectId}
+                bgmCatalog={bgmCatalog}
+                seCatalog={seCatalog}
+                bgStyles={bgStyles}
               />
             ) : (
               <div style={styles.empty}>コマンドを選択してください</div>
@@ -401,6 +420,11 @@ const styles = {
     background: "rgba(100,200,100,0.1)", border: "1px solid rgba(100,200,100,0.3)",
     color: "#8C4", padding: "6px 0", borderRadius: 4, fontSize: 11,
     cursor: "pointer", fontFamily: "inherit", width: "100%", fontWeight: 600,
+  },
+  buildFlatBtn: {
+    background: "rgba(200,180,140,0.06)", border: "1px solid rgba(200,180,140,0.2)",
+    color: "#999", padding: "5px 0", borderRadius: 4, fontSize: 10,
+    cursor: "pointer", fontFamily: "inherit", width: "100%", marginTop: 4,
   },
   cmdList: {
     width: 280, flexShrink: 0, borderRight: "1px solid rgba(255,255,255,0.06)",
