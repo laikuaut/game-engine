@@ -19,7 +19,7 @@
     "appId": "com.doujin-engine.app",
     "productName": "Doujin Engine",
     "directories": {
-      "output": "release"
+      "output": "deploy"
     },
     "win": {
       "target": [
