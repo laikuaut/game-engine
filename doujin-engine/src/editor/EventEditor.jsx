@@ -318,7 +318,8 @@ const styles = {
   },
   listItem: {
     padding: "8px 10px", borderRadius: 4, marginBottom: 4, cursor: "pointer",
-    border: "1px solid rgba(255,255,255,0.06)", transition: "all 0.15s",
+    borderWidth: 1, borderStyle: "solid", borderColor: "rgba(255,255,255,0.06)",
+    transition: "all 0.15s",
   },
   listItemName: { color: "#E8D4B0", fontSize: 13 },
   listItemMeta: { color: "#666", fontSize: 10, fontFamily: "monospace", marginTop: 2 },

@@ -98,7 +98,8 @@ const styles = {
   question: { color: "#E8D4B0", fontSize: 18, marginBottom: 24, lineHeight: 1.6 },
   choices: { display: "flex", flexDirection: "column", gap: 10 },
   choiceBtn: {
-    background: "rgba(255,255,255,0.05)", border: "1px solid rgba(200,180,140,0.2)",
+    background: "rgba(255,255,255,0.05)",
+    borderWidth: 1, borderStyle: "solid", borderColor: "rgba(200,180,140,0.2)",
     color: "#E8E4DC", padding: "12px 20px", borderRadius: 4,
     fontSize: 15, cursor: "pointer", fontFamily: "inherit",
     textAlign: "left", transition: "all 0.2s",

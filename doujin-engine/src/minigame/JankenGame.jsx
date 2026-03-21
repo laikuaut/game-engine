@@ -124,7 +124,8 @@ const styles = {
   handDisplay: { fontSize: 48, height: 60 },
   handsRow: { display: "flex", gap: 16, justifyContent: "center" },
   handBtn: {
-    background: "rgba(255,255,255,0.05)", border: "2px solid rgba(200,180,140,0.2)",
+    background: "rgba(255,255,255,0.05)",
+    borderWidth: 2, borderStyle: "solid", borderColor: "rgba(200,180,140,0.2)",
     borderRadius: 12, padding: "16px 20px", cursor: "pointer",
     display: "flex", flexDirection: "column", alignItems: "center",
     transition: "all 0.2s",

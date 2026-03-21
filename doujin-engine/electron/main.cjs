@@ -158,7 +158,7 @@ function writeProjectsIndex(projects) {
 
 // --- ジャンル別ファイル分割ヘルパー ---
 // プロジェクトのデータファイル定義
-const DATA_FILES = ["script", "characters", "items", "gameEvents", "bgStyles", "maps", "customTiles", "battleData", "minigames", "saves"];
+const DATA_FILES = ["script", "characters", "items", "gameEvents", "bgStyles", "maps", "customTiles", "battleData", "minigames", "saves", "bgmCatalog", "seCatalog", "cgCatalog", "sceneCatalog", "storyScenes", "sceneOrder"];
 
 function getProjectDir(id) {
   const dir = path.join(getProjectsDir(), id);
@@ -315,7 +315,7 @@ ipcMain.handle("asset-upload", async (event, { projectId, type, filename, data }
 
 ipcMain.handle("asset-list", async (event, { projectId, type }) => {
   const dir = getAssetDir(projectId, type);
-  return fs.readdirSync(dir).filter((f) => /\.(png|jpg|jpeg|webp|gif)$/i.test(f));
+  return fs.readdirSync(dir).filter((f) => /\.(png|jpg|jpeg|webp|gif|ogg|mp3|wav)$/i.test(f));
 });
 
 ipcMain.handle("asset-delete", async (event, { projectId, type, filename }) => {

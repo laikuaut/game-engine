@@ -18,6 +18,8 @@ import ItemEditor from "./ItemEditor";
 import EventEditor from "./EventEditor";
 import CGCatalogEditor from "./CGCatalogEditor";
 import SceneCatalogEditor from "./SceneCatalogEditor";
+import AudioCatalogEditor from "./AudioCatalogEditor";
+import SceneEditor from "./SceneEditor";
 import HelpModal, { HelpButton } from "../components/HelpModal";
 import { EDITOR_HELP, MAP_EDITOR_HELP } from "../data/helpContent";
 
@@ -30,9 +32,12 @@ const DEFAULT_SCRIPT = [
 // タブ定義
 const TABS = [
   { id: "script",   label: "スクリプト", group: "novel" },
+  { id: "scenes",   label: "シーン編集", group: "novel" },
   { id: "text",     label: "テキスト",   group: "novel" },
   { id: "chara",    label: "キャラ",     group: "novel" },
   { id: "bg",       label: "背景",       group: "novel" },
+  { id: "bgm",     label: "BGM",       group: "novel" },
+  { id: "se",      label: "SE",        group: "novel" },
   { id: "item",     label: "アイテム",   group: "rpg" },
   { id: "cg",       label: "CG",         group: "novel" },
   { id: "scene",    label: "シーン",     group: "novel" },
@@ -72,6 +77,10 @@ export default function EditorScreen({ onBack, initialScript, projectId, project
   const [minigames, setMinigames] = useState([]);
   const [cgCatalog, setCgCatalog] = useState([]);
   const [sceneCatalog, setSceneCatalog] = useState([]);
+  const [bgmCatalog, setBgmCatalog] = useState([]);
+  const [seCatalog, setSeCatalog] = useState([]);
+  const [storyScenes, setStoryScenes] = useState([]);
+  const [sceneOrder, setSceneOrder] = useState([]);
   const [dirty, setDirty] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const [saveStatus, setSaveStatus] = useState(null); // null | "saving" | "saved"
@@ -134,6 +143,10 @@ export default function EditorScreen({ onBack, initialScript, projectId, project
         setMinigames(proj.minigames || []);
         setCgCatalog(proj.cgCatalog || []);
         setSceneCatalog(proj.sceneCatalog || []);
+        setBgmCatalog(proj.bgmCatalog || []);
+        setSeCatalog(proj.seCatalog || []);
+        setStoryScenes(proj.storyScenes || []);
+        setSceneOrder(proj.sceneOrder || []);
       }
     })();
   }, [projectId]);
@@ -142,12 +155,12 @@ export default function EditorScreen({ onBack, initialScript, projectId, project
   const saveProject = useCallback(async () => {
     if (!projectId) return;
     setSaveStatus("saving");
-    await updateProject(projectId, { script, characters, bgStyles, items, gameEvents, maps, customTiles, battleData, minigames, cgCatalog, sceneCatalog });
+    await updateProject(projectId, { script, characters, bgStyles, items, gameEvents, maps, customTiles, battleData, minigames, cgCatalog, sceneCatalog, bgmCatalog, seCatalog, storyScenes, sceneOrder });
     setDirty(false);
     setSaveStatus("saved");
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(() => setSaveStatus(null), 2000);
-  }, [projectId, script, maps, battleData, minigames]);
+  }, [projectId, script, characters, bgStyles, items, gameEvents, maps, customTiles, battleData, minigames, cgCatalog, sceneCatalog, bgmCatalog, seCatalog, storyScenes, sceneOrder]);
 
   // Ctrl+S: 保存、Ctrl+Z: Undo、Ctrl+Y/Ctrl+Shift+Z: Redo
   useEffect(() => {
@@ -266,6 +279,18 @@ export default function EditorScreen({ onBack, initialScript, projectId, project
   // 中央パネルの表示内容
   const renderCenter = () => {
     switch (activeTab) {
+      case "scenes":
+        return (
+          <SceneEditor
+            scenes={storyScenes}
+            onUpdateScenes={(s) => { setStoryScenes(s); markDirty(); }}
+            sceneOrder={sceneOrder}
+            onUpdateSceneOrder={(o) => { setSceneOrder(o); markDirty(); }}
+            script={script}
+            onUpdateScript={persistScript}
+            characters={characters}
+          />
+        );
       case "text":
         return <TextEditor script={script} onUpdateScript={persistScript} />;
       case "chara":
@@ -282,6 +307,24 @@ export default function EditorScreen({ onBack, initialScript, projectId, project
             bgStyles={bgStyles}
             onUpdateBgStyles={(s) => { setBgStyles(s); markDirty(); }}
             projectId={projectId}
+          />
+        );
+      case "bgm":
+        return (
+          <AudioCatalogEditor
+            catalog={bgmCatalog}
+            onUpdateCatalog={(c) => { setBgmCatalog(c); markDirty(); }}
+            projectId={projectId}
+            mode="bgm"
+          />
+        );
+      case "se":
+        return (
+          <AudioCatalogEditor
+            catalog={seCatalog}
+            onUpdateCatalog={(c) => { setSeCatalog(c); markDirty(); }}
+            projectId={projectId}
+            mode="se"
           />
         );
       case "item":

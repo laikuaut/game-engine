@@ -277,7 +277,8 @@ const styles = {
   listItem: {
     display: "flex", alignItems: "center", gap: 8,
     padding: "8px 10px", borderRadius: 4, marginBottom: 4, cursor: "pointer",
-    border: "1px solid rgba(255,255,255,0.06)", transition: "all 0.2s",
+    borderWidth: 1, borderStyle: "solid", borderColor: "rgba(255,255,255,0.06)",
+    transition: "all 0.2s",
   },
   listThumb: {
     width: 40, height: 24, borderRadius: 3, flexShrink: 0,

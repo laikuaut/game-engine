@@ -402,7 +402,8 @@ const styles = {
   rowValue: { color: "#ccc" },
   targetGrid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 },
   targetCard: {
-    border: "1px solid", borderRadius: 4, padding: "12px 14px",
+    borderWidth: 1, borderStyle: "solid", borderColor: "rgba(255,255,255,0.08)",
+    borderRadius: 4, padding: "12px 14px",
     transition: "all 0.2s",
   },
   targetLabel: { fontSize: 14, color: "#E8D4B0", fontWeight: 600, marginBottom: 4 },

@@ -357,7 +357,7 @@ const styles = {
   },
   card: {
     background: "rgba(255,255,255,0.04)",
-    border: "1px solid rgba(200,180,140,0.15)",
+    borderWidth: 1, borderStyle: "solid", borderColor: "rgba(200,180,140,0.15)",
     borderRadius: 4,
     marginBottom: 8,
     transition: "all 0.2s",
@@ -533,7 +533,7 @@ const styles = {
   },
   gameTypeBtn: {
     background: "rgba(255,255,255,0.04)",
-    border: "1px solid rgba(255,255,255,0.1)",
+    borderWidth: 1, borderStyle: "solid", borderColor: "rgba(255,255,255,0.1)",
     color: "#888",
     padding: "6px 16px",
     borderRadius: 3,

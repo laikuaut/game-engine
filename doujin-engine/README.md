@@ -1,16 +1,60 @@
-# React + Vite
+# Doujin Engine
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React製ノベルゲームエンジン。Electron でパッケージングし Windows exe として DLsite に出品する。
 
-Currently, two official plugins are available:
+## セットアップ
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+```bash
+npm install
+```
 
-## React Compiler
+## 開発コマンド
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+```bash
+npm run dev              # 開発サーバー起動（ブラウザプレビュー）
+npm run electron:dev     # Electron で起動
+npm test                 # テスト実行
+npm run test:watch       # テスト（ウォッチモード）
+```
 
-## Expanding the ESLint configuration
+## ビルド
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+```bash
+npm run build            # Vite ビルド（dist/ に出力）
+npm run electron:build   # Electron exe ビルド（deploy/ に出力）
+```
+
+## ディレクトリ構成
+
+```
+doujin-engine/
+├── electron/          Electron メインプロセス
+├── src/
+│   ├── engine/        ノベルエンジンコア（reducer, commands, constants）
+│   ├── components/    UIコンポーネント
+│   ├── editor/        エディタ画面（シナリオ、マップ、アイテム等）
+│   ├── rpg/           RPGエンジン・マップ描画
+│   ├── audio/         BGM/SE 再生管理
+│   ├── save/          セーブ/ロード管理
+│   ├── project/       プロジェクトデータ CRUD
+│   └── data/          サンプルデータ・設定定数
+├── data/              プロジェクトデータ（※git管理外）
+├── dist/              Vite ビルド出力
+└── deploy/            Electron ビルド出力
+```
+
+## data/ ディレクトリについて
+
+`data/` はユーザーが作成したプロジェクトデータ（シナリオ、アセット画像、セーブデータ等）の保存先です。
+
+- `.gitignore` で除外されているため、git には含まれません
+- 開発時: `doujin-engine/data/projects/{プロジェクトID}/` に保存
+- 本番時: exe と同じフォルダの `data/projects/` に保存
+- バックアップは手動で行ってください
+
+## 技術スタック
+
+- React 18+ / Vite / Electron
+- JavaScript (JSX)
+- インラインスタイル（CSS-in-JS）
+- useReducer によるステート集中管理

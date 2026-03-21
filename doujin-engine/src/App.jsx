@@ -147,7 +147,7 @@ function App() {
       <div className={fadeClass} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
         {/* プロジェクト管理画面（ゲームモードでは非表示） */}
         {screen === "projects" && !gameMode && (
-          <div style={gameContainerStyle}>
+          <div style={{ width: "100%", height: "100vh" }}>
             <ProjectManager
               onSelectProject={handleSelectProject}
               onEditProject={handleEditProject}

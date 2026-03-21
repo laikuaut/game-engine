@@ -7,7 +7,7 @@ import path from 'path'
 // 開発サーバー用: data/projects へのファイル保存API（ジャンル別分割対応）
 function projectApiPlugin() {
   const projectsDir = path.resolve(__dirname, 'data', 'projects')
-  const DATA_FILES = ['script', 'characters', 'items', 'bgStyles', 'maps', 'customTiles', 'battleData', 'minigames', 'saves']
+  const DATA_FILES = ['script', 'characters', 'items', 'gameEvents', 'bgStyles', 'maps', 'customTiles', 'battleData', 'minigames', 'saves', 'bgmCatalog', 'seCatalog', 'cgCatalog', 'sceneCatalog', 'storyScenes', 'sceneOrder']
 
   function ensureDir(dir) {
     if (!fs.existsSync(dir || projectsDir)) {
@@ -186,7 +186,7 @@ function projectApiPlugin() {
         const assetDir = path.join(projectsDir, projectId, 'assets', type)
         let files = []
         if (fs.existsSync(assetDir)) {
-          files = fs.readdirSync(assetDir).filter(f => /\.(png|jpg|jpeg|webp|gif)$/i.test(f))
+          files = fs.readdirSync(assetDir).filter(f => /\.(png|jpg|jpeg|webp|gif|ogg|mp3|wav)$/i.test(f))
         }
         res.setHeader('Content-Type', 'application/json')
         res.end(JSON.stringify(files))
