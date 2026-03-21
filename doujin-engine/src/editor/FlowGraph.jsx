@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState, useCallback } from "react";
 import { CMD } from "../engine/constants";
 
 // スクリプト内の choice / jump / label を解析し、分岐フローを可視化する
@@ -80,6 +80,38 @@ export default function FlowGraph({ script }) {
     return { nodes, edges };
   }, [script]);
 
+  // 展開中ノードの管理
+  const [expanded, setExpanded] = useState(new Set());
+  const toggleExpand = useCallback((nodeIndex) => {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(nodeIndex)) next.delete(nodeIndex);
+      else next.add(nodeIndex);
+      return next;
+    });
+  }, []);
+
+  // コマンドの簡易表示
+  const cmdSummary = (cmd, i) => {
+    switch (cmd.type) {
+      case CMD.DIALOG:   return { icon: "💬", label: cmd.speaker || "ナレーション", detail: (cmd.text || "").substring(0, 40), color: "#ccc" };
+      case CMD.BG:       return { icon: "🖼", label: "背景", detail: cmd.src, color: "#81D4FA" };
+      case CMD.BGM:      return { icon: "♪", label: "BGM", detail: cmd.name, color: "#CE93D8" };
+      case CMD.BGM_STOP: return { icon: "♪", label: "BGM停止", detail: cmd.fadeout ? `${cmd.fadeout}ms` : "", color: "#CE93D8" };
+      case CMD.SE:       return { icon: "🔊", label: "SE", detail: cmd.name, color: "#FFB74D" };
+      case CMD.CHARA:    return { icon: "👤", label: "キャラ", detail: `${cmd.id} [${cmd.position}] ${cmd.expression || ""}`, color: "#80CBC4" };
+      case CMD.CHARA_MOD:return { icon: "👤", label: "表情", detail: `${cmd.id} → ${cmd.expression}`, color: "#80CBC4" };
+      case CMD.CHARA_HIDE:return { icon: "👤", label: "退場", detail: cmd.id, color: "#80CBC4" };
+      case CMD.EFFECT:   return { icon: "✨", label: "効果", detail: cmd.name, color: "#FFAB91" };
+      case CMD.WAIT:     return { icon: "⏳", label: "待機", detail: `${cmd.time || 0}ms`, color: "#B0BEC5" };
+      case CMD.NVL_ON:   return { icon: "📖", label: "NVL ON", detail: "", color: "#A5D6A7" };
+      case CMD.NVL_OFF:  return { icon: "📖", label: "NVL OFF", detail: "", color: "#A5D6A7" };
+      case CMD.NVL_CLEAR:return { icon: "📖", label: "NVL CLR", detail: "", color: "#A5D6A7" };
+      case CMD.CG:       return { icon: "🖼", label: "CG", detail: cmd.id, color: "#F48FB1" };
+      default:           return { icon: "?", label: cmd.type, detail: "", color: "#888" };
+    }
+  };
+
   // ノードの色
   const nodeColor = (type) => {
     switch (type) {
@@ -101,57 +133,86 @@ export default function FlowGraph({ script }) {
       </div>
 
       <div style={styles.graph}>
-        {nodes.map((node, ni) => (
-          <div key={ni} style={styles.nodeRow}>
-            {/* ノード */}
-            <div
-              style={{
-                ...styles.node,
-                borderColor: nodeColor(node.type) + "66",
-                background: nodeColor(node.type) + "11",
-              }}
-            >
-              <span style={{ ...styles.nodeType, color: nodeColor(node.type) }}>
-                {node.type === "block" ? "BLOCK" : node.type.toUpperCase()}
-              </span>
-              <span style={styles.nodeIndex}>#{node.index}</span>
+        {nodes.map((node, ni) => {
+          const isExpanded = expanded.has(node.index);
+          const isClickable = node.type === "block" && node.dialogCount > 0;
 
-              {node.type === "label" && (
-                <span style={styles.nodeDetail}>🏷 {node.name}</span>
-              )}
-              {node.type === "block" && (
-                <span style={styles.nodeDetail}>
-                  {node.dialogCount} 台詞
-                  {node.speakers.length > 0 && ` (${node.speakers.join(", ")})`}
+          return (
+            <div key={ni} style={styles.nodeRow}>
+              {/* ノード */}
+              <div
+                onClick={isClickable ? () => toggleExpand(node.index) : undefined}
+                style={{
+                  ...styles.node,
+                  borderColor: nodeColor(node.type) + "66",
+                  background: isExpanded
+                    ? nodeColor(node.type) + "22"
+                    : nodeColor(node.type) + "11",
+                  cursor: isClickable ? "pointer" : "default",
+                }}
+              >
+                <span style={{ ...styles.nodeType, color: nodeColor(node.type) }}>
+                  {node.type === "block" ? "BLOCK" : node.type.toUpperCase()}
                 </span>
-              )}
-              {node.type === "choice" && (
-                <div style={styles.optionList}>
-                  {node.options.map((opt, oi) => (
-                    <div key={oi} style={styles.optionItem}>
-                      <span style={styles.optionArrow}>→ #{opt.jump}</span>
-                      <span style={styles.optionText}>{opt.text}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-              {node.type === "jump" && (
-                <span style={styles.nodeDetail}>→ #{node.target ?? "?"}</span>
-              )}
-            </div>
+                <span style={styles.nodeIndex}>#{node.index}</span>
 
-            {/* エッジ（この node から出るもの） */}
-            {edges
-              .filter((e) => e.from === node.index)
-              .map((edge, ei) => (
-                <div key={ei} style={styles.edge}>
-                  <span style={styles.edgeArrow}>↘</span>
-                  <span style={styles.edgeTarget}>→ #{edge.to}</span>
-                  <span style={styles.edgeLabel}>{edge.label}</span>
+                {node.type === "label" && (
+                  <span style={styles.nodeDetail}>🏷 {node.name}</span>
+                )}
+                {node.type === "block" && (
+                  <span style={styles.nodeDetail}>
+                    {isExpanded ? "▼" : "▶"} {node.dialogCount} 台詞
+                    {node.speakers.length > 0 && ` (${node.speakers.join(", ")})`}
+                    <span style={{ color: "#555", fontSize: 10, marginLeft: 6 }}>
+                      #{node.index}–{node.endIndex}
+                    </span>
+                  </span>
+                )}
+                {node.type === "choice" && (
+                  <div style={styles.optionList}>
+                    {node.options.map((opt, oi) => (
+                      <div key={oi} style={styles.optionItem}>
+                        <span style={styles.optionArrow}>→ #{opt.jump}</span>
+                        <span style={styles.optionText}>{opt.text}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {node.type === "jump" && (
+                  <span style={styles.nodeDetail}>→ #{node.target ?? "?"}</span>
+                )}
+              </div>
+
+              {/* 展開中のコマンド一覧 */}
+              {isExpanded && node.type === "block" && (
+                <div style={styles.expandedBlock}>
+                  {script.slice(node.index, node.endIndex + 1).map((cmd, ci) => {
+                    const s = cmdSummary(cmd, node.index + ci);
+                    return (
+                      <div key={ci} style={styles.expandedCmd}>
+                        <span style={styles.expandedIndex}>#{node.index + ci}</span>
+                        <span style={{ fontSize: 12, flexShrink: 0 }}>{s.icon}</span>
+                        <span style={{ ...styles.expandedLabel, color: s.color }}>{s.label}</span>
+                        <span style={styles.expandedDetail}>{s.detail}</span>
+                      </div>
+                    );
+                  })}
                 </div>
-              ))}
-          </div>
-        ))}
+              )}
+
+              {/* エッジ（この node から出るもの） */}
+              {edges
+                .filter((e) => e.from === node.index)
+                .map((edge, ei) => (
+                  <div key={ei} style={styles.edge}>
+                    <span style={styles.edgeArrow}>↘</span>
+                    <span style={styles.edgeTarget}>→ #{edge.to}</span>
+                    <span style={styles.edgeLabel}>{edge.label}</span>
+                  </div>
+                ))}
+            </div>
+          );
+        })}
 
         {nodes.length === 0 && (
           <div style={styles.empty}>
@@ -258,6 +319,40 @@ const styles = {
   edgeLabel: {
     color: "#666",
     fontStyle: "italic",
+  },
+  expandedBlock: {
+    marginLeft: 16,
+    marginBottom: 4,
+    borderLeft: "2px solid rgba(144,164,174,0.25)",
+    paddingLeft: 8,
+  },
+  expandedCmd: {
+    display: "flex",
+    alignItems: "center",
+    gap: 6,
+    padding: "3px 8px",
+    fontSize: 12,
+    borderBottom: "1px solid rgba(255,255,255,0.03)",
+  },
+  expandedIndex: {
+    fontSize: 10,
+    color: "#555",
+    fontFamily: "monospace",
+    width: 32,
+    flexShrink: 0,
+  },
+  expandedLabel: {
+    fontSize: 11,
+    fontWeight: 600,
+    flexShrink: 0,
+    minWidth: 50,
+  },
+  expandedDetail: {
+    fontSize: 12,
+    color: "#999",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
   },
   empty: {
     color: "#555",

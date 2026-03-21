@@ -187,6 +187,28 @@ export default class AudioManager {
       return this.cache.get(key);
     }
 
+    // カタログから実ファイル名を解決
+    const catalogFilename = this._catalogMap[type]?.[name];
+    if (catalogFilename && this.projectId) {
+      log("_loadAudio: カタログ解決 →", name, "→", catalogFilename);
+      const path = getAssetUrl(this.projectId, type, catalogFilename);
+      try {
+        const res = await fetch(path);
+        if (res.ok) {
+          const arrayBuffer = await res.arrayBuffer();
+          log("_loadAudio: デコード中 →", key, ", size =", arrayBuffer.byteLength, "bytes");
+          const audioBuffer = await this.ctx.decodeAudioData(arrayBuffer);
+          this.cache.set(key, audioBuffer);
+          log("_loadAudio: デコード成功 →", key);
+          return audioBuffer;
+        }
+        log("_loadAudio: HTTP", res.status, "→", path);
+      } catch (err) {
+        log("_loadAudio: カタログパス エラー →", path, err.message || err);
+      }
+    }
+
+    // フォールバック: 拡張子を順に試す
     const extensions = [".ogg", ".mp3", ".wav"];
     for (const ext of extensions) {
       const path = this._resolveAssetPath(name, type, ext);

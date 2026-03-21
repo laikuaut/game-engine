@@ -20,7 +20,12 @@ import { unlock as unlockCG } from "../save/UnlockStore";
 import HelpModal from "../components/HelpModal";
 import { NOVEL_HELP } from "../data/helpContent";
 
-export default function NovelEngine({ script, characters, bgStyles, onBack, projectId, startLabel, initialConfig, onConfigChange, storyScenes }) {
+const DEBUG = true;
+function log(...args) {
+  if (DEBUG) console.log("[NovelEngine]", ...args);
+}
+
+export default function NovelEngine({ script, characters, bgStyles, onBack, projectId, startLabel, initialConfig, onConfigChange, storyScenes, bgmCatalog, seCatalog }) {
   // シーン参照を展開してフラットなスクリプトに変換
   const SCRIPT = useMemo(
     () => expandScenes(script || DEFAULT_SCRIPT, storyScenes),
@@ -36,7 +41,7 @@ export default function NovelEngine({ script, characters, bgStyles, onBack, proj
     } : {}),
   });
   // オーディオフック
-  useAudio(state, projectId);
+  useAudio(state, projectId, { bgmCatalog, seCatalog });
 
   const typingRef = useRef(null);
   const autoRef = useRef(null);
@@ -61,42 +66,47 @@ export default function NovelEngine({ script, characters, bgStyles, onBack, proj
   const handleCommandResult = useCallback(
     (result) => {
       const { index, blocking } = result;
+      log("handleCommandResult: index =", index, ", blocking =", blocking);
 
       if (blocking === "wait") {
         dispatch({ type: ACTION.SET_SCRIPT_INDEX, payload: index });
         const cmd = scriptRef.current[index];
         const waitTime = cmd?.time || 1000;
+        log("wait 開始:", waitTime, "ms");
         waitRef.current = setTimeout(() => {
           waitRef.current = null;
+          log("wait 完了, 次へ →", index + 1);
           dispatch({ type: ACTION.END_WAIT });
-          // wait 完了 → 次のコマンドへ進む
           proceedFrom(index + 1);
         }, waitTime);
         return;
       }
 
       if (blocking === "effect") {
+        log("effect ブロッキング中, エフェクト完了待ち");
         dispatch({ type: ACTION.SET_SCRIPT_INDEX, payload: index });
         return;
       }
 
       if (blocking === "cg") {
+        log("CG 表示中, クリック待ち");
         dispatch({ type: ACTION.SET_SCRIPT_INDEX, payload: index });
-        // CG はクリックで閉じる → advance で処理
         return;
       }
 
       // blocking なし → dialog or choice or スクリプト終端
       if (index >= scriptRef.current.length) {
-        // シナリオ終了 → タイトルへ戻る
+        log("スクリプト末端到達 → タイトルへ戻る");
         if (onBack) setTimeout(() => onBack(), 500);
         return;
       }
       const cmd = scriptRef.current[index];
       dispatch({ type: ACTION.SET_SCRIPT_INDEX, payload: index });
       if (cmd.type === CMD.DIALOG) {
+        log("dialog 開始: [", cmd.speaker || "ナレ", "]", (cmd.text || "").substring(0, 30));
         startDialog(index);
       } else if (cmd.type === CMD.CHOICE) {
+        log("choice 表示:", cmd.options?.length, "択 →", cmd.options?.map((o) => o.text).join(" / "));
         dispatch({ type: ACTION.SHOW_CHOICE, payload: cmd.options });
         dispatch({ type: ACTION.SET_SKIP_MODE, payload: false });
       }
@@ -108,7 +118,9 @@ export default function NovelEngine({ script, characters, bgStyles, onBack, proj
   // 指定インデックスから processCommand → 結果処理
   const proceedFrom = useCallback(
     (index) => {
+      log("proceedFrom:", index, "/", scriptRef.current.length);
       if (index >= scriptRef.current.length) {
+        log("proceedFrom: スクリプト末端 → タイトルへ");
         if (onBack) setTimeout(() => onBack(), 500);
         return;
       }
@@ -162,10 +174,14 @@ export default function NovelEngine({ script, characters, bgStyles, onBack, proj
 
   // テキスト送り
   const advance = useCallback(() => {
-    if (state.showChoice || state.showBacklog || state.showConfig || state.showSaveLoad) return;
+    if (state.showChoice || state.showBacklog || state.showConfig || state.showSaveLoad) {
+      log("advance: UI表示中のためスキップ (choice:", state.showChoice, ", backlog:", state.showBacklog, ", config:", state.showConfig, ", saveLoad:", state.showSaveLoad, ")");
+      return;
+    }
 
     // CG 表示中 → 閉じて次へ
     if (state.showCG) {
+      log("advance: CG 閉じる →", state.showCG.id);
       unlockCG("cg", state.showCG.id);
       dispatch({ type: ACTION.HIDE_CG });
       proceedFrom(state.scriptIndex + 1);
@@ -174,6 +190,7 @@ export default function NovelEngine({ script, characters, bgStyles, onBack, proj
 
     // wait 中のクリック → 即座にスキップ
     if (state.isWaiting) {
+      log("advance: wait スキップ");
       if (waitRef.current) {
         clearTimeout(waitRef.current);
         waitRef.current = null;
@@ -184,10 +201,14 @@ export default function NovelEngine({ script, characters, bgStyles, onBack, proj
     }
 
     // エフェクト中は無視
-    if (state.activeEffect) return;
+    if (state.activeEffect) {
+      log("advance: エフェクト中のため無視 →", state.activeEffect?.name);
+      return;
+    }
 
     // タイプ中 → 即座に全文表示
     if (state.isTyping) {
+      log("advance: タイプ中 → 全文表示");
       if (typingRef.current) clearInterval(typingRef.current);
       typingRef.current = null;
       dispatch({ type: ACTION.SET_DISPLAYED_TEXT, payload: fullTextRef.current });
@@ -200,6 +221,7 @@ export default function NovelEngine({ script, characters, bgStyles, onBack, proj
     }
 
     // 次のコマンドへ
+    log("advance: 次のコマンドへ →", state.scriptIndex + 1);
     proceedFrom(state.scriptIndex + 1);
   }, [
     state.scriptIndex, state.isTyping, state.isWaiting, state.activeEffect,
@@ -210,10 +232,15 @@ export default function NovelEngine({ script, characters, bgStyles, onBack, proj
   // 選択肢処理
   const handleChoice = useCallback(
     (option) => {
+      log("handleChoice:", option.text, "→ jump:", option.jump);
       dispatch({ type: ACTION.HIDE_CHOICE });
       dispatch({ type: ACTION.ADD_BACKLOG, payload: { speaker: "選択", text: option.text } });
       const jumpTarget = resolveTarget(option.jump, labelMap);
-      if (jumpTarget < 0) return;
+      if (jumpTarget < 0) {
+        log("handleChoice: ジャンプ先解決失敗");
+        return;
+      }
+      log("handleChoice: ジャンプ先 →", jumpTarget);
       proceedFrom(jumpTarget);
     },
     [labelMap, proceedFrom]
@@ -230,6 +257,7 @@ export default function NovelEngine({ script, characters, bgStyles, onBack, proj
 
   // セーブ処理（永続化込み + サムネイル）
   const handleSave = useCallback(async (slot) => {
+    log("handleSave: slot =", slot, ", scriptIndex =", state.scriptIndex);
     // Canvas からサムネイル取得を試みる
     let thumbnail = null;
     try {
@@ -246,19 +274,22 @@ export default function NovelEngine({ script, characters, bgStyles, onBack, proj
 
   // ロード処理（永続化からフルデータ取得）
   const handleLoad = useCallback(async (slot) => {
+    log("handleLoad: slot =", slot);
     if (projectId) {
       const data = await loadGame(projectId, slot);
       if (data?.state) {
+        log("handleLoad: 永続化データ取得成功, scriptIndex =", data.state.scriptIndex);
         dispatch({ type: ACTION.LOAD_GAME, payload: { slot, data: data.state } });
         return;
       }
+      log("handleLoad: 永続化データなし, インメモリフォールバック");
     }
-    // フォールバック: インメモリから
     dispatch({ type: ACTION.LOAD_GAME, payload: { slot } });
   }, [projectId]);
 
   // エフェクト完了コールバック
   const onEffectEnd = useCallback(() => {
+    log("onEffectEnd: エフェクト完了, 次へ →", state.scriptIndex + 1);
     dispatch({ type: ACTION.EFFECT_END });
     proceedFrom(state.scriptIndex + 1);
   }, [state.scriptIndex, proceedFrom]);
@@ -283,6 +314,9 @@ export default function NovelEngine({ script, characters, bgStyles, onBack, proj
     let startIndex = 0;
     if (startLabel && labelMap[startLabel] !== undefined) {
       startIndex = labelMap[startLabel];
+      log("初回起動: startLabel =", startLabel, "→ index", startIndex);
+    } else {
+      log("初回起動: index 0 から開始, スクリプト長 =", scriptRef.current.length, ", ラベル =", Object.keys(labelMap));
     }
     proceedFrom(startIndex);
   }, []);
@@ -415,7 +449,7 @@ export default function NovelEngine({ script, characters, bgStyles, onBack, proj
             fontFamily: "'Noto Serif JP', serif",
             background: "rgba(0,0,0,0.3)", padding: "3px 10px", borderRadius: 12,
           }}>
-            ♪ {state.bgmPlaying}
+            ♪ {typeof state.bgmPlaying === "string" ? state.bgmPlaying : state.bgmPlaying?.name}
           </div>
         )}
       </div>

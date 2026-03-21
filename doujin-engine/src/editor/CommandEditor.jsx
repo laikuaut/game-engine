@@ -52,8 +52,7 @@ const FIELD_DEFS = {
     { key: "name", label: "ラベル名", type: "text", placeholder: "chapter1_start" },
   ],
   [CMD.SCENE]: [
-    { key: "sceneId", label: "シーンID", type: "text", placeholder: "scene_xxx", autocomplete: "sceneIds" },
-    { key: "label", label: "ラベル名（省略時はシーン名）", type: "text", placeholder: "自動設定" },
+    { key: "sceneId", label: "シーン", type: "scene_select", autocomplete: "scenes" },
   ],
 };
 
@@ -155,6 +154,45 @@ function FieldInput({ field, value, onChange, suggestions }) {
           value={value || ""}
           onChange={(e) => onChange(e.target.value)}
           placeholder="キャラIDを先に入力してください"
+          style={{ ...commonStyle, opacity: 0.6 }}
+        />
+      );
+    }
+    case "scene_select": {
+      const sceneList = suggestions || [];
+      if (sceneList.length > 0) {
+        const currentScene = sceneList.find((s) => s.id === value);
+        return (
+          <div>
+            <select
+              value={value || ""}
+              onChange={(e) => onChange(e.target.value)}
+              style={{ ...commonStyle, cursor: "pointer" }}
+            >
+              <option value="" style={optionStyle}>-- シーンを選択 --</option>
+              {sceneList.map((s) => (
+                <option key={s.id} value={s.id} style={optionStyle}>{s.name}</option>
+              ))}
+            </select>
+            {value && !currentScene && (
+              <div style={{
+                fontSize: 11, color: "#EF5350", marginTop: 6,
+                padding: "4px 8px", borderRadius: 3,
+                background: "rgba(239,83,80,0.08)",
+                border: "1px solid rgba(239,83,80,0.2)",
+              }}>
+                ⚠ 「{value}」は存在しないシーンです
+              </div>
+            )}
+          </div>
+        );
+      }
+      return (
+        <input
+          type="text"
+          value={value || ""}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="シーン編集タブでシーンを作成してください"
           style={{ ...commonStyle, opacity: 0.6 }}
         />
       );
@@ -417,8 +455,9 @@ export default function CommandEditor({ command, index, onChange, characters, sc
     });
     map.labels = labels;
 
-    // シーンID一覧
+    // シーン一覧（id + name ペア）
     map.sceneIds = (storyScenes || []).map((s) => s.id);
+    map.scenes = (storyScenes || []).map((s) => ({ id: s.id, name: s.name }));
 
     // BGM名一覧（カタログから）
     map.bgmNames = (bgmCatalog || []).map((e) => e.name).filter(Boolean);

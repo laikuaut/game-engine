@@ -1,5 +1,5 @@
 import { CMD } from "../engine/constants";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 
 // コマンドタイプ別の表示ラベルと色
 const CMD_META = {
@@ -43,11 +43,50 @@ function commandSummary(cmd) {
   }
 }
 
-export default function ScriptList({ script, selectedIndex, onSelect, onAdd, onRemove, onMove, onPlayFrom }) {
+// シーンコマンドの子コマンド行
+function SceneChildItem({ cmd, childIndex, sceneName, scriptIndex, isSelected, onSelect }) {
+  const meta = CMD_META[cmd.type] || { label: cmd.type, color: "#888" };
+  return (
+    <div
+      onClick={(e) => { e.stopPropagation(); onSelect(scriptIndex, childIndex); }}
+      style={{
+        ...styles.item,
+        paddingLeft: 32,
+        background: isSelected ? "rgba(100,200,100,0.1)" : "rgba(255,255,255,0.015)",
+        borderLeft: isSelected ? "3px solid #66BB6A" : "3px solid transparent",
+      }}
+    >
+      <span style={{ ...styles.index, color: "#444", fontSize: 9 }}>{childIndex}</span>
+      <span style={{ ...styles.badge, background: meta.color + "22", color: meta.color }}>
+        {meta.label}
+      </span>
+      <span style={styles.summary}>{commandSummary(cmd)}</span>
+    </div>
+  );
+}
+
+export default function ScriptList({ script, selectedIndex, onSelect, onAdd, onRemove, onMove, onPlayFrom, storyScenes, onSelectSceneChild }) {
   const [showAddMenu, setShowAddMenu] = useState(false);
-  const [contextMenu, setContextMenu] = useState(null); // { x, y, index }
+  const [contextMenu, setContextMenu] = useState(null);
+  const [expandedScenes, setExpandedScenes] = useState(new Set());
 
   const cmdTypes = Object.keys(CMD_META);
+
+  // シーンID → シーンデータのマップ
+  const sceneMap = useMemo(() => {
+    const map = {};
+    (storyScenes || []).forEach((s) => { map[s.id] = s; });
+    return map;
+  }, [storyScenes]);
+
+  const toggleScene = (sceneId) => {
+    setExpandedScenes((prev) => {
+      const next = new Set(prev);
+      if (next.has(sceneId)) next.delete(sceneId);
+      else next.add(sceneId);
+      return next;
+    });
+  };
 
   return (
     <div style={styles.container}>
@@ -93,25 +132,68 @@ export default function ScriptList({ script, selectedIndex, onSelect, onAdd, onR
         {script.map((cmd, i) => {
           const meta = CMD_META[cmd.type] || { label: cmd.type, color: "#888" };
           const selected = i === selectedIndex;
+          const isScene = cmd.type === CMD.SCENE;
+          const scene = isScene ? sceneMap[cmd.sceneId] : null;
+          const isExpanded = isScene && expandedScenes.has(cmd.sceneId);
+          const childCount = scene?.commands?.length || 0;
+
           return (
-            <div
-              key={i}
-              onClick={() => onSelect(i)}
-              onContextMenu={(e) => {
-                e.preventDefault();
-                setContextMenu({ x: e.clientX, y: e.clientY, index: i });
-              }}
-              style={{
-                ...styles.item,
-                background: selected ? "rgba(200,180,140,0.1)" : "transparent",
-                borderLeft: selected ? "3px solid #E8D4B0" : "3px solid transparent",
-              }}
-            >
-              <span style={styles.index}>{i}</span>
-              <span style={{ ...styles.badge, background: meta.color + "22", color: meta.color }}>
-                {meta.label}
-              </span>
-              <span style={styles.summary}>{commandSummary(cmd)}</span>
+            <div key={i}>
+              {/* メイン行 */}
+              <div
+                onClick={() => onSelect(i)}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  setContextMenu({ x: e.clientX, y: e.clientY, index: i });
+                }}
+                style={{
+                  ...styles.item,
+                  background: selected ? "rgba(200,180,140,0.1)" : "transparent",
+                  borderLeft: selected ? "3px solid #E8D4B0" : "3px solid transparent",
+                }}
+              >
+                <span style={styles.index}>{i}</span>
+                {/* シーンの場合は展開ボタン */}
+                {isScene && scene && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); toggleScene(cmd.sceneId); }}
+                    style={styles.expandBtn}
+                    title={isExpanded ? "閉じる" : "展開"}
+                  >
+                    {isExpanded ? "▼" : "▶"}
+                  </button>
+                )}
+                <span style={{ ...styles.badge, background: meta.color + "22", color: meta.color }}>
+                  {meta.label}
+                </span>
+                <span style={styles.summary}>
+                  {isScene && scene
+                    ? `${scene.name} (${childCount}件)`
+                    : commandSummary(cmd)}
+                </span>
+              </div>
+
+              {/* シーン展開時: 子コマンド表示 */}
+              {isExpanded && scene && (
+                <div style={styles.sceneChildren}>
+                  {scene.commands.map((childCmd, ci) => (
+                    <SceneChildItem
+                      key={ci}
+                      cmd={childCmd}
+                      childIndex={ci}
+                      sceneName={scene.name}
+                      scriptIndex={i}
+                      isSelected={false}
+                      onSelect={(si, ci2) => {
+                        if (onSelectSceneChild) onSelectSceneChild(cmd.sceneId, ci2);
+                      }}
+                    />
+                  ))}
+                  {childCount === 0 && (
+                    <div style={styles.emptyScene}>シーンにコマンドがありません</div>
+                  )}
+                </div>
+              )}
             </div>
           );
         })}
@@ -246,6 +328,27 @@ const styles = {
     overflow: "hidden",
     textOverflow: "ellipsis",
     whiteSpace: "nowrap",
+    flex: 1,
+  },
+  expandBtn: {
+    background: "none",
+    border: "none",
+    color: "#66BB6A",
+    cursor: "pointer",
+    fontSize: 10,
+    padding: "0 2px",
+    flexShrink: 0,
+    fontFamily: "monospace",
+  },
+  sceneChildren: {
+    borderLeft: "2px solid rgba(100,200,100,0.15)",
+    marginLeft: 20,
+    background: "rgba(100,200,100,0.02)",
+  },
+  emptyScene: {
+    padding: "8px 32px",
+    fontSize: 10,
+    color: "#555",
   },
   contextMenu: {
     position: "fixed",

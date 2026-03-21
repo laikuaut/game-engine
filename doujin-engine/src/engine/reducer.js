@@ -1,5 +1,16 @@
 import { ACTION, createEmptySaves } from "./constants";
 
+const DEBUG = true;
+function log(...args) {
+  if (DEBUG) console.log("[reducer]", ...args);
+}
+
+// 高頻度アクションはログ抑制（タイプライター中に大量に出るため）
+const QUIET_ACTIONS = new Set([
+  ACTION.SET_DISPLAYED_TEXT,
+  ACTION.SET_TYPING,
+]);
+
 export const initialState = {
   scriptIndex: 0,
   displayedText: "",
@@ -44,6 +55,9 @@ export const initialState = {
 };
 
 export function engineReducer(state, action) {
+  if (!QUIET_ACTIONS.has(action.type)) {
+    log("dispatch:", action.type, action.payload !== undefined ? action.payload : "");
+  }
   switch (action.type) {
     case ACTION.SET_SCRIPT_INDEX:
       return { ...state, scriptIndex: action.payload };
@@ -138,11 +152,24 @@ export function engineReducer(state, action) {
       return { ...state, textSpeed: action.payload };
     case ACTION.TOGGLE_AUTO:
       return { ...state, autoMode: !state.autoMode };
-    case ACTION.SET_BGM:
-      return { ...state, bgmPlaying: action.payload };
-    case ACTION.SET_SE:
-      return { ...state, lastSE: action.payload };
+    case ACTION.SET_BGM: {
+      // payload: { name, volume, loop } or string (後方互換)
+      const bgmPayload = typeof action.payload === "string"
+        ? { name: action.payload }
+        : action.payload;
+      log("SET_BGM: prev =", state.bgmPlaying, "→ next =", bgmPayload);
+      return { ...state, bgmPlaying: bgmPayload };
+    }
+    case ACTION.SET_SE: {
+      // payload: { name, volume } or string (後方互換)
+      const sePayload = typeof action.payload === "string"
+        ? { name: action.payload }
+        : action.payload;
+      log("SET_SE:", sePayload);
+      return { ...state, lastSE: sePayload };
+    }
     case ACTION.SAVE_GAME: {
+      log("SAVE_GAME: slot =", action.payload.slot, ", scriptIndex =", state.scriptIndex, ", bg =", state.currentBg, ", speaker =", state.currentSpeaker);
       const newSaves = [...state.saves];
       newSaves[action.payload.slot] = {
         scriptIndex: state.scriptIndex,
@@ -160,7 +187,11 @@ export function engineReducer(state, action) {
     case ACTION.LOAD_GAME: {
       // 永続化データがある場合は action.payload.data を使用
       const save = action.payload.data || state.saves[action.payload.slot];
-      if (!save) return state;
+      if (!save) {
+        log("LOAD_GAME: slot", action.payload.slot, "にデータなし");
+        return state;
+      }
+      log("LOAD_GAME: slot =", action.payload.slot, ", scriptIndex =", save.scriptIndex, ", bg =", save.currentBg, ", bgm =", save.bgmPlaying);
       return {
         ...state,
         scriptIndex: save.scriptIndex,
@@ -188,10 +219,12 @@ export function engineReducer(state, action) {
       return { ...state, isWaiting: false };
     // エフェクト
     case ACTION.START_EFFECT:
+      log("START_EFFECT:", action.payload?.name, ", color =", action.payload?.color, ", time =", action.payload?.time);
       return { ...state, activeEffect: action.payload };
     case ACTION.EFFECT_END:
       // fadeout / whitefade はオーバーレイを維持
       if (state.activeEffect?.name === "fadeout" || state.activeEffect?.name === "whitefade") {
+        log("EFFECT_END:", state.activeEffect.name, "→ オーバーレイ維持 (color:", state.activeEffect.color, ")");
         return {
           ...state,
           activeEffect: null,
@@ -200,11 +233,14 @@ export function engineReducer(state, action) {
       }
       // fadein はオーバーレイ解除
       if (state.activeEffect?.name === "fadein") {
+        log("EFFECT_END: fadein → オーバーレイ解除");
         return { ...state, activeEffect: null, screenOverlay: null };
       }
+      log("EFFECT_END:", state.activeEffect?.name || "(none)");
       return { ...state, activeEffect: null };
     // BGM 停止
     case ACTION.STOP_BGM:
+      log("STOP_BGM: prev =", state.bgmPlaying);
       return { ...state, bgmPlaying: null };
     // 音量
     case ACTION.SET_VOLUME_MASTER:
@@ -231,6 +267,7 @@ export function engineReducer(state, action) {
     case ACTION.CLEAR_NVL:
       return { ...state, nvlLog: [] };
     default:
+      log("未知のアクション:", action.type);
       return state;
   }
 }

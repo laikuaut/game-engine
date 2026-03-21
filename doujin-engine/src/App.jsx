@@ -191,6 +191,8 @@ function App() {
               projectId={project.id}
               startLabel={startLabel}
               storyScenes={project.storyScenes}
+              bgmCatalog={project.bgmCatalog}
+              seCatalog={project.seCatalog}
               initialConfig={config}
               onConfigChange={(changes) => setConfig((prev) => ({ ...prev, ...changes }))}
               onBack={() => {

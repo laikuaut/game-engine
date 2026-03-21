@@ -7,7 +7,7 @@ function log(...args) {
 }
 
 // エンジンステートを監視して AudioManager を駆動するフック
-export default function useAudio(state, projectId) {
+export default function useAudio(state, projectId, { bgmCatalog, seCatalog } = {}) {
   const managerRef = useRef(null);
   const stateRef = useRef(state);
   stateRef.current = state;
@@ -15,7 +15,7 @@ export default function useAudio(state, projectId) {
   // 初期化
   useEffect(() => {
     log("init: projectId =", projectId);
-    const manager = new AudioManager(projectId);
+    const manager = new AudioManager(projectId, { bgmCatalog, seCatalog });
     managerRef.current = manager;
 
     // ユーザー操作で AudioContext を初期化
@@ -28,8 +28,11 @@ export default function useAudio(state, projectId) {
       // 初期化完了後、既に設定されている BGM があれば再生を試みる
       const s = stateRef.current;
       if (s.bgmPlaying) {
-        log("initOnInteraction: 保留中の BGM を再生 →", s.bgmPlaying);
-        manager.playBGM(s.bgmPlaying);
+        const bgm = s.bgmPlaying;
+        const name = typeof bgm === "string" ? bgm : bgm.name;
+        const opts = typeof bgm === "object" ? { volume: bgm.volume, loop: bgm.loop } : {};
+        log("initOnInteraction: 保留中の BGM を再生 →", name, opts);
+        manager.playBGM(name, opts);
       }
     };
     document.addEventListener("click", initOnInteraction);
@@ -43,6 +46,12 @@ export default function useAudio(state, projectId) {
     };
   }, [projectId]);
 
+  // カタログ変更時にマッピング更新
+  useEffect(() => {
+    const m = managerRef.current;
+    if (m) m.updateCatalog(bgmCatalog, seCatalog);
+  }, [bgmCatalog, seCatalog]);
+
   // BGM 変更監視
   useEffect(() => {
     const m = managerRef.current;
@@ -50,9 +59,12 @@ export default function useAudio(state, projectId) {
       log("BGM変更: manager 未初期化");
       return;
     }
-    if (state.bgmPlaying) {
-      log("BGM再生 →", state.bgmPlaying, "| initialized:", m._initialized, "| ctx.state:", m.ctx?.state);
-      m.playBGM(state.bgmPlaying);
+    const bgm = state.bgmPlaying;
+    if (bgm) {
+      const name = typeof bgm === "string" ? bgm : bgm.name;
+      const opts = typeof bgm === "object" ? { volume: bgm.volume, loop: bgm.loop } : {};
+      log("BGM再生 →", name, opts, "| initialized:", m._initialized, "| ctx.state:", m.ctx?.state);
+      m.playBGM(name, opts);
     } else {
       log("BGM停止");
       m.stopBGM();
@@ -63,8 +75,11 @@ export default function useAudio(state, projectId) {
   useEffect(() => {
     const m = managerRef.current;
     if (!m || !state.lastSE) return;
-    log("SE再生 →", state.lastSE, "| initialized:", m._initialized);
-    m.playSE(state.lastSE);
+    const se = state.lastSE;
+    const name = typeof se === "string" ? se : se.name;
+    const opts = typeof se === "object" ? { volume: se.volume } : {};
+    log("SE再生 →", name, opts, "| initialized:", m._initialized);
+    m.playSE(name, opts);
   }, [state.lastSE]);
 
   // 音量変更監視

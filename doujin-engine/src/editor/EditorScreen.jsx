@@ -524,6 +524,11 @@ export default function EditorScreen({ onBack, initialScript, projectId, project
               onRemove={removeCommand}
               onMove={moveCommand}
               onPlayFrom={handlePlayFrom}
+              storyScenes={storyScenes}
+              onSelectSceneChild={(sceneId, childIndex) => {
+                // シーン編集タブに切り替えて該当シーン・コマンドを選択
+                setActiveTab("scenes");
+              }}
             />
           </div>
         )}
