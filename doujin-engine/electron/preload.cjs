@@ -36,6 +36,9 @@ contextBridge.exposeInMainWorld("electronAPI", {
     return () => ipcRenderer.removeListener("build-log", handler);
   },
 
+  // ウィンドウリサイズ
+  resizeWindow: (width, height) => ipcRenderer.invoke("resize-window", { width, height }),
+
   // アプリ情報
   getAppInfo: () => ipcRenderer.invoke("get-app-info"),
 

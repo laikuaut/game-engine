@@ -54,10 +54,14 @@ function App() {
     })();
   }, []);
 
-  // 画面サイズに応じたコンテナスタイル
+  // 画面サイズに応じたコンテナスタイル + Electronウィンドウリサイズ
   const gameContainerStyle = useMemo(() => {
     const preset = SCREEN_PRESETS.find((p) => p.label === config.screenSize);
     const maxW = preset ? preset.width : 1280;
+    // Electron環境ならウィンドウサイズも変更
+    if (preset && window.electronAPI?.resizeWindow) {
+      window.electronAPI.resizeWindow(preset.width, preset.height);
+    }
     return { ...GAME_CONTAINER_STYLE, maxWidth: maxW };
   }, [config.screenSize]);
 

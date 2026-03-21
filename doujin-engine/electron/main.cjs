@@ -476,6 +476,16 @@ ipcMain.handle("quit-app", async () => {
   app.quit();
 });
 
+// ウィンドウリサイズ
+ipcMain.handle("resize-window", async (event, { width, height }) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  if (win) {
+    win.setSize(width, height);
+    win.center();
+  }
+  return { success: true };
+});
+
 // アプリ情報
 ipcMain.handle("get-app-info", async () => {
   return {
