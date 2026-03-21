@@ -2,7 +2,15 @@
   "permissions": {
     "allow": [
       "Bash(mkdir -p src/engine src/components src/data src/audio src/effects src/save)",
-      "Bash(mkdir -p assets/bg assets/chara assets/cg assets/bgm assets/se assets/ui assets/font)"
+      "Bash(mkdir -p assets/bg assets/chara assets/cg assets/bgm assets/se assets/ui assets/font)",
+      "Bash(DEBUG=electron-builder npx electron-builder --win portable --x64)",
+      "Bash(npx electron-builder:*)",
+      "Bash(taskkill //IM \"Doujin Engine.exe\" //F)",
+      "Bash(taskkill //IM electron.exe //F)",
+      "Bash(rm -rf \"c:/Users/syout/OneDrive/ドキュメント/20：開発/20：ゲーム/game-engine/novel-engine/release\")",
+      "Bash(rm -rf \"c:/Users/syout/AppData/Local/electron-builder/Cache/winCodeSign\")",
+      "Bash(CSC_IDENTITY_AUTO_DISCOVERY=false npx electron-builder --win portable --x64)",
+      "Bash(ls -la \"c:/Users/syout/OneDrive/ドキュメント/20：開発/20：ゲーム/game-engine/novel-engine/release/\"*.exe)"
     ]
   }
 }

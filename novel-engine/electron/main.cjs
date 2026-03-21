@@ -7,18 +7,19 @@ const isDev = !app.isPackaged;
 
 function createWindow() {
   const win = new BrowserWindow({
-    width: 960,
-    height: 540,
-    minWidth: 800,
-    minHeight: 450,
+    width: 1920,
+    height: 1080,
+    minWidth: 960,
+    minHeight: 540,
     resizable: true,
     fullscreenable: true,
     title: "Doujin Engine",
     icon: path.join(__dirname, "../assets/icon.ico"),
     webPreferences: {
-      preload: path.join(__dirname, "preload.js"),
+      preload: path.join(__dirname, "preload.cjs"),
       contextIsolation: true,
       nodeIntegration: false,
+      webSecurity: false,
     },
   });
 

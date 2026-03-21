@@ -147,7 +147,7 @@ export default function NovelEngine({ script, characters, bgStyles, onBack }) {
       ref={containerRef}
       style={{
         width: "100%",
-        maxWidth: 960,
+        maxWidth: 1920,
         margin: "0 auto",
         aspectRatio: "16/9",
         position: "relative",

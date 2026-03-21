@@ -148,7 +148,7 @@ export default function ProjectManager({ onSelectProject }) {
 const styles = {
   container: {
     width: "100%",
-    maxWidth: 960,
+    maxWidth: 1920,
     aspectRatio: "16/9",
     position: "relative",
     overflow: "hidden",

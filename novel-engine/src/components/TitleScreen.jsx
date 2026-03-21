@@ -66,7 +66,7 @@ export default function TitleScreen({ title, onNewGame, onContinue, onEditor, on
 const styles = {
   container: {
     width: "100%",
-    maxWidth: 960,
+    maxWidth: 1920,
     aspectRatio: "16/9",
     position: "relative",
     overflow: "hidden",
