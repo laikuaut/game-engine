@@ -91,27 +91,11 @@ const DEFAULT_BG_STYLES = {
 
 const DEFAULT_BGM_CATALOG = [
   { id: "bgm_hirusagari", name: "昼下がりのハバネラ", filename: "/assets/bgm/昼下がりのハバネラ.mp3", description: "穏やかな午後（甘茶の音楽工房）", volume: 0.8, loop: true, fadeIn: 500, fadeOut: 500 },
-  { id: "bgm_morning_theme", name: "morning_theme", filename: null, description: "朝のテーマ", volume: 0.8, loop: true, fadeIn: 500, fadeOut: 500 },
-  { id: "bgm_tension", name: "tension", filename: null, description: "緊迫シーン", volume: 0.8, loop: true, fadeIn: 300, fadeOut: 500 },
-  { id: "bgm_sadness", name: "sadness", filename: null, description: "悲しいシーン", volume: 0.7, loop: true, fadeIn: 1000, fadeOut: 1000 },
-  { id: "bgm_romance", name: "romance", filename: null, description: "恋愛シーン", volume: 0.7, loop: true, fadeIn: 500, fadeOut: 500 },
-  { id: "bgm_night", name: "night", filename: null, description: "夜のシーン", volume: 0.6, loop: true, fadeIn: 500, fadeOut: 500 },
-  { id: "bgm_battle", name: "battle", filename: null, description: "バトル曲", volume: 0.9, loop: true, fadeIn: 0, fadeOut: 300 },
-  { id: "bgm_ending", name: "ending", filename: null, description: "エンディング", volume: 0.8, loop: false, fadeIn: 500, fadeOut: 1000 },
 ];
 
 const DEFAULT_SE_CATALOG = [
   { id: "se_click", name: "click", filename: "/assets/se/click.mp3", description: "click", volume: 1.0 },
   { id: "se_dblclick", name: "dblclick", filename: "/assets/se/dblclick.mp3", description: "dblclick", volume: 1.0 },
-  { id: "se_cancel", name: "cancel", filename: null, description: "キャンセル音", volume: 1.0 },
-  { id: "se_chime", name: "chime", filename: null, description: "チャイム", volume: 1.0 },
-  { id: "se_door", name: "door", filename: null, description: "ドア開閉", volume: 0.8 },
-  { id: "se_footstep", name: "footstep", filename: null, description: "足音", volume: 0.7 },
-  { id: "se_surprise", name: "surprise", filename: null, description: "驚き", volume: 1.0 },
-  { id: "se_heartbeat", name: "heartbeat", filename: null, description: "心臓の鼓動", volume: 0.8 },
-  { id: "se_wind", name: "wind", filename: null, description: "風の音", volume: 0.6 },
-  { id: "se_rain", name: "rain", filename: null, description: "雨の音", volume: 0.7 },
-  { id: "se_hit", name: "hit", filename: null, description: "打撃音", volume: 1.0 },
 ];
 
 function generateId() {
