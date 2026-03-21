@@ -590,6 +590,11 @@ export default function NovelEngine({ script, characters, bgStyles, onBack, proj
         @keyframes charaEnter { from { opacity: 0; transform: translateX(-50%) translateY(30px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
         @keyframes charaExit { to { opacity: 0; transform: translateX(-50%) translateY(20px); } }
         @keyframes charaReact { 25% { transform: translateX(-52%); } 75% { transform: translateX(-48%); } 100% { transform: translateX(-50%); } }
+        @keyframes charaShake { 0%,100% { transform: translateX(-50%); } 15% { transform: translateX(-54%); } 30% { transform: translateX(-46%); } 45% { transform: translateX(-53%); } 60% { transform: translateX(-47%); } 75% { transform: translateX(-51%); } }
+        @keyframes charaBounce { 0% { transform: translateX(-50%) translateY(0); } 30% { transform: translateX(-50%) translateY(-20px); } 50% { transform: translateX(-50%) translateY(0); } 70% { transform: translateX(-50%) translateY(-8px); } 100% { transform: translateX(-50%) translateY(0); } }
+        @keyframes charaZoom { 0% { transform: translateX(-50%) scale(1); } 50% { transform: translateX(-50%) scale(1.08); } 100% { transform: translateX(-50%) scale(1); } }
+        @keyframes charaNod { 0%,100% { transform: translateX(-50%) translateY(0); } 40% { transform: translateX(-50%) translateY(8px); } 60% { transform: translateX(-50%) translateY(8px); } }
+        @keyframes charaTremble { 0%,100% { transform: translateX(-50%); } 10% { transform: translateX(-51%); } 20% { transform: translateX(-49%); } 30% { transform: translateX(-51.5%); } 40% { transform: translateX(-48.5%); } 50% { transform: translateX(-51%); } 60% { transform: translateX(-49%); } 70% { transform: translateX(-50.5%); } 80% { transform: translateX(-49.5%); } 90% { transform: translateX(-50.5%); } }
         @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
         button:focus { outline: none; }
         ::-webkit-scrollbar { width: 6px; }

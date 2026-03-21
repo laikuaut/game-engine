@@ -308,6 +308,16 @@ export const WORK_PRESETS = [
     },
   },
   {
+    id: "sample_features",
+    label: "機能デモ（全コマンド網羅）",
+    gameType: "novel",
+    description: "bg/bgm/se/chara/dialog/choice/effect/wait/nvl/cg — 全コマンドの動作確認",
+    loader: async () => {
+      const { default: script } = await import("../data/sample_features.js");
+      return { script };
+    },
+  },
+  {
     id: "sample_rpg",
     label: "勇者レイの冒険（RPGサンプル）",
     gameType: "rpg",

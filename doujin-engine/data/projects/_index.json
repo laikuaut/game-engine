@@ -34,5 +34,17 @@
     "scriptLength": 5,
     "mapCount": 0,
     "minigameCount": 0
+  },
+  {
+    "id": "mn0efh6v1op2bu",
+    "name": "機能デモ（全コマンド網羅）",
+    "dirName": "機能デモ（全コマンド網羅）",
+    "description": "bg/bgm/se/chara/dialog/choice/effect/wait/nvl/cg — 全コマンドの動作確認",
+    "gameType": "novel",
+    "createdAt": "2026-03-21T14:04:00.583Z",
+    "updatedAt": "2026-03-21T14:04:00.731Z",
+    "scriptLength": 180,
+    "mapCount": 0,
+    "minigameCount": 0
   }
 ]

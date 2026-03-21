@@ -236,7 +236,7 @@ export function processCommand(script, index, dispatch, labelMap) {
       case CMD.CHARA_MOD:
         dispatch({
           type: ACTION.MOD_CHARA,
-          payload: { id: cmd.id, expression: cmd.expression },
+          payload: { id: cmd.id, expression: cmd.expression, anim: cmd.anim },
         });
         break;
       case CMD.CHARA_HIDE:

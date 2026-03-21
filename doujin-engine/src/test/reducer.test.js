@@ -86,8 +86,11 @@ describe("engineReducer", () => {
   });
 
   it("BGM / SE / STOP_BGM", () => {
+    // SET_BGM は文字列でもオブジェクトでも { name } 形式に正規化される
     let s = engineReducer(initialState, { type: ACTION.SET_BGM, payload: "theme" });
-    expect(s.bgmPlaying).toBe("theme");
+    expect(s.bgmPlaying).toEqual({ name: "theme" });
+    s = engineReducer(s, { type: ACTION.SET_BGM, payload: { name: "battle", volume: 0.5 } });
+    expect(s.bgmPlaying).toEqual({ name: "battle", volume: 0.5 });
     s = engineReducer(s, { type: ACTION.STOP_BGM });
     expect(s.bgmPlaying).toBe(null);
   });

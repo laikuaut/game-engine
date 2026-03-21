@@ -11,6 +11,11 @@ const ANIM_STYLES = {
   idle: {},
   exiting: { animation: "charaExit 400ms ease-in forwards" },
   expression_change: { animation: "charaReact 300ms ease-out" },
+  shake: { animation: "charaShake 400ms ease-in-out" },
+  bounce: { animation: "charaBounce 500ms ease-out" },
+  zoom: { animation: "charaZoom 600ms ease-in-out" },
+  nod: { animation: "charaNod 400ms ease-in-out" },
+  tremble: { animation: "charaTremble 600ms linear" },
 };
 
 export default function Character({ id, position, expression, animState, charaData, projectId }) {

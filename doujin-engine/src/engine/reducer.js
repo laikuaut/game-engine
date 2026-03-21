@@ -94,7 +94,7 @@ export function engineReducer(state, action) {
           [action.payload.id]: {
             ...state.characters[action.payload.id],
             ...action.payload,
-            animState: "expression_change",
+            animState: action.payload.anim || "expression_change",
           },
         },
       };

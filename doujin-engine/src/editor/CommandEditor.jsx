@@ -10,7 +10,7 @@ const FIELD_DEFS = {
   ],
   [CMD.BG]: [
     { key: "src", label: "背景キー", type: "text", placeholder: "school_gate, classroom, ...", autocomplete: "bgKeys" },
-    { key: "transition", label: "トランジション", type: "select", options: ["fade", "crossfade", "none"] },
+    { key: "transition", label: "トランジション", type: "select", options: ["fade", "crossfade", "wipe_left", "wipe_right", "slide_left", "slide_right", "none"] },
   ],
   [CMD.BGM]: [
     { key: "name", label: "BGM名", type: "catalog_select", placeholder: "morning_theme", autocomplete: "bgmNames" },
@@ -28,17 +28,19 @@ const FIELD_DEFS = {
     { key: "id", label: "キャラID", type: "catalog_select", placeholder: "キャラを選択", autocomplete: "charaIds" },
     { key: "position", label: "位置", type: "select", options: ["left", "center", "right"] },
     { key: "expression", label: "表情", type: "expression_select", autocomplete: "expressions" },
+    { key: "anim", label: "アニメーション", type: "select", options: ["", "shake", "bounce", "zoom", "nod", "tremble"] },
   ],
   [CMD.CHARA_MOD]: [
     { key: "id", label: "キャラID", type: "catalog_select", placeholder: "キャラを選択", autocomplete: "charaIds" },
     { key: "expression", label: "表情", type: "expression_select", autocomplete: "expressions" },
+    { key: "anim", label: "アニメーション", type: "select", options: ["", "shake", "bounce", "zoom", "nod", "tremble"] },
   ],
   [CMD.CHARA_HIDE]: [
     { key: "id", label: "キャラID", type: "catalog_select", placeholder: "キャラを選択", autocomplete: "charaIds" },
   ],
   [CMD.CHOICE]: [],
   [CMD.EFFECT]: [
-    { key: "name", label: "エフェクト", type: "select", options: ["shake", "flash", "fadeout", "whitefade"] },
+    { key: "name", label: "エフェクト", type: "select", options: ["shake", "flash", "fadeout", "fadein", "whitefade"] },
     { key: "color", label: "色", type: "text", placeholder: "#000" },
     { key: "time", label: "時間 (ms)", type: "number", min: 0, step: 100 },
   ],
