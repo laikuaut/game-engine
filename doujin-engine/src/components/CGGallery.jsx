@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { getUnlocks } from "../save/UnlockStore";
+import { getAssetUrl } from "../project/ProjectStore";
 
 // CG ギャラリー画面
-export default function CGGallery({ catalog, onBack }) {
+export default function CGGallery({ catalog, onBack, projectId }) {
   const [selectedCG, setSelectedCG] = useState(null);
   const [variantIndex, setVariantIndex] = useState(0);
   const unlocks = getUnlocks();
@@ -15,6 +16,13 @@ export default function CGGallery({ catalog, onBack }) {
   });
 
   const [activeGroup, setActiveGroup] = useState(Object.keys(groups)[0] || "default");
+
+  const resolveUrl = (filename) => {
+    if (!filename) return null;
+    if (filename.startsWith("/") || filename.startsWith("http")) return filename;
+    if (projectId) return getAssetUrl(projectId, "cg", filename);
+    return `./assets/cg/${filename}`;
+  };
 
   const items = groups[activeGroup] || [];
 
@@ -55,7 +63,7 @@ export default function CGGallery({ catalog, onBack }) {
               {unlocked ? (
                 <>
                   {cg.thumbnail ? (
-                    <img src={`./assets/${cg.thumbnail}`} alt={cg.title} style={styles.thumbImg} />
+                    <img src={resolveUrl(cg.thumbnail)} alt={cg.title} style={styles.thumbImg} />
                   ) : (
                     <div style={styles.thumbPlaceholder}>{cg.title}</div>
                   )}
@@ -82,11 +90,9 @@ export default function CGGallery({ catalog, onBack }) {
           style={styles.overlay}
         >
           <img
-            src={`./assets/${
-              selectedCG.variants?.[variantIndex]
-                ? `cg/${selectedCG.variants[variantIndex]}.png`
-                : selectedCG.src
-            }`}
+            src={resolveUrl(
+              selectedCG.variants?.[variantIndex] || selectedCG.src
+            )}
             alt={selectedCG.title}
             style={styles.fullImg}
             onClick={(e) => e.stopPropagation()}

@@ -345,6 +345,7 @@ export default function EditorScreen({ onBack, initialScript, projectId, project
             catalog={cgCatalog}
             onUpdateCatalog={(c) => { setCgCatalog(c); markDirty(); }}
             script={script}
+            projectId={projectId}
           />
         );
       case "scene":
@@ -354,6 +355,7 @@ export default function EditorScreen({ onBack, initialScript, projectId, project
             onUpdateCatalog={(c) => { setSceneCatalog(c); markDirty(); }}
             script={script}
             storyScenes={storyScenes}
+            projectId={projectId}
           />
         );
       case "event":

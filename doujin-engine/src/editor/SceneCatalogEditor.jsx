@@ -1,10 +1,13 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
+import { uploadAsset, deleteAsset, getAssetUrl } from "../project/ProjectStore";
 
 // シーン回想カタログ管理エディタ
 // catalog: [{ name (シーン名), title, chapter, thumbnail }]
 // storyScenes: [{ id, name, description, commands }]
-export default function SceneCatalogEditor({ catalog, onUpdateCatalog, script, storyScenes }) {
+export default function SceneCatalogEditor({ catalog, onUpdateCatalog, script, storyScenes, projectId }) {
   const [selectedIndex, setSelectedIndex] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef(null);
 
   const items = catalog || [];
   const scenes = storyScenes || [];
@@ -76,6 +79,28 @@ export default function SceneCatalogEditor({ catalog, onUpdateCatalog, script, s
     onUpdateCatalog(next);
     if (selectedIndex === idx) setSelectedIndex(target);
     else if (selectedIndex === target) setSelectedIndex(idx);
+  };
+
+  // 画像URLの解決
+  const resolveImageUrl = (filename) => {
+    if (!filename) return null;
+    if (filename.startsWith("/") || filename.startsWith("http")) return filename;
+    if (projectId) return getAssetUrl(projectId, "scene", filename);
+    return `./assets/scene/${filename}`;
+  };
+
+  // サムネイルアップロード
+  const handleUpload = async (file) => {
+    if (!projectId || !file) return;
+    setUploading(true);
+    try {
+      const result = await uploadAsset(projectId, "scene", file);
+      if (result.filename) {
+        updateField("thumbnail", result.filename);
+      }
+    } finally {
+      setUploading(false);
+    }
   };
 
   // 選択中シーンがstoryScenesに存在するか
@@ -198,17 +223,32 @@ export default function SceneCatalogEditor({ catalog, onUpdateCatalog, script, s
 
             <div style={styles.section}>
               <div style={styles.sectionTitle}>サムネイル</div>
-              <label style={styles.label}>画像パス</label>
-              <input
-                value={selected.thumbnail || ""}
-                onChange={(e) => updateField("thumbnail", e.target.value)}
-                style={styles.input}
-                placeholder="scene/prologue_thumb.png"
-              />
+              <div style={styles.uploadRow}>
+                <input
+                  value={selected.thumbnail || ""}
+                  style={{ ...styles.input, flex: 1 }}
+                  placeholder="ファイル名 or アップロード"
+                  readOnly
+                />
+                <button
+                  onClick={() => fileRef.current?.click()}
+                  style={styles.uploadBtn}
+                  disabled={uploading}
+                >
+                  {uploading ? "..." : "アップロード"}
+                </button>
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept="image/*"
+                  style={{ display: "none" }}
+                  onChange={(e) => { handleUpload(e.target.files[0]); e.target.value = ""; }}
+                />
+              </div>
               {selected.thumbnail && (
                 <div style={styles.previewBox}>
                   <img
-                    src={`./assets/${selected.thumbnail}`}
+                    src={resolveImageUrl(selected.thumbnail)}
                     alt=""
                     style={styles.previewImg}
                     onError={(e) => { e.target.style.display = "none"; }}
@@ -297,6 +337,14 @@ const styles = {
   warning: {
     fontSize: 10, color: "#EF5350", marginTop: 4,
     padding: "2px 8px", background: "rgba(239,83,80,0.05)", borderRadius: 3,
+  },
+  uploadRow: {
+    display: "flex", gap: 8, alignItems: "center",
+  },
+  uploadBtn: {
+    background: "rgba(200,180,140,0.12)", border: "1px solid rgba(200,180,140,0.3)",
+    color: "#C8A870", padding: "6px 14px", borderRadius: 3, fontSize: 11,
+    cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap", flexShrink: 0,
   },
   previewBox: {
     marginTop: 8, borderRadius: 4, overflow: "hidden",

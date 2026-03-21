@@ -1,7 +1,15 @@
 import { getUnlocks } from "../save/UnlockStore";
+import { getAssetUrl } from "../project/ProjectStore";
 
-export default function SceneRecollection({ catalog, onPlayScene, onBack }) {
+export default function SceneRecollection({ catalog, onPlayScene, onBack, projectId }) {
   const unlocks = getUnlocks();
+
+  const resolveUrl = (filename) => {
+    if (!filename) return null;
+    if (filename.startsWith("/") || filename.startsWith("http")) return filename;
+    if (projectId) return getAssetUrl(projectId, "scene", filename);
+    return `./assets/scene/${filename}`;
+  };
 
   const chapters = {};
   (catalog || []).forEach((scene) => {
@@ -33,7 +41,7 @@ export default function SceneRecollection({ catalog, onPlayScene, onBack }) {
                   }}
                 >
                   {scene.thumbnail && unlocked && (
-                    <img src={`./assets/${scene.thumbnail}`} alt="" style={styles.sceneThumb} />
+                    <img src={resolveUrl(scene.thumbnail)} alt="" style={styles.sceneThumb} />
                   )}
                   {!unlocked && !scene.thumbnail && (
                     <span style={{ fontSize: 18, opacity: 0.4 }}>🔒</span>

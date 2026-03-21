@@ -244,6 +244,7 @@ function App() {
             <CGGallery
               catalog={project.cgCatalog || []}
               onBack={() => navigateTo("title")}
+              projectId={project.id}
             />
           </div>
         )}
@@ -258,6 +259,7 @@ function App() {
                 navigateTo("game");
               }}
               onBack={() => navigateTo("title")}
+              projectId={project.id}
             />
           </div>
         )}
