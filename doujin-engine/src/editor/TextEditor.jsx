@@ -14,6 +14,7 @@ const CMD_COLORS = {
   [CMD.WAIT]: "#90A4AE",
   [CMD.JUMP]: "#EF5350",
   [CMD.LABEL]: "#A5D6A7",
+  [CMD.SCENE]: "#66BB6A",
 };
 
 // コマンドの簡易表示
@@ -30,14 +31,32 @@ function cmdBrief(cmd) {
     case CMD.WAIT: return `待機 ${cmd.time || 0}ms`;
     case CMD.JUMP: return `→ ${cmd.target}`;
     case CMD.LABEL: return `[${cmd.name || "?"}]`;
+    case CMD.SCENE: return `シーン: ${cmd.sceneId || "?"}`;
     default: return cmd.type;
   }
 }
 
 // シナリオ内のテキスト編集ビュー（構造コンテキスト付き）
-export default function TextEditor({ script, onUpdateScript }) {
+export default function TextEditor({ script, onUpdateScript, storyScenes, onUpdateStoryScenes }) {
   const [filter, setFilter] = useState("");
   const [showStructure, setShowStructure] = useState(true);
+  const [expandedScenes, setExpandedScenes] = useState(new Set());
+
+  // シーンID → シーンデータのマップ
+  const sceneMap = useMemo(() => {
+    const map = {};
+    (storyScenes || []).forEach((s) => { map[s.id] = s; });
+    return map;
+  }, [storyScenes]);
+
+  const toggleScene = (sceneId) => {
+    setExpandedScenes((prev) => {
+      const next = new Set(prev);
+      if (next.has(sceneId)) next.delete(sceneId);
+      else next.add(sceneId);
+      return next;
+    });
+  };
 
   // dialog コマンドだけ抽出（元の index 付き）
   const dialogs = useMemo(() => {
@@ -46,19 +65,59 @@ export default function TextEditor({ script, onUpdateScript }) {
       .filter(({ cmd }) => cmd.type === CMD.DIALOG);
   }, [script]);
 
-  // 構造表示: dialog 以外のコマンドも含めた統合ビュー
+  // シーン内のdialogカウント
+  const sceneDialogCount = useMemo(() => {
+    const counts = {};
+    (storyScenes || []).forEach((s) => {
+      counts[s.id] = (s.commands || []).filter((c) => c.type === CMD.DIALOG).length;
+    });
+    return counts;
+  }, [storyScenes]);
+
+  // 全dialogカウント（スクリプト + シーン内）
+  const totalDialogs = useMemo(() => {
+    let count = dialogs.length;
+    (storyScenes || []).forEach((s) => {
+      count += (s.commands || []).filter((c) => c.type === CMD.DIALOG).length;
+    });
+    return count;
+  }, [dialogs, storyScenes]);
+
+  // 構造表示用の統合アイテム
   const structuredItems = useMemo(() => {
     if (!showStructure) return null;
-    return script.map((cmd, i) => ({ cmd, index: i, isDialog: cmd.type === CMD.DIALOG }));
-  }, [script, showStructure]);
+    const items = [];
+    script.forEach((cmd, i) => {
+      items.push({ cmd, index: i, isDialog: cmd.type === CMD.DIALOG, source: "script" });
+
+      // シーンコマンドが展開中なら、シーン内のコマンドも追加
+      if (cmd.type === CMD.SCENE && expandedScenes.has(cmd.sceneId)) {
+        const scene = sceneMap[cmd.sceneId];
+        if (scene) {
+          (scene.commands || []).forEach((childCmd, ci) => {
+            items.push({
+              cmd: childCmd,
+              index: ci,
+              isDialog: childCmd.type === CMD.DIALOG,
+              source: "scene",
+              sceneId: cmd.sceneId,
+              sceneName: scene.name,
+              scriptIndex: i,
+            });
+          });
+        }
+      }
+    });
+    return items;
+  }, [script, showStructure, expandedScenes, sceneMap]);
 
   // フィルター適用
   const filtered = useMemo(() => {
-    const items = showStructure ? structuredItems : dialogs.map((d) => ({ ...d, isDialog: true }));
+    const items = showStructure ? structuredItems : dialogs.map((d) => ({ ...d, isDialog: true, source: "script" }));
     if (!filter) return items;
     const q = filter.toLowerCase();
     return items.filter(({ cmd, isDialog }) => {
-      if (!isDialog) return false; // 構造コマンドはフィルタ時に非表示
+      if (!isDialog) return false;
       return (
         (cmd.speaker || "").toLowerCase().includes(q) ||
         (cmd.text || "").toLowerCase().includes(q)
@@ -66,10 +125,23 @@ export default function TextEditor({ script, onUpdateScript }) {
     });
   }, [dialogs, structuredItems, filter, showStructure]);
 
+  // スクリプトのフィールド更新
   const updateField = (scriptIndex, field, value) => {
     const newScript = [...script];
     newScript[scriptIndex] = { ...newScript[scriptIndex], [field]: value };
     onUpdateScript(newScript);
+  };
+
+  // シーン内コマンドのフィールド更新
+  const updateSceneField = (sceneId, cmdIndex, field, value) => {
+    if (!onUpdateStoryScenes) return;
+    const newScenes = storyScenes.map((s) => {
+      if (s.id !== sceneId) return s;
+      const newCmds = [...s.commands];
+      newCmds[cmdIndex] = { ...newCmds[cmdIndex], [field]: value };
+      return { ...s, commands: newCmds };
+    });
+    onUpdateStoryScenes(newScenes);
   };
 
   return (
@@ -78,7 +150,7 @@ export default function TextEditor({ script, onUpdateScript }) {
       <div style={styles.header}>
         <span style={styles.title}>テキスト編集</span>
         <span style={styles.count}>
-          {dialogs.length} 件
+          {totalDialogs} 件
         </span>
         <button
           onClick={() => setShowStructure(!showStructure)}
@@ -101,34 +173,94 @@ export default function TextEditor({ script, onUpdateScript }) {
 
       {/* テキストリスト */}
       <div style={styles.list}>
-        {filtered.map(({ cmd, index, isDialog }) => {
+        {filtered.map((item, fi) => {
+          const { cmd, index, isDialog, source, sceneId, sceneName } = item;
+          const isScene = source === "scene";
+
+          // シーンコマンド行（展開トグル付き）
+          if (!isDialog && cmd.type === CMD.SCENE) {
+            const scene = sceneMap[cmd.sceneId];
+            const isExpanded = expandedScenes.has(cmd.sceneId);
+            const childDialogs = sceneDialogCount[cmd.sceneId] || 0;
+            return (
+              <div
+                key={`scene-${index}`}
+                onClick={() => scene && toggleScene(cmd.sceneId)}
+                style={{
+                  ...styles.sceneRow,
+                  cursor: scene ? "pointer" : "default",
+                }}
+              >
+                <span style={styles.rowIndex}>#{index}</span>
+                {scene && (
+                  <span style={styles.expandBtn}>{isExpanded ? "▼" : "▶"}</span>
+                )}
+                <span style={styles.sceneBadge}>
+                  {scene ? scene.name : cmd.sceneId || "?"}
+                </span>
+                <span style={styles.sceneCount}>
+                  {childDialogs} 台詞
+                </span>
+              </div>
+            );
+          }
+
+          // 構造コマンド（非dialog）
           if (!isDialog) {
-            // 構造コマンド（非dialog）をコンパクトに表示
             const color = CMD_COLORS[cmd.type] || "#888";
             return (
-              <div key={`s-${index}`} style={styles.structureRow}>
-                <span style={styles.rowIndex}>#{index}</span>
+              <div
+                key={`s-${source}-${sceneId || ""}-${index}-${fi}`}
+                style={{
+                  ...styles.structureRow,
+                  ...(isScene ? styles.sceneChildStructure : {}),
+                }}
+              >
+                <span style={styles.rowIndex}>
+                  {isScene ? `  ${index}` : `#${index}`}
+                </span>
                 <span style={{ ...styles.structureBadge, background: color + "22", color }}>
                   {cmdBrief(cmd)}
                 </span>
               </div>
             );
           }
+
+          // dialog行
           return (
-            <div key={index} style={styles.row}>
+            <div
+              key={`d-${source}-${sceneId || ""}-${index}-${fi}`}
+              style={{
+                ...styles.row,
+                ...(isScene ? styles.sceneChildRow : {}),
+              }}
+            >
               <div style={styles.rowHeader}>
-                <span style={styles.rowIndex}>#{index}</span>
+                <span style={styles.rowIndex}>
+                  {isScene ? `  ${index}` : `#${index}`}
+                </span>
+                {isScene && (
+                  <span style={styles.sceneTag}>{sceneName}</span>
+                )}
                 <input
                   type="text"
                   value={cmd.speaker || ""}
-                  onChange={(e) => updateField(index, "speaker", e.target.value)}
+                  onChange={(e) =>
+                    isScene
+                      ? updateSceneField(sceneId, index, "speaker", e.target.value)
+                      : updateField(index, "speaker", e.target.value)
+                  }
                   placeholder="話者（空欄でナレーション）"
                   style={styles.speakerInput}
                 />
               </div>
               <textarea
                 value={cmd.text || ""}
-                onChange={(e) => updateField(index, "text", e.target.value)}
+                onChange={(e) =>
+                  isScene
+                    ? updateSceneField(sceneId, index, "text", e.target.value)
+                    : updateField(index, "text", e.target.value)
+                }
                 placeholder="セリフを入力..."
                 style={styles.textArea}
                 rows={Math.max(2, (cmd.text || "").split("\n").length)}
@@ -194,6 +326,13 @@ const styles = {
     background: "rgba(255,255,255,0.03)",
     border: "1px solid rgba(255,255,255,0.06)",
     borderRadius: 4,
+  },
+  sceneChildRow: {
+    marginLeft: 20,
+    borderLeftWidth: 3,
+    borderLeftStyle: "solid",
+    borderLeftColor: "rgba(100,200,100,0.2)",
+    background: "rgba(100,200,100,0.02)",
   },
   rowHeader: {
     display: "flex",
@@ -263,11 +402,51 @@ const styles = {
     borderLeft: "3px solid rgba(255,255,255,0.06)",
     marginBottom: 2,
   },
+  sceneChildStructure: {
+    marginLeft: 20,
+    borderLeftColor: "rgba(100,200,100,0.15)",
+  },
   structureBadge: {
     fontSize: 10,
     padding: "1px 8px",
     borderRadius: 3,
     fontWeight: 600,
     letterSpacing: 0.5,
+  },
+  sceneRow: {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    padding: "8px 14px",
+    marginBottom: 4,
+    background: "rgba(100,200,100,0.05)",
+    borderWidth: 1,
+    borderStyle: "solid",
+    borderColor: "rgba(100,200,100,0.15)",
+    borderRadius: 4,
+  },
+  expandBtn: {
+    color: "#66BB6A",
+    fontSize: 10,
+    flexShrink: 0,
+    fontFamily: "monospace",
+  },
+  sceneBadge: {
+    fontSize: 12,
+    color: "#66BB6A",
+    fontWeight: 600,
+  },
+  sceneCount: {
+    fontSize: 10,
+    color: "#888",
+    marginLeft: "auto",
+  },
+  sceneTag: {
+    fontSize: 9,
+    color: "#66BB6A",
+    background: "rgba(100,200,100,0.1)",
+    padding: "1px 6px",
+    borderRadius: 2,
+    flexShrink: 0,
   },
 };

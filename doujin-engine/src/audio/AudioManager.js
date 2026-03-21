@@ -192,7 +192,7 @@ export default class AudioManager {
     if (catalogFilename) {
       log("_loadAudio: カタログ解決 →", name, "→", catalogFilename);
       // 絶対パス（/assets/...）はそのまま、それ以外はプロジェクトアセット経由
-      const path = catalogFilename.startsWith("/") ? catalogFilename : getAssetUrl(this.projectId, type, catalogFilename);
+      const path = getAssetUrl(this.projectId, type, catalogFilename);
       try {
         const res = await fetch(path);
         if (res.ok) {

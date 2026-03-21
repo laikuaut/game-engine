@@ -242,6 +242,32 @@ function projectApiPlugin() {
         res.end(JSON.stringify({ success: true }))
       })
 
+      // デフォルト素材をプロジェクトにコピー
+      server.middlewares.use('/api/copy-default-assets', async (req, res, next) => {
+        if (req.method !== 'POST') return next()
+        const { projectId } = await parseBody(req)
+        const defaultAssetsDir = path.resolve(__dirname, 'public', 'assets')
+        if (!fs.existsSync(defaultAssetsDir)) {
+          res.setHeader('Content-Type', 'application/json')
+          res.end(JSON.stringify({ success: false, error: 'default assets not found' }))
+          return
+        }
+        const types = ['bg', 'chara', 'bgm', 'se']
+        let copied = 0
+        for (const type of types) {
+          const srcDir = path.join(defaultAssetsDir, type)
+          if (!fs.existsSync(srcDir)) continue
+          const dirName = resolveProjectDirName(projectId)
+          const destDir = path.join(projectsDir, dirName, 'assets', type)
+          ensureDir(destDir)
+          copyDirSync(srcDir, destDir)
+          copied++
+        }
+        console.log(`[Vite API] Copied default assets (${copied} types) to project ${projectId}`)
+        res.setHeader('Content-Type', 'application/json')
+        res.end(JSON.stringify({ success: true, copied }))
+      })
+
       // アセット配信（/project-assets/{id}/{type}/{filename}）
       server.middlewares.use('/project-assets', (req, res, next) => {
         const parts = req.url.split('/').filter(Boolean)
@@ -358,12 +384,14 @@ function projectApiPlugin() {
           }
           writeJson(path.join(publicDir, 'game-data.json'), gameData)
 
-          // アセットをコピー
+          // プロジェクトアセットをコピー
           const srcAssets = path.join(projectsDir, resolveProjectDirName(projectId), 'assets')
           const destAssets = path.join(publicDir, 'game-assets')
           if (fs.existsSync(srcAssets)) {
             copyDirSync(srcAssets, destAssets)
           }
+
+          // デフォルト素材（public/assets/）はViteビルド時に自動コピーされるため不要
 
           res.setHeader('Content-Type', 'application/json')
           res.end(JSON.stringify({ success: true }))

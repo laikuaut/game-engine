@@ -8,7 +8,7 @@ import CGGallery from "./components/CGGallery";
 import SceneRecollection from "./components/SceneRecollection";
 import RPGEngine from "./rpg/RPGEngine";
 import MinigameRunner from "./minigame/MinigameRunner";
-import { getProject, setActiveProjectId } from "./project/ProjectStore";
+import { getProject, setActiveProjectId, getAssetUrl } from "./project/ProjectStore";
 import { GAME_CONTAINER_STYLE, COLORS, loadPersistedConfig, persistConfig, SCREEN_PRESETS } from "./data/config";
 
 // ゲームモード判定（ビルド済みゲームかどうか）
@@ -42,6 +42,7 @@ function App() {
         if (res.ok) {
           const data = await res.json();
           if (data && data.script) {
+            data.bgStyles = resolveBgStyles(data.bgStyles, "__game__");
             setProject({ ...data, id: "__game__" });
             setGameMode(true);
             setScreen("title");
@@ -74,14 +75,30 @@ function App() {
     }, 200);
   }, []);
 
+  // bgStyles の imageFile を background URL に解決
+  const resolveBgStyles = useCallback((bgStyles, projectId) => {
+    if (!bgStyles) return {};
+    const resolved = {};
+    for (const [key, style] of Object.entries(bgStyles)) {
+      if (style.imageFile) {
+        const url = getAssetUrl(projectId, "bg", style.imageFile);
+        resolved[key] = { ...style, background: `url(${url}) center/cover no-repeat` };
+      } else {
+        resolved[key] = style;
+      }
+    }
+    return resolved;
+  }, []);
+
   // プロジェクト選択
   const handleSelectProject = useCallback(async (id) => {
     const p = await getProject(id);
     if (!p) return;
     setActiveProjectId(id);
+    p.bgStyles = resolveBgStyles(p.bgStyles, id);
     setProject(p);
     navigateTo("title");
-  }, [navigateTo]);
+  }, [navigateTo, resolveBgStyles]);
 
   // プロジェクト一覧へ戻る（ゲームモードではアプリ終了）
   const backToProjects = useCallback(() => {
@@ -98,9 +115,10 @@ function App() {
     const p = await getProject(id);
     if (!p) return;
     setActiveProjectId(id);
+    p.bgStyles = resolveBgStyles(p.bgStyles, id);
     setProject(p);
     navigateTo("editor");
-  }, [navigateTo]);
+  }, [navigateTo, resolveBgStyles]);
 
   // アプリ終了
   const handleExit = useCallback(() => {

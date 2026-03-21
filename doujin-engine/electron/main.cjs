@@ -352,6 +352,26 @@ function getAssetDir(projectId, type) {
   return dir;
 }
 
+// デフォルト素材をプロジェクトにコピー
+ipcMain.handle("copy-default-assets", async (event, projectId) => {
+  const defaultAssetsDir = isDev
+    ? path.join(__dirname, "..", "public", "assets")
+    : path.join(__dirname, "..", "dist", "assets");
+  if (!fs.existsSync(defaultAssetsDir)) return { success: false, error: "default assets not found" };
+
+  const types = ["bg", "chara", "bgm", "se"];
+  let copied = 0;
+  for (const type of types) {
+    const srcDir = path.join(defaultAssetsDir, type);
+    if (!fs.existsSync(srcDir)) continue;
+    const destDir = getAssetDir(projectId, type);
+    copyDirSync(srcDir, destDir);
+    copied++;
+  }
+  console.log(`[ProjectStore] Copied default assets (${copied} types) to project ${projectId}`);
+  return { success: true, copied };
+});
+
 ipcMain.handle("asset-upload", async (event, { projectId, type, filename, data }) => {
   const safeName = filename.replace(/[^a-zA-Z0-9_\-\.]/g, "_");
   const filePath = path.join(getAssetDir(projectId, type), safeName);
@@ -416,7 +436,7 @@ ipcMain.handle("export-game", async (event, projectId) => {
     };
     writeJsonFile(path.join(publicDir, "game-data.json"), gameData);
 
-    // アセットコピー
+    // プロジェクトアセットコピー
     const srcAssets = path.join(getProjectsDir(), resolveProjectDirName(projectId), "assets");
     const destAssets = path.join(publicDir, "game-assets");
     if (fs.existsSync(srcAssets)) copyDirSync(srcAssets, destAssets);
@@ -540,7 +560,15 @@ ipcMain.handle("get-app-info", async () => {
     name: app.getName(),
     userData: app.getPath("userData"),
     isPackaged: app.isPackaged,
+    projectsDir: getProjectsDir(),
   };
+});
+
+// プロジェクトアセットのファイルパスを返す（file:// URL 生成用）
+ipcMain.handle("resolve-asset-path", async (event, { projectId, type, filename }) => {
+  const dirName = resolveProjectDirName(projectId);
+  const filePath = path.join(getProjectsDir(), dirName, "assets", type, filename);
+  return `file://${filePath.replace(/\\/g, "/")}`;
 });
 
 // === アプリライフサイクル ===

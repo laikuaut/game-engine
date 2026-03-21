@@ -25,6 +25,9 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.invoke("asset-delete", { projectId, type, filename }),
   assetGetUrl: (projectId, type, filename) =>
     ipcRenderer.invoke("asset-get-url", { projectId, type, filename }),
+  resolveAssetPath: (projectId, type, filename) =>
+    ipcRenderer.invoke("resolve-asset-path", { projectId, type, filename }),
+  copyDefaultAssets: (projectId) => ipcRenderer.invoke("copy-default-assets", projectId),
 
   // ゲームエクスポート・ビルド
   exportGame: (projectId) => ipcRenderer.invoke("export-game", projectId),

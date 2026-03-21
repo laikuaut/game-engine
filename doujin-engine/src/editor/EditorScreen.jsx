@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { CMD } from "../engine/constants";
-import { updateProject, getProject } from "../project/ProjectStore";
+import { updateProject, getProject, getAssetUrl } from "../project/ProjectStore";
 import ScriptList from "./ScriptList";
 import CommandEditor from "./CommandEditor";
 import PreviewPanel from "./PreviewPanel";
@@ -134,7 +134,18 @@ export default function EditorScreen({ onBack, initialScript, projectId, project
       const proj = await getProject(projectId);
       if (proj) {
         setCharacters(proj.characters || {});
-        setBgStyles(proj.bgStyles || {});
+        // bgStyles: imageFile がある場合は毎回 background URL を再解決
+        const rawBg = proj.bgStyles || {};
+        const resolvedBg = {};
+        for (const [key, style] of Object.entries(rawBg)) {
+          if (style.imageFile) {
+            const url = getAssetUrl(projectId, "bg", style.imageFile);
+            resolvedBg[key] = { ...style, background: `url(${url}) center/cover no-repeat` };
+          } else {
+            resolvedBg[key] = style;
+          }
+        }
+        setBgStyles(resolvedBg);
         setItems(proj.items || []);
         setGameEvents(proj.gameEvents || []);
         setMaps(proj.maps || []);
@@ -297,7 +308,14 @@ export default function EditorScreen({ onBack, initialScript, projectId, project
           />
         );
       case "text":
-        return <TextEditor script={script} onUpdateScript={persistScript} />;
+        return (
+          <TextEditor
+            script={script}
+            onUpdateScript={persistScript}
+            storyScenes={storyScenes}
+            onUpdateStoryScenes={(s) => { setStoryScenes(s); markDirty(); }}
+          />
+        );
       case "chara":
         return (
           <CharacterEditor
@@ -363,6 +381,14 @@ export default function EditorScreen({ onBack, initialScript, projectId, project
           <EventEditor
             events={gameEvents}
             onUpdateEvents={(e) => { setGameEvents(e); markDirty(); }}
+            script={script}
+            items={items}
+            bgStyles={bgStyles}
+            bgmCatalog={bgmCatalog}
+            seCatalog={seCatalog}
+            cgCatalog={cgCatalog}
+            sceneCatalog={sceneCatalog}
+            storyScenes={storyScenes}
           />
         );
       case "flow":

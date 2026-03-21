@@ -30,6 +30,19 @@ export default function CharacterEditor({ characters, onUpdateCharacters, projec
     setNewId("");
   };
 
+  // キャラ複製
+  const duplicateCharacter = (id) => {
+    const src = characters[id];
+    if (!src) return;
+    const newCharId = `${id}_copy_${Date.now().toString(36).slice(-4)}`;
+    const updated = {
+      ...characters,
+      [newCharId]: JSON.parse(JSON.stringify({ ...src, name: `${src.name}(コピー)` })),
+    };
+    onUpdateCharacters(updated);
+    setSelectedId(newCharId);
+  };
+
   // キャラ削除
   const removeCharacter = (id) => {
     const updated = { ...characters };
@@ -388,9 +401,14 @@ export default function CharacterEditor({ characters, onUpdateCharacters, projec
               </div>
             </div>
 
-            <button onClick={() => removeCharacter(selectedId)} style={styles.deleteBtn}>
-              このキャラクターを削除
-            </button>
+            <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
+              <button onClick={() => duplicateCharacter(selectedId)} style={styles.actionBtn}>
+                複製
+              </button>
+              <button onClick={() => removeCharacter(selectedId)} style={styles.deleteBtn}>
+                削除
+              </button>
+            </div>
           </>
         ) : (
           <div style={styles.empty}>
@@ -507,10 +525,15 @@ const styles = {
     cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
     lineHeight: 1, padding: 0,
   },
+  actionBtn: {
+    background: "rgba(200,180,140,0.12)", border: "1px solid rgba(200,180,140,0.3)",
+    color: "#C8A870", padding: "8px 16px", borderRadius: 3,
+    fontSize: 12, cursor: "pointer", fontFamily: "inherit", flex: 1,
+  },
   deleteBtn: {
     background: "rgba(239,83,80,0.08)", border: "1px solid rgba(239,83,80,0.2)",
     color: "#EF5350", padding: "8px 16px", borderRadius: 3,
-    fontSize: 12, cursor: "pointer", fontFamily: "inherit", marginTop: 20, width: "100%",
+    fontSize: 12, cursor: "pointer", fontFamily: "inherit", flex: 1,
   },
   preview: {
     display: "flex", justifyContent: "center", padding: 16,

@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
+import { CMD } from "../engine/constants";
 
 // イベントトリガー種別
 const TRIGGER_TYPES = [
@@ -24,14 +25,70 @@ const ACTION_TYPES = [
   { id: "unlock_scene", label: "シーン解放" },
 ];
 
+// プルダウンコンポーネント
+function SelectField({ value, onChange, options, placeholder, style }) {
+  return (
+    <select
+      value={value || ""}
+      onChange={(e) => onChange(e.target.value)}
+      style={{ ...styles.selectSmall, ...style }}
+    >
+      <option value="" style={styles.optionStyle}>{placeholder || "-- 選択 --"}</option>
+      {options.map((opt) => {
+        const v = typeof opt === "string" ? opt : opt.value;
+        const label = typeof opt === "string" ? opt : opt.label;
+        return <option key={v} value={v} style={styles.optionStyle}>{label}</option>;
+      })}
+    </select>
+  );
+}
+
 // ゲームイベント（条件付きアクション）エディタ
-export default function EventEditor({ events, onUpdateEvents }) {
+export default function EventEditor({
+  events, onUpdateEvents,
+  script, items, bgStyles, bgmCatalog, seCatalog, cgCatalog, sceneCatalog, storyScenes,
+}) {
   const [selectedIdx, setSelectedIdx] = useState(-1);
 
   const eventList = events || [];
   const selected = selectedIdx >= 0 ? eventList[selectedIdx] : null;
 
-  // イベント追加
+  // --- 候補リスト生成 ---
+  const labels = useMemo(() => {
+    return (script || [])
+      .filter((c) => c.type === CMD.LABEL && c.name)
+      .map((c) => c.name);
+  }, [script]);
+
+  const itemOptions = useMemo(() => {
+    return (items || []).map((it) => ({ value: it.id || it.name, label: it.name || it.id }));
+  }, [items]);
+
+  const bgOptions = useMemo(() => {
+    return Object.keys(bgStyles || {});
+  }, [bgStyles]);
+
+  const bgmOptions = useMemo(() => {
+    return (bgmCatalog || []).map((b) => ({ value: b.name, label: `${b.name}${b.description ? ` (${b.description})` : ""}` }));
+  }, [bgmCatalog]);
+
+  const seOptions = useMemo(() => {
+    return (seCatalog || []).map((s) => ({ value: s.name, label: `${s.name}${s.description ? ` (${s.description})` : ""}` }));
+  }, [seCatalog]);
+
+  const cgOptions = useMemo(() => {
+    return (cgCatalog || []).map((c) => ({ value: c.id, label: `${c.id}${c.title ? ` (${c.title})` : ""}` }));
+  }, [cgCatalog]);
+
+  const sceneOptions = useMemo(() => {
+    return (storyScenes || []).map((s) => ({ value: s.name || s.id, label: s.name || s.id }));
+  }, [storyScenes]);
+
+  const sceneCatOptions = useMemo(() => {
+    return (sceneCatalog || []).map((s) => ({ value: s.name, label: `${s.name}${s.title ? ` (${s.title})` : ""}` }));
+  }, [sceneCatalog]);
+
+  // --- イベント CRUD ---
   const addEvent = () => {
     const newEvent = {
       id: `evt_${Date.now().toString(36)}`,
@@ -45,7 +102,18 @@ export default function EventEditor({ events, onUpdateEvents }) {
     setSelectedIdx(updated.length - 1);
   };
 
-  // イベント削除
+  const duplicateEvent = (idx) => {
+    const src = eventList[idx];
+    const dup = {
+      ...JSON.parse(JSON.stringify(src)),
+      id: `evt_${Date.now().toString(36)}`,
+      name: `${src.name}(コピー)`,
+    };
+    const updated = [...eventList, dup];
+    onUpdateEvents(updated);
+    setSelectedIdx(updated.length - 1);
+  };
+
   const removeEvent = (idx) => {
     const updated = eventList.filter((_, i) => i !== idx);
     onUpdateEvents(updated);
@@ -53,21 +121,19 @@ export default function EventEditor({ events, onUpdateEvents }) {
     else if (selectedIdx > idx) setSelectedIdx(selectedIdx - 1);
   };
 
-  // イベント更新
   const updateEvent = (idx, updates) => {
     const updated = [...eventList];
     updated[idx] = { ...updated[idx], ...updates };
     onUpdateEvents(updated);
   };
 
-  // 条件追加
+  // --- 条件 ---
   const addCondition = () => {
     if (selectedIdx < 0) return;
-    const conds = [...(selected.conditions || []), { type: "flag", key: "", value: true, operator: "==" }];
+    const conds = [...(selected.conditions || []), { type: "flag", key: "", value: "true", operator: "==" }];
     updateEvent(selectedIdx, { conditions: conds });
   };
 
-  // 条件更新
   const updateCondition = (condIdx, updates) => {
     if (selectedIdx < 0) return;
     const conds = [...(selected.conditions || [])];
@@ -75,21 +141,19 @@ export default function EventEditor({ events, onUpdateEvents }) {
     updateEvent(selectedIdx, { conditions: conds });
   };
 
-  // 条件削除
   const removeCondition = (condIdx) => {
     if (selectedIdx < 0) return;
     const conds = (selected.conditions || []).filter((_, i) => i !== condIdx);
     updateEvent(selectedIdx, { conditions: conds });
   };
 
-  // アクション追加
+  // --- アクション ---
   const addAction = () => {
     if (selectedIdx < 0) return;
-    const acts = [...(selected.actions || []), { type: "set_flag", key: "", value: true }];
+    const acts = [...(selected.actions || []), { type: "set_flag", key: "", value: "true" }];
     updateEvent(selectedIdx, { actions: acts });
   };
 
-  // アクション更新
   const updateAction = (actIdx, updates) => {
     if (selectedIdx < 0) return;
     const acts = [...(selected.actions || [])];
@@ -97,11 +161,219 @@ export default function EventEditor({ events, onUpdateEvents }) {
     updateEvent(selectedIdx, { actions: acts });
   };
 
-  // アクション削除
   const removeAction = (actIdx) => {
     if (selectedIdx < 0) return;
     const acts = (selected.actions || []).filter((_, i) => i !== actIdx);
     updateEvent(selectedIdx, { actions: acts });
+  };
+
+  // --- 条件のパラメータUI ---
+  const renderConditionParams = (cond, ci) => {
+    switch (cond.type) {
+      case "flag":
+        return (
+          <>
+            <input
+              value={cond.key || ""}
+              onChange={(e) => updateCondition(ci, { key: e.target.value })}
+              style={styles.inputSmall}
+              placeholder="フラグ名"
+            />
+            <SelectField
+              value={cond.operator} onChange={(v) => updateCondition(ci, { operator: v })}
+              options={["==", "!="]} style={{ width: 55 }}
+            />
+            <SelectField
+              value={String(cond.value)} onChange={(v) => updateCondition(ci, { value: v })}
+              options={[{ value: "true", label: "ON" }, { value: "false", label: "OFF" }]}
+              style={{ width: 60 }}
+            />
+          </>
+        );
+      case "variable":
+        return (
+          <>
+            <input
+              value={cond.key || ""}
+              onChange={(e) => updateCondition(ci, { key: e.target.value })}
+              style={styles.inputSmall}
+              placeholder="変数名"
+            />
+            <SelectField
+              value={cond.operator} onChange={(v) => updateCondition(ci, { operator: v })}
+              options={["==", "!=", ">", "<", ">=", "<="]} style={{ width: 55 }}
+            />
+            <input
+              value={cond.value ?? ""}
+              onChange={(e) => updateCondition(ci, { value: e.target.value })}
+              style={{ ...styles.inputSmall, width: 60 }}
+              placeholder="値"
+            />
+          </>
+        );
+      case "item_check":
+        return (
+          <>
+            <SelectField
+              value={cond.key} onChange={(v) => updateCondition(ci, { key: v })}
+              options={itemOptions} placeholder="アイテム"
+            />
+            <SelectField
+              value={cond.operator} onChange={(v) => updateCondition(ci, { operator: v })}
+              options={[">=", "==", "<=", ">", "<"]} style={{ width: 55 }}
+            />
+            <input
+              type="number"
+              value={cond.value ?? 1}
+              onChange={(e) => updateCondition(ci, { value: Number(e.target.value) })}
+              style={{ ...styles.inputSmall, width: 50 }}
+            />
+          </>
+        );
+      case "scene_viewed":
+        return (
+          <SelectField
+            value={cond.key} onChange={(v) => updateCondition(ci, { key: v })}
+            options={sceneOptions} placeholder="シーン"
+          />
+        );
+      case "choice_made":
+        return (
+          <>
+            <SelectField
+              value={cond.key} onChange={(v) => updateCondition(ci, { key: v })}
+              options={labels} placeholder="ラベル"
+            />
+            <input
+              value={cond.value ?? ""}
+              onChange={(e) => updateCondition(ci, { value: e.target.value })}
+              style={{ ...styles.inputSmall, width: 60 }}
+              placeholder="選択値"
+            />
+          </>
+        );
+      default:
+        return null;
+    }
+  };
+
+  // --- アクションのパラメータUI ---
+  const renderActionParams = (act, ai) => {
+    switch (act.type) {
+      case "set_flag":
+        return (
+          <>
+            <input
+              value={act.key || ""}
+              onChange={(e) => updateAction(ai, { key: e.target.value })}
+              style={styles.inputSmall}
+              placeholder="フラグ名"
+            />
+            <SelectField
+              value={String(act.value)} onChange={(v) => updateAction(ai, { value: v })}
+              options={[{ value: "true", label: "ON" }, { value: "false", label: "OFF" }]}
+              style={{ width: 60 }}
+            />
+          </>
+        );
+      case "set_variable":
+        return (
+          <>
+            <input
+              value={act.key || ""}
+              onChange={(e) => updateAction(ai, { key: e.target.value })}
+              style={styles.inputSmall}
+              placeholder="変数名"
+            />
+            <SelectField
+              value={act.operator || "="} onChange={(v) => updateAction(ai, { operator: v })}
+              options={[
+                { value: "=", label: "= 代入" },
+                { value: "+=", label: "+= 加算" },
+                { value: "-=", label: "-= 減算" },
+                { value: "*=", label: "*= 乗算" },
+              ]}
+              style={{ width: 80 }}
+            />
+            <input
+              value={act.value ?? ""}
+              onChange={(e) => updateAction(ai, { value: e.target.value })}
+              style={{ ...styles.inputSmall, width: 60 }}
+              placeholder="値"
+            />
+          </>
+        );
+      case "add_item":
+      case "remove_item":
+        return (
+          <>
+            <SelectField
+              value={act.itemId} onChange={(v) => updateAction(ai, { itemId: v })}
+              options={itemOptions} placeholder="アイテム"
+            />
+            <input
+              type="number"
+              value={act.amount ?? 1}
+              onChange={(e) => updateAction(ai, { amount: Number(e.target.value) })}
+              style={{ ...styles.inputSmall, width: 50 }}
+              placeholder="数"
+            />
+          </>
+        );
+      case "jump_label":
+        return (
+          <SelectField
+            value={act.label} onChange={(v) => updateAction(ai, { label: v })}
+            options={labels} placeholder="ラベル"
+          />
+        );
+      case "show_message":
+        return (
+          <input
+            value={act.text || ""}
+            onChange={(e) => updateAction(ai, { text: e.target.value })}
+            style={{ ...styles.inputSmall, flex: 2 }}
+            placeholder="メッセージ"
+          />
+        );
+      case "play_bgm":
+        return (
+          <SelectField
+            value={act.name} onChange={(v) => updateAction(ai, { name: v })}
+            options={bgmOptions} placeholder="BGM"
+          />
+        );
+      case "play_se":
+        return (
+          <SelectField
+            value={act.name} onChange={(v) => updateAction(ai, { name: v })}
+            options={seOptions} placeholder="SE"
+          />
+        );
+      case "change_bg":
+        return (
+          <SelectField
+            value={act.src} onChange={(v) => updateAction(ai, { src: v })}
+            options={bgOptions} placeholder="背景"
+          />
+        );
+      case "unlock_cg":
+        return (
+          <SelectField
+            value={act.id} onChange={(v) => updateAction(ai, { id: v })}
+            options={cgOptions} placeholder="CG"
+          />
+        );
+      case "unlock_scene":
+        return (
+          <SelectField
+            value={act.id} onChange={(v) => updateAction(ai, { id: v })}
+            options={sceneCatOptions} placeholder="シーン"
+          />
+        );
+      default:
+        return null;
+    }
   };
 
   return (
@@ -149,6 +421,7 @@ export default function EventEditor({ events, onUpdateEvents }) {
                   checked={selected.enabled}
                   onChange={(e) => updateEvent(selectedIdx, { enabled: e.target.checked })}
                   id="evt-enabled"
+                  style={{ accentColor: "#C8A870" }}
                 />
                 <label htmlFor="evt-enabled" style={styles.checkLabel}>有効</label>
               </div>
@@ -162,37 +435,13 @@ export default function EventEditor({ events, onUpdateEvents }) {
               </div>
               {(selected.conditions || []).map((cond, ci) => (
                 <div key={ci} style={styles.condRow}>
-                  <select
+                  <SelectField
                     value={cond.type}
-                    onChange={(e) => updateCondition(ci, { type: e.target.value })}
-                    style={styles.selectSmall}
-                  >
-                    {TRIGGER_TYPES.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}
-                  </select>
-                  <input
-                    value={cond.key || ""}
-                    onChange={(e) => updateCondition(ci, { key: e.target.value })}
-                    style={styles.inputSmall}
-                    placeholder="キー名"
+                    onChange={(v) => updateCondition(ci, { type: v, key: "", value: v === "flag" ? "true" : "" })}
+                    options={TRIGGER_TYPES.map((t) => ({ value: t.id, label: t.label }))}
+                    style={{ width: 110 }}
                   />
-                  <select
-                    value={cond.operator || "=="}
-                    onChange={(e) => updateCondition(ci, { operator: e.target.value })}
-                    style={{ ...styles.selectSmall, width: 50 }}
-                  >
-                    <option value="==">==</option>
-                    <option value="!=">!=</option>
-                    <option value=">">&gt;</option>
-                    <option value="<">&lt;</option>
-                    <option value=">=">&gt;=</option>
-                    <option value="<=">&lt;=</option>
-                  </select>
-                  <input
-                    value={cond.value ?? ""}
-                    onChange={(e) => updateCondition(ci, { value: e.target.value })}
-                    style={styles.inputSmall}
-                    placeholder="値"
-                  />
+                  {renderConditionParams(cond, ci)}
                   <button onClick={() => removeCondition(ci)} style={styles.removeBtn}>x</button>
                 </div>
               ))}
@@ -207,96 +456,28 @@ export default function EventEditor({ events, onUpdateEvents }) {
               </div>
               {(selected.actions || []).map((act, ai) => (
                 <div key={ai} style={styles.actRow}>
-                  <select
+                  <SelectField
                     value={act.type}
-                    onChange={(e) => updateAction(ai, { type: e.target.value })}
-                    style={styles.selectSmall}
-                  >
-                    {ACTION_TYPES.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}
-                  </select>
-                  {/* アクション種別ごとのパラメータ */}
-                  {(act.type === "set_flag" || act.type === "set_variable") && (
-                    <>
-                      <input
-                        value={act.key || ""}
-                        onChange={(e) => updateAction(ai, { key: e.target.value })}
-                        style={styles.inputSmall}
-                        placeholder="キー名"
-                      />
-                      <input
-                        value={act.value ?? ""}
-                        onChange={(e) => updateAction(ai, { value: e.target.value })}
-                        style={styles.inputSmall}
-                        placeholder="値"
-                      />
-                    </>
-                  )}
-                  {(act.type === "add_item" || act.type === "remove_item") && (
-                    <>
-                      <input
-                        value={act.itemId || ""}
-                        onChange={(e) => updateAction(ai, { itemId: e.target.value })}
-                        style={styles.inputSmall}
-                        placeholder="アイテムID"
-                      />
-                      <input
-                        type="number"
-                        value={act.amount ?? 1}
-                        onChange={(e) => updateAction(ai, { amount: Number(e.target.value) })}
-                        style={{ ...styles.inputSmall, width: 50 }}
-                        placeholder="個数"
-                      />
-                    </>
-                  )}
-                  {act.type === "jump_label" && (
-                    <input
-                      value={act.label || ""}
-                      onChange={(e) => updateAction(ai, { label: e.target.value })}
-                      style={styles.inputSmall}
-                      placeholder="ラベル名"
-                    />
-                  )}
-                  {act.type === "show_message" && (
-                    <input
-                      value={act.text || ""}
-                      onChange={(e) => updateAction(ai, { text: e.target.value })}
-                      style={{ ...styles.inputSmall, flex: 2 }}
-                      placeholder="メッセージ"
-                    />
-                  )}
-                  {(act.type === "play_bgm" || act.type === "play_se") && (
-                    <input
-                      value={act.name || ""}
-                      onChange={(e) => updateAction(ai, { name: e.target.value })}
-                      style={styles.inputSmall}
-                      placeholder="ファイル名"
-                    />
-                  )}
-                  {act.type === "change_bg" && (
-                    <input
-                      value={act.src || ""}
-                      onChange={(e) => updateAction(ai, { src: e.target.value })}
-                      style={styles.inputSmall}
-                      placeholder="背景キー"
-                    />
-                  )}
-                  {(act.type === "unlock_cg" || act.type === "unlock_scene") && (
-                    <input
-                      value={act.id || ""}
-                      onChange={(e) => updateAction(ai, { id: e.target.value })}
-                      style={styles.inputSmall}
-                      placeholder="ID"
-                    />
-                  )}
+                    onChange={(v) => updateAction(ai, { type: v, key: "", value: v === "set_flag" ? "true" : "" })}
+                    options={ACTION_TYPES.map((t) => ({ value: t.id, label: t.label }))}
+                    style={{ width: 110 }}
+                  />
+                  {renderActionParams(act, ai)}
                   <button onClick={() => removeAction(ai)} style={styles.removeBtn}>x</button>
                 </div>
               ))}
               <button onClick={addAction} style={styles.addSmallBtn}>+ アクション追加</button>
             </div>
 
-            <button onClick={() => removeEvent(selectedIdx)} style={styles.deleteBtn}>
-              このイベントを削除
-            </button>
+            {/* 操作 */}
+            <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
+              <button onClick={() => duplicateEvent(selectedIdx)} style={styles.actionBtn}>
+                複製
+              </button>
+              <button onClick={() => removeEvent(selectedIdx)} style={styles.deleteBtn}>
+                削除
+              </button>
+            </div>
           </>
         ) : (
           <div style={styles.empty}>左のリストからイベントを選択、または新規追加してください</div>
@@ -350,8 +531,9 @@ const styles = {
   selectSmall: {
     background: "rgba(255,255,255,0.06)", border: "1px solid rgba(200,180,140,0.2)",
     color: "#E8E4DC", padding: "4px 6px", borderRadius: 3, fontSize: 11,
-    fontFamily: "inherit", outline: "none",
+    fontFamily: "inherit", outline: "none", cursor: "pointer",
   },
+  optionStyle: { background: "#1a1a2e", color: "#E8E4DC" },
   inputSmall: {
     background: "rgba(255,255,255,0.06)", border: "1px solid rgba(200,180,140,0.2)",
     color: "#E8E4DC", padding: "4px 6px", borderRadius: 3, fontSize: 11,
@@ -368,10 +550,15 @@ const styles = {
     cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
     padding: 0, flexShrink: 0,
   },
+  actionBtn: {
+    background: "rgba(200,180,140,0.12)", border: "1px solid rgba(200,180,140,0.3)",
+    color: "#C8A870", padding: "8px 16px", borderRadius: 3,
+    fontSize: 12, cursor: "pointer", fontFamily: "inherit", flex: 1,
+  },
   deleteBtn: {
     background: "rgba(239,83,80,0.08)", border: "1px solid rgba(239,83,80,0.2)",
     color: "#EF5350", padding: "8px 16px", borderRadius: 3,
-    fontSize: 12, cursor: "pointer", fontFamily: "inherit", marginTop: 16, width: "100%",
+    fontSize: 12, cursor: "pointer", fontFamily: "inherit", flex: 1,
   },
   empty: { color: "#555", fontSize: 13, textAlign: "center", marginTop: 40 },
 };

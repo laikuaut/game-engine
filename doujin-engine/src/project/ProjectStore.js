@@ -9,6 +9,26 @@ const ACTIVE_KEY = "doujin-engine-active-project";
 // Electron 環境判定
 const isElectron = () => !!window.electronAPI?.isElectron;
 
+// Electron本番（パッケージ済み）環境用: projectsDir のキャッシュ
+let _projectsDirCache = null;
+let _isPackaged = false;
+const _initPromise = (async () => {
+  if (!isElectron()) return;
+  try {
+    const info = await window.electronAPI.getAppInfo();
+    _isPackaged = info.isPackaged;
+    if (_isPackaged) {
+      _projectsDirCache = info.projectsDir;
+    }
+  } catch {}
+})();
+
+// Electron本番環境: IDからdirNameを解決するキャッシュ
+const _dirNameCache = {};
+function _cacheDirName(id, dirName) {
+  if (id && dirName) _dirNameCache[id] = dirName;
+}
+
 // デフォルトのプロジェクトテンプレート
 const DEFAULT_SCRIPT = [
   { type: "bg", src: "school_gate", transition: "fade" },
@@ -65,37 +85,41 @@ const DEFAULT_CHARACTERS = {
       surprise: "😲",
     },
     sprites: {
-      neutral: "/assets/chara/shiraishi_rin/natural.png",
-      smile: "/assets/chara/shiraishi_rin/smile.png",
-      sad: "/assets/chara/shiraishi_rin/sad.png",
+      neutral: "shiraishi_rin/natural.png",
+      smile: "shiraishi_rin/smile.png",
+      sad: "shiraishi_rin/sad.png",
     }
   },
 };
 
+// 背景: imageFile はプロジェクトアセットのファイル名
+// createProject 後に copyDefaultAssets でコピーされるため、ファイル名だけ指定
 const DEFAULT_BG_STYLES = {
   school_gate_昼: {
-    // background: "linear-gradient(170deg, #87CEEB 0%, #E0F0FF 40%, #98D8A0 60%, #5A8F3C 100%)",
-    background: "url(/assets/bg/bg_schoolgate_an.jpg) center/cover no-repeat",
+    background: "linear-gradient(170deg, #87CEEB 0%, #E0F0FF 40%, #98D8A0 60%, #5A8F3C 100%)",
+    imageFile: "bg_schoolgate_an.jpg",
   },
   classroom_昼: {
-    // background: "linear-gradient(180deg, #F5E6D0 0%, #E8D5B8 30%, #C4956A 80%, #8B6914 100%)",
-    background: "url(/assets/bg/bg_classroom_an.jpg) center/cover no-repeat",
+    background: "linear-gradient(180deg, #F5E6D0 0%, #E8D5B8 30%, #C4956A 80%, #8B6914 100%)",
+    imageFile: "bg_classroom_an.jpg",
   },
   classroom_夕方: {
-    background: "url(/assets/bg/bg_classroom_af.jpg) center/cover no-repeat",
+    background: "linear-gradient(180deg, #FF7E5F 0%, #FEB47B 30%, #FFD194 60%, #1a1a2e 100%)",
+    imageFile: "bg_classroom_af.jpg",
   },
   classroom_夜: {
-    background: "url(/assets/bg/bg_classroom_nt.jpg) center/cover no-repeat",
+    background: "linear-gradient(180deg, #0a0a2e 0%, #1a1a3e 40%, #2a2a4e 100%)",
+    imageFile: "bg_classroom_nt.jpg",
   },
 };
 
 const DEFAULT_BGM_CATALOG = [
-  { id: "bgm_hirusagari", name: "昼下がりのハバネラ", filename: "/assets/bgm/昼下がりのハバネラ.mp3", description: "穏やかな午後（甘茶の音楽工房）", volume: 0.8, loop: true, fadeIn: 500, fadeOut: 500 },
+  { id: "bgm_hirusagari", name: "昼下がりのハバネラ", filename: "昼下がりのハバネラ.mp3", description: "穏やかな午後（甘茶の音楽工房）", volume: 0.8, loop: true, fadeIn: 500, fadeOut: 500 },
 ];
 
 const DEFAULT_SE_CATALOG = [
-  { id: "se_click", name: "click", filename: "/assets/se/click.mp3", description: "click", volume: 1.0 },
-  { id: "se_dblclick", name: "dblclick", filename: "/assets/se/dblclick.mp3", description: "dblclick", volume: 1.0 },
+  { id: "se_click", name: "click", filename: "click.mp3", description: "click", volume: 1.0 },
+  { id: "se_dblclick", name: "dblclick", filename: "dblclick.mp3", description: "dblclick", volume: 1.0 },
 ];
 
 function generateId() {
@@ -127,14 +151,21 @@ async function apiPost(url, data) {
 
 // 全プロジェクト一覧を取得（メタデータのみ）
 export async function getProjects() {
+  await _initPromise;
+  let projects;
   if (isElectron()) {
-    return await window.electronAPI.projectList();
+    projects = await window.electronAPI.projectList();
+  } else {
+    projects = await apiGet("/api/projects");
   }
-  return apiGet("/api/projects");
+  // dirName キャッシュを構築
+  (projects || []).forEach((p) => { if (p.id && p.dirName) _cacheDirName(p.id, p.dirName); });
+  return projects;
 }
 
 // プロジェクトを ID で取得（フルデータ）
 export async function getProject(id) {
+  await _initPromise;
   if (isElectron()) {
     return await window.electronAPI.projectGet(id);
   }
@@ -324,6 +355,8 @@ export async function createProject(name, description = "", gameType = "novel") 
     saves: createEmptySaves(),
   };
   await persistProject(project);
+  // デフォルト素材をプロジェクトにコピー
+  await copyDefaultAssets(project.id).catch((e) => console.warn("デフォルト素材コピー失敗:", e));
   return project;
 }
 
@@ -419,6 +452,14 @@ export async function importProject(jsonString) {
 // アセット管理
 // ============================
 
+// デフォルト素材をプロジェクトにコピー
+export async function copyDefaultAssets(projectId) {
+  if (isElectron()) {
+    return await window.electronAPI.copyDefaultAssets(projectId);
+  }
+  return apiPost("/api/copy-default-assets", { projectId });
+}
+
 // アセットをアップロード（type: "chara" | "bg"）
 export async function uploadAsset(projectId, type, file) {
   const base64 = await fileToBase64(file);
@@ -449,14 +490,19 @@ export async function deleteAsset(projectId, type, filename) {
 // アセットの表示用URLを取得
 export function getAssetUrl(projectId, type, filename) {
   if (!projectId || !filename) return null;
-  // 絶対パス（/assets/...）はデフォルト素材としてそのまま返す
-  if (filename.startsWith("/")) return filename;
+  // 絶対パスやURLはそのまま返す
+  if (filename.startsWith("/") || filename.startsWith("http")) return filename;
   // ゲームモード（ビルド済みゲーム）: game-assets/ から配信
   if (projectId === "__game__") {
     return `./game-assets/${type}/${filename}`;
   }
-  // Electron: file:// プロトコルで直接アクセス（非同期APIもあるが同期的にパス生成）
-  // ブラウザ: Vite dev server のミドルウェアから配信
+  // Electron 本番環境（パッケージ済み）: file:// で直接参照
+  if (_isPackaged && _projectsDirCache) {
+    const dirName = _dirNameCache[projectId] || projectId;
+    const filePath = `${_projectsDirCache}/${dirName}/assets/${type}/${filename}`;
+    return `file:///${filePath.replace(/\\/g, "/")}`;
+  }
+  // ブラウザ（開発時）: Vite dev server のミドルウェアから配信
   return `/project-assets/${projectId}/${type}/${filename}`;
 }
 
