@@ -17,6 +17,7 @@ import ScreenEffects from "../effects/ScreenEffects";
 import useAudio from "../audio/useAudio";
 import { saveGame, loadGame, listSlots } from "../save/SaveManager";
 import { unlock as unlockCG } from "../save/UnlockStore";
+import { getAssetUrl } from "../project/ProjectStore";
 import HelpModal from "../components/HelpModal";
 import { NOVEL_HELP } from "../data/helpContent";
 
@@ -107,6 +108,8 @@ export default function NovelEngine({ script, characters, bgStyles, onBack, proj
         startDialog(index);
       } else if (cmd.type === CMD.CHOICE) {
         log("choice 表示:", cmd.options?.length, "択 →", cmd.options?.map((o) => o.text).join(" / "));
+        dispatch({ type: ACTION.SET_DISPLAYED_TEXT, payload: "" });
+        dispatch({ type: ACTION.SET_SPEAKER, payload: "" });
         dispatch({ type: ACTION.SHOW_CHOICE, payload: cmd.options });
         dispatch({ type: ACTION.SET_SKIP_MODE, payload: false });
       }
@@ -499,7 +502,7 @@ export default function NovelEngine({ script, characters, bgStyles, onBack, proj
           cursor: "pointer",
         }}>
           <img
-            src={`./assets/${state.showCG.src}`}
+            src={getAssetUrl(projectId, "cg", state.showCG.src) || `./assets/${state.showCG.src}`}
             alt=""
             style={{ maxWidth: "95%", maxHeight: "95%", objectFit: "contain" }}
             onError={(e) => {

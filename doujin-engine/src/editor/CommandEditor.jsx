@@ -9,7 +9,7 @@ const FIELD_DEFS = {
     { key: "text", label: "テキスト", type: "textarea", placeholder: "セリフを入力…" },
   ],
   [CMD.BG]: [
-    { key: "src", label: "背景キー", type: "text", placeholder: "school_gate, classroom, ...", autocomplete: "bgKeys" },
+    { key: "src", label: "背景キー", type: "catalog_select", placeholder: "背景を選択", autocomplete: "bgKeys" },
     { key: "transition", label: "トランジション", type: "select", options: ["fade", "crossfade", "wipe_left", "wipe_right", "slide_left", "slide_right", "none"] },
   ],
   [CMD.BGM]: [
@@ -43,6 +43,7 @@ const FIELD_DEFS = {
     { key: "name", label: "エフェクト", type: "select", options: ["shake", "flash", "fadeout", "fadein", "whitefade"] },
     { key: "color", label: "色", type: "text", placeholder: "#000" },
     { key: "time", label: "時間 (ms)", type: "number", min: 0, step: 100 },
+    { key: "clearText", label: "台詞をクリア", type: "checkbox" },
   ],
   [CMD.WAIT]: [
     { key: "time", label: "待機時間 (ms)", type: "number", min: 0, step: 100 },
@@ -564,6 +565,15 @@ export default function CommandEditor({ command, index, onChange, characters, sc
       <div style={styles.header}>
         <span style={styles.indexBadge}>#{index}</span>
         <span style={styles.typeBadge}>{command.type}</span>
+        <label style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: command.disabled ? "#EF5350" : "#888", cursor: "pointer" }}>
+          <input
+            type="checkbox"
+            checked={!command.disabled}
+            onChange={(e) => onChange({ ...command, disabled: !e.target.checked })}
+            style={{ accentColor: "#C8A870" }}
+          />
+          {command.disabled ? "無効" : "有効"}
+        </label>
       </div>
 
       {/* フィールド */}

@@ -197,6 +197,13 @@ export function processCommand(script, index, dispatch, labelMap) {
       log("processCommand: null コマンド at index", i);
       break;
     }
+    // 無効化されたコマンドはスキップ
+    if (cmd.disabled) {
+      log("processCommand: disabled スキップ →", cmdStr(cmd), "at index", i);
+      i++;
+      processed++;
+      continue;
+    }
     // dialog / choice はここで中断
     if (cmd.type === CMD.DIALOG || cmd.type === CMD.CHOICE) {
       log("processCommand: ブロッキング検出 →", cmdStr(cmd), "at index", i, `(${processed}件処理済)`);
@@ -272,6 +279,10 @@ export function processCommand(script, index, dispatch, labelMap) {
         log("processCommand: wait ブロッキング at index", i, ", time =", cmd.time);
         return { index: i, blocking: "wait" };
       case CMD.EFFECT:
+        if (cmd.clearText) {
+          dispatch({ type: ACTION.SET_DISPLAYED_TEXT, payload: "" });
+          dispatch({ type: ACTION.SET_SPEAKER, payload: "" });
+        }
         dispatch({
           type: ACTION.START_EFFECT,
           payload: {

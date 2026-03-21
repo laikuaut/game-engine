@@ -70,7 +70,7 @@ function SceneChildItem({ cmd, childIndex, sceneName, scriptIndex, isSelected, o
   );
 }
 
-export default function ScriptList({ script, selectedIndex, onSelect, onAdd, onRemove, onMove, onPlayFrom, storyScenes, onSelectSceneChild, selectedSceneChild }) {
+export default function ScriptList({ script, selectedIndex, onSelect, onAdd, onRemove, onMove, onPlayFrom, onToggleDisabled, storyScenes, onSelectSceneChild, selectedSceneChild }) {
   const [showAddMenu, setShowAddMenu] = useState(false);
   const [contextMenu, setContextMenu] = useState(null);
   const [expandedScenes, setExpandedScenes] = useState(new Set());
@@ -187,6 +187,8 @@ export default function ScriptList({ script, selectedIndex, onSelect, onAdd, onR
                   ...styles.item,
                   background: selected ? "rgba(200,180,140,0.1)" : "transparent",
                   borderLeft: selected ? "3px solid #E8D4B0" : "3px solid transparent",
+                  opacity: cmd.disabled ? 0.35 : 1,
+                  textDecoration: cmd.disabled ? "line-through" : "none",
                 }}
               >
                 <span style={styles.index}>{i}</span>
@@ -260,6 +262,14 @@ export default function ScriptList({ script, selectedIndex, onSelect, onAdd, onR
           >
             編集
           </button>
+          {onToggleDisabled && (
+            <button
+              style={styles.contextMenuItem}
+              onClick={() => { onToggleDisabled(contextMenu.index); setContextMenu(null); }}
+            >
+              {script[contextMenu.index]?.disabled ? "有効にする" : "無効にする"}
+            </button>
+          )}
           <button
             style={styles.contextMenuItem}
             onClick={() => { onRemove(contextMenu.index); setContextMenu(null); }}

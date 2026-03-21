@@ -601,6 +601,11 @@ export default function EditorScreen({ onBack, initialScript, projectId, project
               onRemove={removeCommand}
               onMove={moveCommand}
               onPlayFrom={handlePlayFrom}
+              onToggleDisabled={(i) => {
+                const newScript = [...script];
+                newScript[i] = { ...newScript[i], disabled: !newScript[i].disabled };
+                persistScript(newScript);
+              }}
               storyScenes={storyScenes}
               selectedSceneChild={selectedSceneChild}
               onSelectSceneChild={(sceneId, childIndex, parentIndex) => {

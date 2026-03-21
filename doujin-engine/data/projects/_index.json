@@ -24,18 +24,6 @@
     "minigameCount": 2
   },
   {
-    "id": "mn0au1i8h6c78d",
-    "name": "感情がないはずの彼女の身体を俺は一つずつ買っていく",
-    "dirName": "感情がないはずの彼女の身体を俺は一つずつ買っていく",
-    "description": "",
-    "gameType": "novel",
-    "createdAt": "2026-03-21T12:23:21.632Z",
-    "updatedAt": "2026-03-21T12:53:02.617Z",
-    "scriptLength": 5,
-    "mapCount": 0,
-    "minigameCount": 0
-  },
-  {
     "id": "mn0f16cnumujfs",
     "name": "機能デモ（全コマンド網羅）",
     "dirName": "機能デモ（全コマンド網羅）",
@@ -44,6 +32,30 @@
     "createdAt": "2026-03-21T14:20:52.967Z",
     "updatedAt": "2026-03-21T14:20:53.161Z",
     "scriptLength": 196,
+    "mapCount": 0,
+    "minigameCount": 0
+  },
+  {
+    "id": "mn0au1i8h6c78d",
+    "name": "感情がないはずの彼女の身体を俺は一つずつ買っていく",
+    "dirName": "感情がないはずの彼女の身体を俺は一つずつ買っていく",
+    "description": "所有と触覚のノベルゲーム — 4バッドエンド分岐",
+    "gameType": "novel",
+    "createdAt": "2026-03-21T12:00:00.000Z",
+    "updatedAt": "2026-03-21T15:49:02.056Z",
+    "scriptLength": 36,
+    "mapCount": 0,
+    "minigameCount": 0
+  },
+  {
+    "id": "mn0i21trjoq1pu",
+    "name": "aaa",
+    "dirName": "aaa",
+    "description": "",
+    "gameType": "novel",
+    "createdAt": "2026-03-21T15:45:32.607Z",
+    "updatedAt": "2026-03-21T15:45:32.607Z",
+    "scriptLength": 2,
     "mapCount": 0,
     "minigameCount": 0
   }
