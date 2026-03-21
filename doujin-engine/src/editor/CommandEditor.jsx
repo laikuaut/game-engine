@@ -25,16 +25,16 @@ const FIELD_DEFS = {
     { key: "volume", label: "音量 (0-1)", type: "number", min: 0, max: 1, step: 0.1 },
   ],
   [CMD.CHARA]: [
-    { key: "id", label: "キャラID", type: "text", placeholder: "sakura", autocomplete: "charaIds" },
+    { key: "id", label: "キャラID", type: "catalog_select", placeholder: "キャラを選択", autocomplete: "charaIds" },
     { key: "position", label: "位置", type: "select", options: ["left", "center", "right"] },
     { key: "expression", label: "表情", type: "expression_select", autocomplete: "expressions" },
   ],
   [CMD.CHARA_MOD]: [
-    { key: "id", label: "キャラID", type: "text", placeholder: "sakura", autocomplete: "charaIds" },
+    { key: "id", label: "キャラID", type: "catalog_select", placeholder: "キャラを選択", autocomplete: "charaIds" },
     { key: "expression", label: "表情", type: "expression_select", autocomplete: "expressions" },
   ],
   [CMD.CHARA_HIDE]: [
-    { key: "id", label: "キャラID", type: "text", placeholder: "sakura", autocomplete: "charaIds" },
+    { key: "id", label: "キャラID", type: "catalog_select", placeholder: "キャラを選択", autocomplete: "charaIds" },
   ],
   [CMD.CHOICE]: [],
   [CMD.EFFECT]: [
@@ -78,7 +78,8 @@ function FieldInput({ field, value, onChange, suggestions }) {
   const optionStyle = { background: "#1a1a2e", color: "#E8E4DC" };
 
   // バリデーション: 候補がある場合、値が候補に含まれないなら警告表示
-  const hasWarning = suggestions && suggestions.length > 0 && value && !suggestions.includes(value);
+  const suggestionValues = suggestions?.map((s) => typeof s === "string" ? s : s.value) || [];
+  const hasWarning = suggestions && suggestions.length > 0 && value && !suggestionValues.includes(value);
 
   switch (field.type) {
     case "textarea":
@@ -124,9 +125,11 @@ function FieldInput({ field, value, onChange, suggestions }) {
             style={{ ...commonStyle, cursor: "pointer" }}
           >
             <option value="" style={optionStyle}>-- 選択 --</option>
-            {suggestions.map((name) => (
-              <option key={name} value={name} style={optionStyle}>{name}</option>
-            ))}
+            {suggestions.map((item) => {
+              const v = typeof item === "string" ? item : item.value;
+              const l = typeof item === "string" ? item : item.label;
+              return <option key={v} value={v} style={optionStyle}>{l}</option>;
+            })}
           </select>
         );
       }
@@ -504,9 +507,11 @@ export default function CommandEditor({ command, index, onChange, characters, sc
   // オートコンプリート候補を構築
   const suggestionMap = useMemo(() => {
     const map = {};
-    // キャラID一覧
-    const charaIds = Object.keys(characters || {});
-    map.charaIds = charaIds;
+    // キャラID一覧（名前付き）
+    map.charaIds = Object.entries(characters || {}).map(([id, c]) => ({
+      value: id,
+      label: `${id} (${c.name || id})`,
+    }));
 
     // 選択中キャラの表情一覧（expressions + sprites の両方からキーを収集）
     const selectedCharaId = command.id;
