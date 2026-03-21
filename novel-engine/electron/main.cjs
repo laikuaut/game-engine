@@ -97,6 +97,86 @@ ipcMain.handle("select-folder", async (event, { title }) => {
   return result.filePaths[0];
 });
 
+// === プロジェクト管理 ===
+
+function getProjectsDir() {
+  const dir = path.join(app.getPath("userData"), "projects");
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  return dir;
+}
+
+function getProjectsIndexPath() {
+  return path.join(getProjectsDir(), "_index.json");
+}
+
+// プロジェクト一覧の読み書き
+function readProjectsIndex() {
+  const p = getProjectsIndexPath();
+  if (!fs.existsSync(p)) return [];
+  try {
+    return JSON.parse(fs.readFileSync(p, "utf-8"));
+  } catch {
+    return [];
+  }
+}
+
+function writeProjectsIndex(projects) {
+  fs.writeFileSync(getProjectsIndexPath(), JSON.stringify(projects, null, 2), "utf-8");
+}
+
+// プロジェクト一覧取得
+ipcMain.handle("project-list", async () => {
+  return readProjectsIndex();
+});
+
+// プロジェクト取得（ID 指定）
+ipcMain.handle("project-get", async (event, id) => {
+  const filePath = path.join(getProjectsDir(), `${id}.json`);
+  if (!fs.existsSync(filePath)) return null;
+  try {
+    return JSON.parse(fs.readFileSync(filePath, "utf-8"));
+  } catch {
+    return null;
+  }
+});
+
+// プロジェクト保存（作成 or 更新）
+ipcMain.handle("project-save", async (event, project) => {
+  const filePath = path.join(getProjectsDir(), `${project.id}.json`);
+  fs.writeFileSync(filePath, JSON.stringify(project, null, 2), "utf-8");
+
+  // インデックス更新
+  const index = readProjectsIndex();
+  const meta = {
+    id: project.id,
+    name: project.name,
+    description: project.description || "",
+    gameType: project.gameType || "novel",
+    createdAt: project.createdAt,
+    updatedAt: project.updatedAt,
+    scriptLength: project.script?.length || 0,
+    mapCount: project.maps?.length || 0,
+    minigameCount: project.minigames?.length || 0,
+  };
+  const existing = index.findIndex((p) => p.id === project.id);
+  if (existing >= 0) {
+    index[existing] = meta;
+  } else {
+    index.push(meta);
+  }
+  writeProjectsIndex(index);
+  return { success: true };
+});
+
+// プロジェクト削除
+ipcMain.handle("project-delete", async (event, id) => {
+  const filePath = path.join(getProjectsDir(), `${id}.json`);
+  if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+  const index = readProjectsIndex().filter((p) => p.id !== id);
+  writeProjectsIndex(index);
+  return { success: true };
+});
+
 // アプリ情報
 ipcMain.handle("get-app-info", async () => {
   return {

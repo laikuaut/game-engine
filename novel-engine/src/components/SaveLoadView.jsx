@@ -1,6 +1,6 @@
 import { ACTION } from "../engine/constants";
 
-export default function SaveLoadView({ saves, mode, dispatch }) {
+export default function SaveLoadView({ saves, mode, dispatch, onSave, onLoad }) {
   return (
     <div
       onClick={(e) => e.stopPropagation()}
@@ -36,8 +36,13 @@ export default function SaveLoadView({ saves, mode, dispatch }) {
           <button
             key={i}
             onClick={() => {
-              if (mode === "save") dispatch({ type: ACTION.SAVE_GAME, payload: { slot: i } });
-              else if (save) dispatch({ type: ACTION.LOAD_GAME, payload: { slot: i } });
+              if (mode === "save") {
+                if (onSave) onSave(i);
+                else dispatch({ type: ACTION.SAVE_GAME, payload: { slot: i } });
+              } else if (save) {
+                if (onLoad) onLoad(i);
+                else dispatch({ type: ACTION.LOAD_GAME, payload: { slot: i } });
+              }
             }}
             style={{
               background: save ? "rgba(200,180,140,0.08)" : "rgba(255,255,255,0.03)",

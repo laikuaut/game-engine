@@ -1,7 +1,12 @@
-// プロジェクトデータの CRUD（localStorage ベース）
+// プロジェクトデータの CRUD
+// Electron 環境: IPC 経由でファイルシステムに保存
+// ブラウザ環境: localStorage にフォールバック
 
 const STORAGE_KEY = "doujin-engine-projects";
 const ACTIVE_KEY = "doujin-engine-active-project";
+
+// Electron 環境判定
+const isElectron = () => !!window.electronAPI?.isElectron;
 
 // デフォルトのプロジェクトテンプレート
 const DEFAULT_SCRIPT = [
@@ -39,8 +44,10 @@ function generateId() {
   return Date.now().toString(36) + Math.random().toString(36).substring(2, 8);
 }
 
-// 全プロジェクト一覧を取得
-export function getProjects() {
+// ============================
+// ブラウザ用（localStorage）
+// ============================
+function getProjectsLocal() {
   try {
     const data = localStorage.getItem(STORAGE_KEY);
     return data ? JSON.parse(data) : [];
@@ -49,64 +56,163 @@ export function getProjects() {
   }
 }
 
-// プロジェクト一覧を保存
-function saveProjects(projects) {
+function saveProjectsLocal(projects) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
 }
 
-// プロジェクトを ID で取得
-export function getProject(id) {
-  return getProjects().find((p) => p.id === id) || null;
+function getProjectLocal(id) {
+  return getProjectsLocal().find((p) => p.id === id) || null;
 }
 
+// ============================
+// 統一 API（Electron は非同期、ブラウザは同期）
+// すべて async に統一する
+// ============================
+
+// 全プロジェクト一覧を取得（メタデータのみ）
+export async function getProjects() {
+  if (isElectron()) {
+    return await window.electronAPI.projectList();
+  }
+  return getProjectsLocal();
+}
+
+// プロジェクトを ID で取得（フルデータ）
+export async function getProject(id) {
+  if (isElectron()) {
+    return await window.electronAPI.projectGet(id);
+  }
+  return getProjectLocal(id);
+}
+
+// プロジェクトを保存（Electron: ファイル, ブラウザ: localStorage）
+async function persistProject(project) {
+  if (isElectron()) {
+    await window.electronAPI.projectSave(project);
+  } else {
+    const projects = getProjectsLocal();
+    const idx = projects.findIndex((p) => p.id === project.id);
+    if (idx >= 0) {
+      projects[idx] = project;
+    } else {
+      projects.push(project);
+    }
+    saveProjectsLocal(projects);
+  }
+}
+
+// プロジェクトを削除
+async function removeProject(id) {
+  if (isElectron()) {
+    await window.electronAPI.projectDelete(id);
+  } else {
+    const projects = getProjectsLocal().filter((p) => p.id !== id);
+    saveProjectsLocal(projects);
+  }
+}
+
+// ゲーム種別ごとのテンプレート
+const GAME_TYPE_TEMPLATES = {
+  novel: {
+    script: DEFAULT_SCRIPT,
+    characters: DEFAULT_CHARACTERS,
+    bgStyles: DEFAULT_BG_STYLES,
+  },
+  rpg: {
+    script: [
+      { type: "bg", src: "field", transition: "fade" },
+      { type: "dialog", speaker: "", text: "RPGプロジェクト開始…" },
+    ],
+    characters: {},
+    bgStyles: DEFAULT_BG_STYLES,
+    maps: [
+      {
+        name: "スタートマップ",
+        width: 12,
+        height: 10,
+        tileSize: 32,
+        layers: [
+          {
+            name: "地形",
+            tiles: Array.from({ length: 10 }, () =>
+              Array.from({ length: 12 }, () => "grass")
+            ),
+          },
+          {
+            name: "オブジェクト",
+            tiles: Array.from({ length: 10 }, () =>
+              Array.from({ length: 12 }, () => null)
+            ),
+          },
+        ],
+        events: [],
+      },
+    ],
+    battleData: {
+      enemies: [],
+      skills: [],
+      battles: [],
+    },
+  },
+  minigame: {
+    script: [
+      { type: "dialog", speaker: "", text: "ミニゲームプロジェクト開始…" },
+    ],
+    characters: {},
+    bgStyles: DEFAULT_BG_STYLES,
+    minigames: [],
+  },
+};
+
+// ゲーム種別のラベル
+export const GAME_TYPE_LABELS = {
+  novel: "ノベル",
+  rpg: "RPG",
+  minigame: "ミニゲーム",
+};
+
 // 新規プロジェクト作成
-export function createProject(name, description = "") {
-  const projects = getProjects();
+export async function createProject(name, description = "", gameType = "novel") {
+  const template = GAME_TYPE_TEMPLATES[gameType] || GAME_TYPE_TEMPLATES.novel;
   const project = {
     id: generateId(),
     name,
     description,
+    gameType,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
-    script: DEFAULT_SCRIPT,
-    characters: DEFAULT_CHARACTERS,
-    bgStyles: DEFAULT_BG_STYLES,
+    ...JSON.parse(JSON.stringify(template)),
     saves: [null, null, null],
   };
-  projects.push(project);
-  saveProjects(projects);
+  await persistProject(project);
   return project;
 }
 
 // プロジェクト更新（部分更新可）
-export function updateProject(id, updates) {
-  const projects = getProjects();
-  const index = projects.findIndex((p) => p.id === id);
-  if (index === -1) return null;
-  projects[index] = {
-    ...projects[index],
+export async function updateProject(id, updates) {
+  const existing = await getProject(id);
+  if (!existing) return null;
+  const updated = {
+    ...existing,
     ...updates,
     updatedAt: new Date().toISOString(),
   };
-  saveProjects(projects);
-  return projects[index];
+  await persistProject(updated);
+  return updated;
 }
 
 // プロジェクト削除
-export function deleteProject(id) {
-  const projects = getProjects().filter((p) => p.id !== id);
-  saveProjects(projects);
-  // アクティブプロジェクトだった場合はクリア
+export async function deleteProject(id) {
+  await removeProject(id);
   if (getActiveProjectId() === id) {
     setActiveProjectId(null);
   }
 }
 
 // プロジェクト複製
-export function duplicateProject(id) {
-  const source = getProject(id);
+export async function duplicateProject(id) {
+  const source = await getProject(id);
   if (!source) return null;
-  const projects = getProjects();
   const project = {
     ...JSON.parse(JSON.stringify(source)),
     id: generateId(),
@@ -115,8 +221,7 @@ export function duplicateProject(id) {
     updatedAt: new Date().toISOString(),
     saves: [null, null, null],
   };
-  projects.push(project);
-  saveProjects(projects);
+  await persistProject(project);
   return project;
 }
 
@@ -133,9 +238,47 @@ export function setActiveProjectId(id) {
   }
 }
 
+// プロジェクトをエクスポート（JSON 文字列を返す）
+export async function exportProject(id) {
+  const project = await getProject(id);
+  if (!project) return null;
+  const exported = {
+    ...project,
+    _exportVersion: "1.0",
+    _exportedAt: new Date().toISOString(),
+  };
+  delete exported.saves;
+  return JSON.stringify(exported, null, 2);
+}
+
+// プロジェクトをインポート（JSON 文字列から新規作成）
+export async function importProject(jsonString) {
+  try {
+    const data = JSON.parse(jsonString);
+    if (!data.name) throw new Error("プロジェクト名がありません");
+
+    const project = {
+      ...data,
+      id: generateId(),
+      name: data.name + "（インポート）",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      saves: [null, null, null],
+    };
+    delete project._exportVersion;
+    delete project._exportedAt;
+
+    await persistProject(project);
+    return project;
+  } catch (e) {
+    console.error("インポート失敗:", e);
+    return null;
+  }
+}
+
 // デモプロジェクトを初期作成（初回起動時用）
-export function ensureDemoProject() {
-  const projects = getProjects();
+export async function ensureDemoProject() {
+  const projects = await getProjects();
   if (projects.length > 0) return;
   const demo = createProject("デモプロジェクト", "エンジンのデモシナリオ");
   // デモ用のフルスクリプトを設定

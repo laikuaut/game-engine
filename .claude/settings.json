@@ -14,7 +14,8 @@
       "Bash(find /c/Users/syout/OneDrive/ドキュメント/20：開発/20：ゲーム/game-engine/novel-engine/src -type f \\\\\\(-name *.jsx -o -name *.js -o -name *.ts -o -name *.tsx \\\\\\))",
       "Bash(wc -l /c/Users/syout/OneDrive/ドキュメント/20：開発/20：ゲーム/game-engine/novel-engine/src/editor/*.jsx)",
       "Bash(wc -l /c/Users/syout/OneDrive/ドキュメント/20：開発/20：ゲーム/game-engine/novel-engine/src/**/*.jsx)",
-      "Bash(grep -l \"TODO\\\\|FIXME\\\\|XXX\\\\|STUB\\\\|HACK\" /c/Users/syout/OneDrive/ドキュメント/20：開発/20：ゲーム/game-engine/novel-engine/src/**/*.jsx)"
+      "Bash(grep -l \"TODO\\\\|FIXME\\\\|XXX\\\\|STUB\\\\|HACK\" /c/Users/syout/OneDrive/ドキュメント/20：開発/20：ゲーム/game-engine/novel-engine/src/**/*.jsx)",
+      "Bash(find c:UserssyoutOneDriveドキュメント20：開発20：ゲームgame-enginenovel-enginesrc -type f -name *.jsx -o -name *.js)"
     ],
     "additionalDirectories": [
       "c:\\Users\\syout\\OneDrive\\ドキュメント\\20：開発\\20：ゲーム\\game-engine\\novel-engine\\docs"

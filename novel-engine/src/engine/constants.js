@@ -13,6 +13,10 @@ export const CMD = {
   WAIT: "wait",
   JUMP: "jump",
   LABEL: "label",
+  CG: "cg",
+  NVL_ON: "nvl_on",
+  NVL_OFF: "nvl_off",
+  NVL_CLEAR: "nvl_clear",
 };
 
 // アクションタイプ定数
@@ -40,4 +44,19 @@ export const ACTION = {
   SAVE_GAME: "SAVE_GAME",
   LOAD_GAME: "LOAD_GAME",
   CLOSE_ALL_UI: "CLOSE_ALL_UI",
+  // wait / jump / label
+  START_WAIT: "START_WAIT",
+  END_WAIT: "END_WAIT",
+  // 画面エフェクト
+  START_EFFECT: "START_EFFECT",
+  EFFECT_END: "EFFECT_END",
+  // BGM 停止
+  STOP_BGM: "STOP_BGM",
+  // 音量
+  SET_VOLUME_MASTER: "SET_VOLUME_MASTER",
+  SET_VOLUME_BGM: "SET_VOLUME_BGM",
+  SET_VOLUME_SE: "SET_VOLUME_SE",
+  // スキップ
+  SET_SKIP_MODE: "SET_SKIP_MODE",
+  SET_CTRL_PRESSED: "SET_CTRL_PRESSED",
 };

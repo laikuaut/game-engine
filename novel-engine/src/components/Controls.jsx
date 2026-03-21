@@ -13,8 +13,10 @@ const btnStyle = (active) => ({
   fontFamily: "monospace",
 });
 
-export default function Controls({ autoMode, dispatch }) {
+export default function Controls({ autoMode, skipMode, dispatch }) {
+  const isSkipping = skipMode;
   const buttons = [
+    { label: isSkipping ? "SKIP ●" : "SKIP", action: ACTION.SET_SKIP_MODE, payload: !skipMode, active: isSkipping },
     { label: autoMode ? "AUTO ●" : "AUTO", action: ACTION.TOGGLE_AUTO, active: autoMode },
     { label: "LOG", action: ACTION.TOGGLE_BACKLOG },
     { label: "SAVE", action: ACTION.SHOW_SAVELOAD, payload: "save" },

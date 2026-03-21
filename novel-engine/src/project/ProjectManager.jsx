@@ -1,46 +1,97 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   getProjects,
   createProject,
   deleteProject,
   duplicateProject,
+  exportProject,
+  importProject,
   ensureDemoProject,
+  GAME_TYPE_LABELS,
 } from "./ProjectStore";
+
+const BADGE_COLORS = {
+  novel: { bg: "rgba(200,180,140,0.12)", text: "#C8A870", border: "rgba(200,180,140,0.3)" },
+  rpg: { bg: "rgba(100,180,255,0.12)", text: "#64B4FF", border: "rgba(100,180,255,0.3)" },
+  minigame: { bg: "rgba(140,220,140,0.12)", text: "#8CDC8C", border: "rgba(140,220,140,0.3)" },
+};
 
 export default function ProjectManager({ onSelectProject }) {
   const [projects, setProjects] = useState([]);
   const [showCreate, setShowCreate] = useState(false);
   const [newName, setNewName] = useState("");
   const [newDesc, setNewDesc] = useState("");
+  const [newGameType, setNewGameType] = useState("novel");
   const [confirmDelete, setConfirmDelete] = useState(null);
+  const [importError, setImportError] = useState(null);
+  const fileInputRef = useRef(null);
 
   // 初期化 & プロジェクト一覧読み込み
   useEffect(() => {
-    ensureDemoProject();
-    setProjects(getProjects());
+    (async () => {
+      await ensureDemoProject();
+      setProjects(await getProjects());
+    })();
   }, []);
 
-  const refresh = () => setProjects(getProjects());
+  const refresh = async () => setProjects(await getProjects());
 
-  const handleCreate = () => {
+  const handleCreate = async () => {
     if (!newName.trim()) return;
-    const project = createProject(newName.trim(), newDesc.trim());
+    const project = await createProject(newName.trim(), newDesc.trim(), newGameType);
     setNewName("");
     setNewDesc("");
+    setNewGameType("novel");
     setShowCreate(false);
-    refresh();
+    await refresh();
     onSelectProject(project.id);
   };
 
-  const handleDuplicate = (id) => {
-    duplicateProject(id);
-    refresh();
+  const handleDuplicate = async (id) => {
+    await duplicateProject(id);
+    await refresh();
   };
 
-  const handleDelete = (id) => {
-    deleteProject(id);
+  const handleDelete = async (id) => {
+    await deleteProject(id);
     setConfirmDelete(null);
-    refresh();
+    await refresh();
+  };
+
+  const handleExport = async (id) => {
+    const json = await exportProject(id);
+    if (!json) return;
+    const blob = new Blob([json], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    const project = projects.find((p) => p.id === id);
+    a.href = url;
+    a.download = `${project?.name || "project"}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImportClick = () => {
+    setImportError(null);
+    fileInputRef.current?.click();
+  };
+
+  const handleImportFile = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async (ev) => {
+      const result = await importProject(ev.target.result);
+      if (result) {
+        setImportError(null);
+        await refresh();
+      } else {
+        setImportError("インポートに失敗しました。ファイル形式を確認してください。");
+      }
+    };
+    reader.readAsText(file);
+    // 同じファイルを再選択できるようにリセット
+    e.target.value = "";
   };
 
   return (
@@ -53,6 +104,73 @@ export default function ProjectManager({ onSelectProject }) {
         <p style={styles.subtitle}>プロジェクト管理</p>
       </div>
 
+      {/* 新規作成エリア */}
+      <div style={styles.topArea}>
+        {showCreate ? (
+          <div style={styles.createForm}>
+            <input
+              type="text"
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              placeholder="プロジェクト名"
+              style={styles.input}
+              autoFocus
+              onKeyDown={(e) => e.key === "Enter" && handleCreate()}
+            />
+            <input
+              type="text"
+              value={newDesc}
+              onChange={(e) => setNewDesc(e.target.value)}
+              placeholder="説明（任意）"
+              style={styles.input}
+              onKeyDown={(e) => e.key === "Enter" && handleCreate()}
+            />
+            <div style={styles.gameTypeRow}>
+              <span style={styles.gameTypeLabel}>ゲーム種別:</span>
+              {Object.entries(GAME_TYPE_LABELS).map(([key, label]) => (
+                <button
+                  key={key}
+                  onClick={() => setNewGameType(key)}
+                  style={{
+                    ...styles.gameTypeBtn,
+                    ...(newGameType === key ? styles.gameTypeBtnActive : {}),
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <div style={styles.formBtns}>
+              <button onClick={handleCreate} style={styles.createBtn}>
+                作成
+              </button>
+              <button onClick={() => setShowCreate(false)} style={styles.cancelFormBtn}>
+                キャンセル
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div style={styles.topBtns}>
+            <button onClick={() => setShowCreate(true)} style={styles.newBtn}>
+              ＋ 新規プロジェクト
+            </button>
+            <button onClick={handleImportClick} style={styles.importBtn}>
+              インポート
+            </button>
+          </div>
+        )}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".json"
+          style={{ display: "none" }}
+          onChange={handleImportFile}
+        />
+        {importError && (
+          <div style={styles.errorMsg}>{importError}</div>
+        )}
+      </div>
+
       {/* プロジェクト一覧 */}
       <div style={styles.listArea}>
         {projects.length === 0 ? (
@@ -62,10 +180,22 @@ export default function ProjectManager({ onSelectProject }) {
             <div key={p.id} style={styles.card}>
               {/* カード本体（クリックで選択） */}
               <div style={styles.cardMain} onClick={() => onSelectProject(p.id)}>
-                <div style={styles.cardName}>{p.name}</div>
+                <div style={styles.cardNameRow}>
+                  <div style={styles.cardName}>{p.name}</div>
+                  <span style={{
+                    ...styles.gameTypeBadge,
+                    background: BADGE_COLORS[p.gameType]?.bg || "rgba(255,255,255,0.08)",
+                    color: BADGE_COLORS[p.gameType]?.text || "#aaa",
+                    border: `1px solid ${BADGE_COLORS[p.gameType]?.border || "rgba(255,255,255,0.15)"}`,
+                  }}>
+                    {GAME_TYPE_LABELS[p.gameType] || "ノベル"}
+                  </span>
+                </div>
                 {p.description && <div style={styles.cardDesc}>{p.description}</div>}
                 <div style={styles.cardMeta}>
                   <span>{p.script?.length || 0} コマンド</span>
+                  {p.maps?.length > 0 && <span>{p.maps.length} マップ</span>}
+                  {p.minigames?.length > 0 && <span>{p.minigames.length} ミニゲーム</span>}
                   <span>更新: {new Date(p.updatedAt).toLocaleDateString("ja-JP")}</span>
                 </div>
               </div>
@@ -77,6 +207,13 @@ export default function ProjectManager({ onSelectProject }) {
                   title="複製"
                 >
                   複製
+                </button>
+                <button
+                  onClick={() => handleExport(p.id)}
+                  style={styles.actionBtn}
+                  title="エクスポート"
+                >
+                  出力
                 </button>
                 {confirmDelete === p.id ? (
                   <div style={styles.confirmRow}>
@@ -99,43 +236,6 @@ export default function ProjectManager({ onSelectProject }) {
               </div>
             </div>
           ))
-        )}
-      </div>
-
-      {/* 新規作成ボタン / フォーム */}
-      <div style={styles.bottomArea}>
-        {showCreate ? (
-          <div style={styles.createForm}>
-            <input
-              type="text"
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              placeholder="プロジェクト名"
-              style={styles.input}
-              autoFocus
-              onKeyDown={(e) => e.key === "Enter" && handleCreate()}
-            />
-            <input
-              type="text"
-              value={newDesc}
-              onChange={(e) => setNewDesc(e.target.value)}
-              placeholder="説明（任意）"
-              style={styles.input}
-              onKeyDown={(e) => e.key === "Enter" && handleCreate()}
-            />
-            <div style={styles.formBtns}>
-              <button onClick={handleCreate} style={styles.createBtn}>
-                作成
-              </button>
-              <button onClick={() => setShowCreate(false)} style={styles.cancelFormBtn}>
-                キャンセル
-              </button>
-            </div>
-          </div>
-        ) : (
-          <button onClick={() => setShowCreate(true)} style={styles.newBtn}>
-            ＋ 新規プロジェクト
-          </button>
         )}
       </div>
 
@@ -188,6 +288,15 @@ const styles = {
     letterSpacing: 3,
     marginTop: 8,
   },
+  topArea: {
+    padding: "0 48px 12px",
+    zIndex: 1,
+    flexShrink: 0,
+  },
+  topBtns: {
+    display: "flex",
+    gap: 8,
+  },
   listArea: {
     flex: 1,
     overflowY: "auto",
@@ -212,11 +321,24 @@ const styles = {
     padding: "14px 20px 10px",
     cursor: "pointer",
   },
+  cardNameRow: {
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+  },
   cardName: {
     fontSize: 16,
     color: "#E8D4B0",
     fontWeight: 600,
     letterSpacing: 1,
+  },
+  gameTypeBadge: {
+    fontSize: 10,
+    padding: "2px 8px",
+    borderRadius: 3,
+    letterSpacing: 1,
+    fontFamily: "monospace",
+    flexShrink: 0,
   },
   cardDesc: {
     fontSize: 12,
@@ -282,13 +404,8 @@ const styles = {
     cursor: "pointer",
     fontFamily: "inherit",
   },
-  bottomArea: {
-    padding: "12px 48px 16px",
-    zIndex: 1,
-    flexShrink: 0,
-  },
   newBtn: {
-    width: "100%",
+    flex: 1,
     background: "transparent",
     border: "1px dashed rgba(200,180,140,0.3)",
     color: "#C8A870",
@@ -299,6 +416,23 @@ const styles = {
     letterSpacing: 2,
     fontFamily: "inherit",
     transition: "all 0.2s",
+  },
+  importBtn: {
+    background: "rgba(255,255,255,0.04)",
+    border: "1px solid rgba(255,255,255,0.15)",
+    color: "#aaa",
+    padding: "12px 20px",
+    borderRadius: 4,
+    fontSize: 13,
+    cursor: "pointer",
+    fontFamily: "inherit",
+    letterSpacing: 1,
+    transition: "all 0.2s",
+  },
+  errorMsg: {
+    color: "#EF5350",
+    fontSize: 12,
+    marginTop: 8,
   },
   createForm: {
     display: "flex",
@@ -340,6 +474,32 @@ const styles = {
     fontSize: 13,
     cursor: "pointer",
     fontFamily: "inherit",
+  },
+  gameTypeRow: {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+  },
+  gameTypeLabel: {
+    color: "#888",
+    fontSize: 13,
+    marginRight: 4,
+  },
+  gameTypeBtn: {
+    background: "rgba(255,255,255,0.04)",
+    border: "1px solid rgba(255,255,255,0.1)",
+    color: "#888",
+    padding: "6px 16px",
+    borderRadius: 3,
+    fontSize: 13,
+    cursor: "pointer",
+    fontFamily: "inherit",
+    transition: "all 0.2s",
+  },
+  gameTypeBtnActive: {
+    background: "rgba(200,180,140,0.15)",
+    borderColor: "rgba(200,180,140,0.5)",
+    color: "#E8D4B0",
   },
   footer: {
     position: "absolute",

@@ -1,6 +1,6 @@
 import { ACTION } from "../engine/constants";
 
-export default function ConfigView({ textSpeed, dispatch }) {
+export default function ConfigView({ textSpeed, volumeMaster, volumeBGM, volumeSE, dispatch }) {
   return (
     <div
       onClick={(e) => e.stopPropagation()}
@@ -47,9 +47,32 @@ export default function ConfigView({ textSpeed, dispatch }) {
           <span>→ 遅い</span>
         </div>
       </div>
-      <div style={{ color: "#888", fontSize: 12, lineHeight: 2 }}>
+      {/* 音量スライダー */}
+      {[
+        { label: "マスター音量", value: volumeMaster ?? 1.0, action: ACTION.SET_VOLUME_MASTER },
+        { label: "BGM 音量", value: volumeBGM ?? 0.8, action: ACTION.SET_VOLUME_BGM },
+        { label: "SE 音量", value: volumeSE ?? 1.0, action: ACTION.SET_VOLUME_SE },
+      ].map((vol) => (
+        <div key={vol.action} style={{ marginBottom: 16 }}>
+          <label style={{ color: "#C8A870", fontSize: 13, display: "block", marginBottom: 6 }}>
+            {vol.label}: {Math.round(vol.value * 100)}%
+          </label>
+          <input
+            type="range"
+            min={0}
+            max={100}
+            step={5}
+            value={Math.round(vol.value * 100)}
+            onChange={(e) => dispatch({ type: vol.action, payload: Number(e.target.value) / 100 })}
+            style={{ width: "100%", accentColor: "#C8A870" }}
+          />
+        </div>
+      ))}
+
+      <div style={{ color: "#888", fontSize: 12, lineHeight: 2, marginTop: 8 }}>
         <p>操作方法:</p>
         <p>　クリック / Enter / Space … テキスト送り</p>
+        <p>　Ctrl 長押し … スキップ</p>
         <p>　Escape … メニューを閉じる</p>
         <p>　AUTO … 自動再生の切替</p>
       </div>

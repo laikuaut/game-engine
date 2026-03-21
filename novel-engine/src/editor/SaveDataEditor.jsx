@@ -11,8 +11,10 @@ export default function SaveDataEditor({ projectId }) {
   // 読み込み
   useEffect(() => {
     if (!projectId) return;
-    const project = getProject(projectId);
-    if (project) setSaves(project.saves || [null, null, null]);
+    (async () => {
+      const project = await getProject(projectId);
+      if (project) setSaves(project.saves || [null, null, null]);
+    })();
   }, [projectId]);
 
   // JSON 編集開始

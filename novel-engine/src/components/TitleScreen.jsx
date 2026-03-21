@@ -1,11 +1,17 @@
 // タイトル画面 — NEW GAME / CONTINUE / EDITOR / CG GALLERY / CONFIG
-export default function TitleScreen({ title, onNewGame, onContinue, onEditor, onBack, hasSaveData }) {
+export default function TitleScreen({
+  title, onNewGame, onContinue, onEditor, onBack,
+  onCGGallery, onSceneRecollection, onConfig,
+  hasSaveData,
+}) {
   const menuItems = [
     { label: "NEW GAME", action: onNewGame, enabled: true },
     { label: "CONTINUE", action: onContinue, enabled: hasSaveData },
     { label: "EDITOR", action: onEditor, enabled: true },
-    { label: "CG GALLERY", action: null, enabled: false },
-    { label: "CONFIG", action: null, enabled: false },
+    { label: "CG GALLERY", action: onCGGallery, enabled: !!onCGGallery },
+    { label: "SCENE", action: onSceneRecollection, enabled: !!onSceneRecollection },
+    { label: "CONFIG", action: onConfig, enabled: !!onConfig },
+    { label: "BACK", action: onBack, enabled: !!onBack },
   ];
 
   return (
@@ -129,12 +135,12 @@ const styles = {
     position: "absolute",
     top: 16,
     left: 20,
-    background: "transparent",
-    border: "1px solid rgba(200,180,140,0.2)",
-    color: "rgba(200,180,140,0.5)",
-    padding: "5px 14px",
+    background: "rgba(200,180,140,0.08)",
+    border: "1px solid rgba(200,180,140,0.3)",
+    color: "#C8A870",
+    padding: "6px 16px",
     borderRadius: 3,
-    fontSize: 11,
+    fontSize: 12,
     cursor: "pointer",
     fontFamily: "'Noto Serif JP', serif",
     letterSpacing: 1,

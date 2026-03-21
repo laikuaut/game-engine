@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { CMD } from "../engine/constants";
 import { updateProject, getProject } from "../project/ProjectStore";
 import ScriptList from "./ScriptList";
@@ -34,14 +34,25 @@ const TABS = [
 ];
 
 export default function EditorScreen({ onBack, initialScript, projectId, projectName }) {
-  // プロジェクトから追加データを取得
-  const proj = projectId ? getProject(projectId) : null;
   const [script, setScript] = useState(initialScript || DEFAULT_SCRIPT);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [activeTab, setActiveTab] = useState("script");
-  const [maps, setMaps] = useState(proj?.maps || []);
-  const [battleData, setBattleData] = useState(proj?.battleData || { enemies: [], skills: [], battles: [] });
-  const [minigames, setMinigames] = useState(proj?.minigames || []);
+  const [maps, setMaps] = useState([]);
+  const [battleData, setBattleData] = useState({ enemies: [], skills: [], battles: [] });
+  const [minigames, setMinigames] = useState([]);
+
+  // プロジェクトから追加データを非同期ロード
+  useEffect(() => {
+    if (!projectId) return;
+    (async () => {
+      const proj = await getProject(projectId);
+      if (proj) {
+        setMaps(proj.maps || []);
+        setBattleData(proj.battleData || { enemies: [], skills: [], battles: [] });
+        setMinigames(proj.minigames || []);
+      }
+    })();
+  }, [projectId]);
 
   // スクリプト更新（ProjectStore にも自動保存）
   const persistScript = useCallback((newScript) => {
