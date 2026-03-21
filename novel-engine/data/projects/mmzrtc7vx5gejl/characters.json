@@ -1,0 +1,28 @@
+{
+  "elder": {
+    "name": "村長",
+    "color": "#A0926B",
+    "expressions": {
+      "neutral": "🧓",
+      "smile": "😊",
+      "sad": "😢"
+    }
+  },
+  "lina": {
+    "name": "リナ",
+    "color": "#FF8FAB",
+    "expressions": {
+      "smile": "😊",
+      "happy": "😄",
+      "neutral": "🙂",
+      "sad": "😟"
+    }
+  },
+  "demon": {
+    "name": "魔将ヴォルグ",
+    "color": "#8B0000",
+    "expressions": {
+      "neutral": "👹"
+    }
+  }
+}

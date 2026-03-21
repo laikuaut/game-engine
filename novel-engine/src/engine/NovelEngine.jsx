@@ -3,6 +3,7 @@ import { ACTION, CMD } from "./constants";
 import { engineReducer, initialState } from "./reducer";
 import { processCommand, buildLabelMap, resolveTarget } from "./commands";
 import DEFAULT_SCRIPT from "../data/script";
+import { GAME_CONTAINER_STYLE } from "../data/config";
 import Background from "../components/Background";
 import Character from "../components/Character";
 import TextBox from "../components/TextBox";
@@ -17,9 +18,17 @@ import useAudio from "../audio/useAudio";
 import { saveGame, loadGame, listSlots } from "../save/SaveManager";
 import { unlock as unlockCG } from "../save/UnlockStore";
 
-export default function NovelEngine({ script, characters, bgStyles, onBack, projectId }) {
+export default function NovelEngine({ script, characters, bgStyles, onBack, projectId, startLabel, initialConfig }) {
   const SCRIPT = script || DEFAULT_SCRIPT;
-  const [state, dispatch] = useReducer(engineReducer, initialState);
+  const [state, dispatch] = useReducer(engineReducer, {
+    ...initialState,
+    ...(initialConfig ? {
+      textSpeed: initialConfig.textSpeed ?? initialState.textSpeed,
+      volumeMaster: initialConfig.volumeMaster ?? initialState.volumeMaster,
+      volumeBGM: initialConfig.volumeBGM ?? initialState.volumeBGM,
+      volumeSE: initialConfig.volumeSE ?? initialState.volumeSE,
+    } : {}),
+  });
   // オーディオフック
   useAudio(state);
 
@@ -71,7 +80,11 @@ export default function NovelEngine({ script, characters, bgStyles, onBack, proj
       }
 
       // blocking なし → dialog or choice or スクリプト終端
-      if (index >= scriptRef.current.length) return;
+      if (index >= scriptRef.current.length) {
+        // シナリオ終了 → タイトルへ戻る
+        if (onBack) setTimeout(() => onBack(), 500);
+        return;
+      }
       const cmd = scriptRef.current[index];
       dispatch({ type: ACTION.SET_SCRIPT_INDEX, payload: index });
       if (cmd.type === CMD.DIALOG) {
@@ -88,7 +101,10 @@ export default function NovelEngine({ script, characters, bgStyles, onBack, proj
   // 指定インデックスから processCommand → 結果処理
   const proceedFrom = useCallback(
     (index) => {
-      if (index >= scriptRef.current.length) return;
+      if (index >= scriptRef.current.length) {
+        if (onBack) setTimeout(() => onBack(), 500);
+        return;
+      }
       const result = processCommand(scriptRef.current, index, dispatch, labelMap);
       handleCommandResult(result);
     },
@@ -104,7 +120,7 @@ export default function NovelEngine({ script, characters, bgStyles, onBack, proj
 
       // NVL モード: テキストを蓄積
       if (state.nvlMode) {
-        dispatch({ type: "ADD_NVL_TEXT", payload: { speaker: cmd.speaker, text: cmd.text } });
+        dispatch({ type: ACTION.ADD_NVL_TEXT, payload: { speaker: cmd.speaker, text: cmd.text } });
       }
 
       // スキップ中はタイプライターをバイパス
@@ -144,7 +160,7 @@ export default function NovelEngine({ script, characters, bgStyles, onBack, proj
     // CG 表示中 → 閉じて次へ
     if (state.showCG) {
       unlockCG("cg", state.showCG.id);
-      dispatch({ type: "HIDE_CG" });
+      dispatch({ type: ACTION.HIDE_CG });
       proceedFrom(state.scriptIndex + 1);
       return;
     }
@@ -201,15 +217,23 @@ export default function NovelEngine({ script, characters, bgStyles, onBack, proj
     if (!projectId) return;
     (async () => {
       const slots = await listSlots(projectId);
-      dispatch({ type: "SET_SAVES", payload: slots });
+      dispatch({ type: ACTION.SET_SAVES, payload: slots });
     })();
   }, [projectId]);
 
-  // セーブ処理（永続化込み）
+  // セーブ処理（永続化込み + サムネイル）
   const handleSave = useCallback(async (slot) => {
-    dispatch({ type: ACTION.SAVE_GAME, payload: { slot } });
+    // Canvas からサムネイル取得を試みる
+    let thumbnail = null;
+    try {
+      const canvas = containerRef.current?.querySelector("canvas");
+      if (canvas) {
+        thumbnail = canvas.toDataURL("image/jpeg", 0.3);
+      }
+    } catch {}
+    dispatch({ type: ACTION.SAVE_GAME, payload: { slot, thumbnail } });
     if (projectId) {
-      await saveGame(projectId, slot, state);
+      await saveGame(projectId, slot, { ...state, thumbnail });
     }
   }, [projectId, state]);
 
@@ -237,19 +261,23 @@ export default function NovelEngine({ script, characters, bgStyles, onBack, proj
     const timers = [];
     Object.entries(state.characters).forEach(([id, chara]) => {
       if (chara.animState === "entering") {
-        timers.push(setTimeout(() => dispatch({ type: "CHARA_ANIM_DONE", payload: id }), 500));
+        timers.push(setTimeout(() => dispatch({ type: ACTION.CHARA_ANIM_DONE, payload: id }), 500));
       } else if (chara.animState === "exiting") {
-        timers.push(setTimeout(() => dispatch({ type: "REMOVE_CHARA_DONE", payload: id }), 400));
+        timers.push(setTimeout(() => dispatch({ type: ACTION.REMOVE_CHARA_DONE, payload: id }), 400));
       } else if (chara.animState === "expression_change") {
-        timers.push(setTimeout(() => dispatch({ type: "CHARA_ANIM_DONE", payload: id }), 300));
+        timers.push(setTimeout(() => dispatch({ type: ACTION.CHARA_ANIM_DONE, payload: id }), 300));
       }
     });
     return () => timers.forEach(clearTimeout);
   }, [state.characters]);
 
-  // 初回シーン処理
+  // 初回シーン処理（startLabel がある場合はそのラベルから開始）
   useEffect(() => {
-    proceedFrom(0);
+    let startIndex = 0;
+    if (startLabel && labelMap[startLabel] !== undefined) {
+      startIndex = labelMap[startLabel];
+    }
+    proceedFrom(startIndex);
   }, []);
 
   // オートモード
@@ -317,14 +345,8 @@ export default function NovelEngine({ script, characters, bgStyles, onBack, proj
     <div
       ref={containerRef}
       style={{
-        width: "100%",
-        maxWidth: 1920,
+        ...GAME_CONTAINER_STYLE,
         margin: "0 auto",
-        aspectRatio: "16/9",
-        position: "relative",
-        overflow: "hidden",
-        borderRadius: 4,
-        boxShadow: "0 8px 40px rgba(0,0,0,0.6)",
         cursor: "pointer",
         fontFamily: "'Noto Serif JP', 'Yu Mincho', 'HGS明朝E', serif",
         userSelect: "none",
@@ -359,74 +381,70 @@ export default function NovelEngine({ script, characters, bgStyles, onBack, proj
         containerRef={containerRef}
       />
 
-      {/* BGM インジケーター */}
-      {state.bgmPlaying && (
-        <div
-          style={{
-            position: "absolute", top: 12, left: 16, zIndex: 20,
-            fontSize: 11, color: "rgba(255,255,255,0.5)", fontFamily: "monospace",
+      {/* 上部左: 戻るボタン + BGM */}
+      <div style={{
+        position: "absolute", top: 12, left: 16, zIndex: 20,
+        display: "flex", gap: 8, alignItems: "center",
+      }}>
+        {onBack && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onBack(); }}
+            style={{
+              fontSize: 11, color: "rgba(200,180,140,0.6)",
+              fontFamily: "'Noto Serif JP', serif",
+              background: "rgba(0,0,0,0.3)", padding: "3px 10px", borderRadius: 12,
+              cursor: "pointer", border: "none", transition: "all 0.2s",
+            }}
+          >
+            ← BACK
+          </button>
+        )}
+        {state.bgmPlaying && (
+          <div style={{
+            fontSize: 11, color: "rgba(200,180,140,0.5)",
+            fontFamily: "'Noto Serif JP', serif",
             background: "rgba(0,0,0,0.3)", padding: "3px 10px", borderRadius: 12,
-          }}
-        >
-          ♪ {state.bgmPlaying}
-        </div>
-      )}
+          }}>
+            ♪ {state.bgmPlaying}
+          </div>
+        )}
+      </div>
 
-      {/* オートモードインジケーター */}
-      {state.autoMode && (
-        <div
-          style={{
-            position: "absolute", top: 12, right: 16, zIndex: 20,
-            fontSize: 11, color: "#5BF", fontFamily: "monospace",
-            background: "rgba(0,0,0,0.4)", padding: "3px 10px", borderRadius: 12,
+      {/* 上部右: ステータスインジケーター（flex で重なり回避） */}
+      <div style={{
+        position: "absolute", top: 12, right: 16, zIndex: 20,
+        display: "flex", gap: 8, alignItems: "center",
+      }}>
+        {isSkipping && (
+          <div style={{
+            fontSize: 11, color: "#E8D4B0",
+            fontFamily: "'Noto Serif JP', serif",
+            background: "rgba(180,100,80,0.4)", padding: "3px 10px", borderRadius: 12,
+          }}>
+            {">> SKIP"}
+          </div>
+        )}
+        {state.autoMode && (
+          <div style={{
+            fontSize: 11, color: "#E8D4B0",
+            fontFamily: "'Noto Serif JP', serif",
+            background: "rgba(200,180,140,0.3)", padding: "3px 10px", borderRadius: 12,
             animation: "pulse 2s infinite",
-          }}
-        >
-          ▶ AUTO
-        </div>
-      )}
-
-      {/* SKIP インジケーター */}
-      {isSkipping && (
-        <div
-          style={{
-            position: "absolute", top: 12, right: 16, zIndex: 20,
-            fontSize: 11, color: "#F55", fontFamily: "monospace",
-            background: "rgba(0,0,0,0.4)", padding: "3px 10px", borderRadius: 12,
-          }}
-        >
-          {">> SKIP"}
-        </div>
-      )}
-
-      {/* WAIT インジケーター */}
-      {state.isWaiting && !isSkipping && (
-        <div
-          style={{
-            position: "absolute", top: 12, right: 16, zIndex: 20,
-            fontSize: 11, color: "#FA0", fontFamily: "monospace",
-            background: "rgba(0,0,0,0.4)", padding: "3px 10px", borderRadius: 12,
+          }}>
+            ▶ AUTO
+          </div>
+        )}
+        {state.isWaiting && !isSkipping && (
+          <div style={{
+            fontSize: 11, color: "#E8D4B0",
+            fontFamily: "'Noto Serif JP', serif",
+            background: "rgba(180,150,80,0.35)", padding: "3px 10px", borderRadius: 12,
             animation: "pulse 1s infinite",
-          }}
-        >
-          WAIT...
-        </div>
-      )}
-
-      {/* 戻るボタン */}
-      {onBack && (
-        <div
-          onClick={(e) => { e.stopPropagation(); onBack(); }}
-          style={{
-            position: "absolute", top: 12, left: state.bgmPlaying ? 140 : 16,
-            zIndex: 20, fontSize: 11, color: "rgba(255,255,255,0.4)", fontFamily: "monospace",
-            background: "rgba(0,0,0,0.3)", padding: "3px 10px", borderRadius: 12,
-            cursor: "pointer",
-          }}
-        >
-          ← BACK
-        </div>
-      )}
+          }}>
+            WAIT...
+          </div>
+        )}
+      </div>
 
       {/* CG オーバーレイ */}
       {state.showCG && (

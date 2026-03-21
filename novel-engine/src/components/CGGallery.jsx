@@ -63,7 +63,8 @@ export default function CGGallery({ catalog, onBack }) {
                 </>
               ) : (
                 <div style={styles.locked}>
-                  <span style={{ fontSize: 24 }}>？</span>
+                  <span style={{ fontSize: 24 }}>🔒</span>
+                  <span style={{ fontSize: 10, color: "#555", marginTop: 4 }}>未開放</span>
                 </div>
               )}
             </div>

@@ -1,30 +1,27 @@
-// タイトル画面 — NEW GAME / CONTINUE / EDITOR / CG GALLERY / CONFIG
+import { useState } from "react";
+import { GAME_CONTAINER_STYLE } from "../data/config";
+
+// タイトル画面 — NEW GAME / CONTINUE / CG GALLERY / CONFIG / EXIT
 export default function TitleScreen({
-  title, onNewGame, onContinue, onEditor, onBack,
+  title, onNewGame, onContinue,
   onCGGallery, onSceneRecollection, onConfig,
-  hasSaveData,
+  onExit, hasSaveData,
 }) {
+  const [hoveredItem, setHoveredItem] = useState(null);
+
   const menuItems = [
     { label: "NEW GAME", action: onNewGame, enabled: true },
     { label: "CONTINUE", action: onContinue, enabled: hasSaveData },
-    { label: "EDITOR", action: onEditor, enabled: true },
     { label: "CG GALLERY", action: onCGGallery, enabled: !!onCGGallery },
     { label: "SCENE", action: onSceneRecollection, enabled: !!onSceneRecollection },
     { label: "CONFIG", action: onConfig, enabled: !!onConfig },
-    { label: "BACK", action: onBack, enabled: !!onBack },
+    { label: "EXIT", action: onExit, enabled: !!onExit },
   ];
 
   return (
     <div style={styles.container}>
       {/* 背景装飾 */}
       <div style={styles.bgOverlay} />
-
-      {/* 戻るボタン */}
-      {onBack && (
-        <button onClick={onBack} style={styles.backBtn}>
-          ← プロジェクト一覧
-        </button>
-      )}
 
       {/* タイトルエリア */}
       <div style={styles.titleArea}>
@@ -34,31 +31,27 @@ export default function TitleScreen({
 
       {/* メニュー */}
       <nav style={styles.menu}>
-        {menuItems.map((item) => (
-          <button
-            key={item.label}
-            onClick={item.enabled ? item.action : undefined}
-            style={{
-              ...styles.menuBtn,
-              opacity: item.enabled ? 1 : 0.3,
-              cursor: item.enabled ? "pointer" : "default",
-            }}
-            onMouseEnter={(e) => {
-              if (item.enabled) {
-                e.target.style.background = "rgba(200,180,140,0.15)";
-                e.target.style.borderColor = "#E8D4B0";
-                e.target.style.letterSpacing = "6px";
-              }
-            }}
-            onMouseLeave={(e) => {
-              e.target.style.background = "transparent";
-              e.target.style.borderColor = "rgba(200,180,140,0.3)";
-              e.target.style.letterSpacing = "4px";
-            }}
-          >
-            {item.label}
-          </button>
-        ))}
+        {menuItems.map((item) => {
+          const isHovered = hoveredItem === item.label && item.enabled;
+          return (
+            <button
+              key={item.label}
+              onClick={item.enabled ? item.action : undefined}
+              style={{
+                ...styles.menuBtn,
+                opacity: item.enabled ? 1 : 0.3,
+                cursor: item.enabled ? "pointer" : "default",
+                background: isHovered ? "rgba(200,180,140,0.15)" : "transparent",
+                borderColor: isHovered ? "#E8D4B0" : "rgba(200,180,140,0.3)",
+                letterSpacing: isHovered ? 6 : 4,
+              }}
+              onMouseEnter={() => setHoveredItem(item.label)}
+              onMouseLeave={() => setHoveredItem(null)}
+            >
+              {item.label}
+            </button>
+          );
+        })}
       </nav>
 
       {/* フッター */}
@@ -71,13 +64,7 @@ export default function TitleScreen({
 
 const styles = {
   container: {
-    width: "100%",
-    maxWidth: 1920,
-    aspectRatio: "16/9",
-    position: "relative",
-    overflow: "hidden",
-    borderRadius: 4,
-    boxShadow: "0 8px 40px rgba(0,0,0,0.6)",
+    ...GAME_CONTAINER_STYLE,
     fontFamily: "'Noto Serif JP', 'Yu Mincho', 'HGS明朝E', serif",
     userSelect: "none",
     display: "flex",
@@ -130,22 +117,6 @@ const styles = {
     fontFamily: "'Noto Serif JP', serif",
     transition: "all 0.3s ease",
     minWidth: 280,
-  },
-  backBtn: {
-    position: "absolute",
-    top: 16,
-    left: 20,
-    background: "rgba(200,180,140,0.08)",
-    border: "1px solid rgba(200,180,140,0.3)",
-    color: "#C8A870",
-    padding: "6px 16px",
-    borderRadius: 3,
-    fontSize: 12,
-    cursor: "pointer",
-    fontFamily: "'Noto Serif JP', serif",
-    letterSpacing: 1,
-    zIndex: 2,
-    transition: "all 0.2s",
   },
   footer: {
     position: "absolute",

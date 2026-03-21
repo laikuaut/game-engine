@@ -35,10 +35,16 @@ export default function SceneRecollection({ catalog, onPlayScene, onBack }) {
                   {scene.thumbnail && unlocked && (
                     <img src={`./assets/${scene.thumbnail}`} alt="" style={styles.sceneThumb} />
                   )}
+                  {!unlocked && !scene.thumbnail && (
+                    <span style={{ fontSize: 18, opacity: 0.4 }}>🔒</span>
+                  )}
                   <div>
                     <div style={styles.sceneTitle}>
                       {unlocked ? scene.title : "？？？"}
                     </div>
+                    {!unlocked && (
+                      <div style={{ color: "#555", fontSize: 11, marginTop: 2 }}>未開放</div>
+                    )}
                   </div>
                 </div>
               );

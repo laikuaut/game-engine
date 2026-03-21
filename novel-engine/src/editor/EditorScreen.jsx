@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { CMD } from "../engine/constants";
 import { updateProject, getProject } from "../project/ProjectStore";
 import ScriptList from "./ScriptList";
@@ -12,6 +12,8 @@ import MapEditor from "./rpg/MapEditor";
 import BattleEditor from "./rpg/BattleEditor";
 import MinigameEditor from "./minigame/MinigameEditor";
 import DeployPanel from "./DeployPanel";
+import CharacterEditor from "./CharacterEditor";
+import ItemEditor from "./ItemEditor";
 
 // 編集用の初期スクリプト（空テンプレート）
 const DEFAULT_SCRIPT = [
@@ -23,6 +25,8 @@ const DEFAULT_SCRIPT = [
 const TABS = [
   { id: "script",   label: "スクリプト", group: "novel" },
   { id: "text",     label: "テキスト",   group: "novel" },
+  { id: "chara",    label: "キャラ",     group: "novel" },
+  { id: "item",     label: "アイテム",   group: "rpg" },
   { id: "flow",     label: "フロー",     group: "novel" },
   { id: "map",      label: "マップ",     group: "rpg" },
   { id: "battle",   label: "バトル",     group: "rpg" },
@@ -33,13 +37,29 @@ const TABS = [
   { id: "deploy",   label: "Deploy",     group: "tool" },
 ];
 
-export default function EditorScreen({ onBack, initialScript, projectId, projectName }) {
+// gameType に応じたタブフィルタ
+const TAB_GROUPS = {
+  novel: ["novel", "tool"],
+  rpg: ["novel", "rpg", "tool"],
+  minigame: ["novel", "extra", "tool"],
+};
+
+export default function EditorScreen({ onBack, initialScript, projectId, projectName, gameType }) {
+  const visibleTabs = TABS.filter((tab) => {
+    const groups = TAB_GROUPS[gameType] || TAB_GROUPS.novel;
+    return groups.includes(tab.group);
+  });
   const [script, setScript] = useState(initialScript || DEFAULT_SCRIPT);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [activeTab, setActiveTab] = useState("script");
+  const [characters, setCharacters] = useState({});
+  const [items, setItems] = useState([]);
   const [maps, setMaps] = useState([]);
   const [battleData, setBattleData] = useState({ enemies: [], skills: [], battles: [] });
   const [minigames, setMinigames] = useState([]);
+  const [dirty, setDirty] = useState(false);
+  const [saveStatus, setSaveStatus] = useState(null); // null | "saving" | "saved"
+  const saveTimerRef = useRef(null);
 
   // プロジェクトから追加データを非同期ロード
   useEffect(() => {
@@ -47,6 +67,8 @@ export default function EditorScreen({ onBack, initialScript, projectId, project
     (async () => {
       const proj = await getProject(projectId);
       if (proj) {
+        setCharacters(proj.characters || {});
+        setItems(proj.items || []);
         setMaps(proj.maps || []);
         setBattleData(proj.battleData || { enemies: [], skills: [], battles: [] });
         setMinigames(proj.minigames || []);
@@ -54,23 +76,50 @@ export default function EditorScreen({ onBack, initialScript, projectId, project
     })();
   }, [projectId]);
 
-  // スクリプト更新（ProjectStore にも自動保存）
+  // プロジェクト全体を保存
+  const saveProject = useCallback(async () => {
+    if (!projectId) return;
+    setSaveStatus("saving");
+    await updateProject(projectId, { script, characters, items, maps, battleData, minigames });
+    setDirty(false);
+    setSaveStatus("saved");
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => setSaveStatus(null), 2000);
+  }, [projectId, script, maps, battleData, minigames]);
+
+  // Ctrl+S で保存
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "s") {
+        e.preventDefault();
+        saveProject();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [saveProject]);
+
+  // 変更マーク用ヘルパー
+  const markDirty = useCallback(() => {
+    setDirty(true);
+    setSaveStatus(null);
+  }, []);
+
+  // スクリプト更新（ローカルステートのみ、保存はボタンで）
   const persistScript = useCallback((newScript) => {
     setScript(newScript);
-    if (projectId) {
-      updateProject(projectId, { script: newScript });
-    }
-  }, [projectId]);
+    markDirty();
+  }, [markDirty]);
 
   // コマンド更新
   const updateCommand = useCallback((index, updated) => {
     setScript((prev) => {
       const next = [...prev];
       next[index] = { ...next[index], ...updated };
-      if (projectId) updateProject(projectId, { script: next });
       return next;
     });
-  }, [projectId]);
+    markDirty();
+  }, [markDirty]);
 
   // コマンド追加
   const addCommand = useCallback((type, afterIndex) => {
@@ -93,11 +142,11 @@ export default function EditorScreen({ onBack, initialScript, projectId, project
     setScript((prev) => {
       const next = [...prev];
       next.splice(afterIndex + 1, 0, newCmd);
-      if (projectId) updateProject(projectId, { script: next });
       return next;
     });
     setSelectedIndex(afterIndex + 1);
-  }, [projectId]);
+    markDirty();
+  }, [markDirty]);
 
   // コマンド削除
   const removeCommand = useCallback((index) => {
@@ -105,11 +154,11 @@ export default function EditorScreen({ onBack, initialScript, projectId, project
       if (prev.length <= 1) return prev;
       const next = [...prev];
       next.splice(index, 1);
-      if (projectId) updateProject(projectId, { script: next });
       return next;
     });
     setSelectedIndex((prev) => Math.max(0, prev - 1));
-  }, [projectId]);
+    markDirty();
+  }, [markDirty]);
 
   // コマンド並べ替え
   const moveCommand = useCallback((index, direction) => {
@@ -118,14 +167,14 @@ export default function EditorScreen({ onBack, initialScript, projectId, project
       if (target < 0 || target >= prev.length) return prev;
       const next = [...prev];
       [next[index], next[target]] = [next[target], next[index]];
-      if (projectId) updateProject(projectId, { script: next });
       return next;
     });
     setSelectedIndex((prev) => {
       const target = prev + direction;
       return Math.max(0, Math.min(script.length - 1, target));
     });
-  }, [script.length, projectId]);
+    markDirty();
+  }, [script.length, markDirty]);
 
   // JSON エクスポート
   const exportScript = useCallback(() => {
@@ -144,6 +193,20 @@ export default function EditorScreen({ onBack, initialScript, projectId, project
     switch (activeTab) {
       case "text":
         return <TextEditor script={script} onUpdateScript={persistScript} />;
+      case "chara":
+        return (
+          <CharacterEditor
+            characters={characters}
+            onUpdateCharacters={(c) => { setCharacters(c); markDirty(); }}
+          />
+        );
+      case "item":
+        return (
+          <ItemEditor
+            items={items}
+            onUpdateItems={(i) => { setItems(i); markDirty(); }}
+          />
+        );
       case "flow":
         return <FlowGraph script={script} />;
       case "preview":
@@ -160,21 +223,21 @@ export default function EditorScreen({ onBack, initialScript, projectId, project
         return (
           <MapEditor
             maps={maps}
-            onUpdateMaps={(m) => { setMaps(m); if (projectId) updateProject(projectId, { maps: m }); }}
+            onUpdateMaps={(m) => { setMaps(m); markDirty(); }}
           />
         );
       case "battle":
         return (
           <BattleEditor
             battleData={battleData}
-            onUpdateBattleData={(d) => { setBattleData(d); if (projectId) updateProject(projectId, { battleData: d }); }}
+            onUpdateBattleData={(d) => { setBattleData(d); markDirty(); }}
           />
         );
       case "minigame":
         return (
           <MinigameEditor
             minigames={minigames}
-            onUpdateMinigames={(m) => { setMinigames(m); if (projectId) updateProject(projectId, { minigames: m }); }}
+            onUpdateMinigames={(m) => { setMinigames(m); markDirty(); }}
           />
         );
       case "deploy":
@@ -204,7 +267,7 @@ export default function EditorScreen({ onBack, initialScript, projectId, project
           {projectName && <span style={styles.projectName}>{projectName}</span>}
         </div>
         <div style={styles.tabs}>
-          {TABS.map((tab) => (
+          {visibleTabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
@@ -219,6 +282,19 @@ export default function EditorScreen({ onBack, initialScript, projectId, project
         </div>
         <div style={styles.headerRight}>
           <span style={styles.cmdCount}>{script.length} cmd</span>
+          {saveStatus === "saved" && <span style={styles.savedLabel}>保存しました</span>}
+          {saveStatus === "saving" && <span style={styles.savingLabel}>保存中...</span>}
+          {dirty && saveStatus !== "saving" && <span style={styles.dirtyLabel}>未保存</span>}
+          <button
+            onClick={saveProject}
+            style={{
+              ...styles.headerBtn,
+              ...styles.saveBtn,
+              ...(dirty ? styles.saveBtnDirty : {}),
+            }}
+          >
+            保存
+          </button>
           <button onClick={exportScript} style={styles.headerBtn}>エクスポート</button>
         </div>
       </div>
@@ -345,5 +421,25 @@ const styles = {
     fontSize: 14,
     textAlign: "center",
     marginTop: 80,
+  },
+  saveBtn: {
+    fontWeight: "bold",
+  },
+  saveBtnDirty: {
+    background: "rgba(200,180,140,0.15)",
+    borderColor: "rgba(200,180,140,0.5)",
+    color: "#E8D4B0",
+  },
+  dirtyLabel: {
+    fontSize: 10,
+    color: "#FFB74D",
+  },
+  savedLabel: {
+    fontSize: 10,
+    color: "#8BC34A",
+  },
+  savingLabel: {
+    fontSize: 10,
+    color: "#C8A870",
   },
 };

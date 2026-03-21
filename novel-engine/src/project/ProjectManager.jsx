@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { GAME_CONTAINER_STYLE } from "../data/config";
 import {
   getProjects,
   createProject,
@@ -16,7 +17,7 @@ const BADGE_COLORS = {
   minigame: { bg: "rgba(140,220,140,0.12)", text: "#8CDC8C", border: "rgba(140,220,140,0.3)" },
 };
 
-export default function ProjectManager({ onSelectProject }) {
+export default function ProjectManager({ onSelectProject, onEditProject, onExit }) {
   const [projects, setProjects] = useState([]);
   const [showCreate, setShowCreate] = useState(false);
   const [newName, setNewName] = useState("");
@@ -24,6 +25,7 @@ export default function ProjectManager({ onSelectProject }) {
   const [newGameType, setNewGameType] = useState("novel");
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [importError, setImportError] = useState(null);
+  const [hoveredCard, setHoveredCard] = useState(null);
   const fileInputRef = useRef(null);
 
   // 初期化 & プロジェクト一覧読み込み
@@ -97,6 +99,13 @@ export default function ProjectManager({ onSelectProject }) {
   return (
     <div style={styles.container}>
       <div style={styles.bgOverlay} />
+
+      {/* 閉じるボタン（右上固定） */}
+      {onExit && (
+        <button onClick={onExit} style={styles.exitBtn}>
+          ✕ 閉じる
+        </button>
+      )}
 
       {/* ヘッダー */}
       <div style={styles.header}>
@@ -177,7 +186,18 @@ export default function ProjectManager({ onSelectProject }) {
           <p style={styles.empty}>プロジェクトがありません</p>
         ) : (
           projects.map((p) => (
-            <div key={p.id} style={styles.card}>
+            <div
+              key={p.id}
+              style={{
+                ...styles.card,
+                ...(hoveredCard === p.id ? {
+                  background: "rgba(200,180,140,0.08)",
+                  borderColor: "rgba(200,180,140,0.3)",
+                } : {}),
+              }}
+              onMouseEnter={() => setHoveredCard(p.id)}
+              onMouseLeave={() => setHoveredCard(null)}
+            >
               {/* カード本体（クリックで選択） */}
               <div style={styles.cardMain} onClick={() => onSelectProject(p.id)}>
                 <div style={styles.cardNameRow}>
@@ -201,6 +221,13 @@ export default function ProjectManager({ onSelectProject }) {
               </div>
               {/* カード操作ボタン */}
               <div style={styles.cardActions} onClick={(e) => e.stopPropagation()}>
+                <button
+                  onClick={() => onEditProject(p.id)}
+                  style={styles.editBtn}
+                  title="編集"
+                >
+                  編集
+                </button>
                 <button
                   onClick={() => handleDuplicate(p.id)}
                   style={styles.actionBtn}
@@ -247,13 +274,7 @@ export default function ProjectManager({ onSelectProject }) {
 
 const styles = {
   container: {
-    width: "100%",
-    maxWidth: 1920,
-    aspectRatio: "16/9",
-    position: "relative",
-    overflow: "hidden",
-    borderRadius: 4,
-    boxShadow: "0 8px 40px rgba(0,0,0,0.6)",
+    ...GAME_CONTAINER_STYLE,
     fontFamily: "'Noto Serif JP', 'Yu Mincho', 'HGS明朝E', serif",
     userSelect: "none",
     display: "flex",
@@ -500,6 +521,32 @@ const styles = {
     background: "rgba(200,180,140,0.15)",
     borderColor: "rgba(200,180,140,0.5)",
     color: "#E8D4B0",
+  },
+  editBtn: {
+    background: "rgba(200,180,140,0.12)",
+    border: "1px solid rgba(200,180,140,0.3)",
+    color: "#C8A870",
+    padding: "3px 12px",
+    borderRadius: 3,
+    fontSize: 11,
+    cursor: "pointer",
+    fontFamily: "inherit",
+  },
+  exitBtn: {
+    position: "absolute",
+    top: 16,
+    right: 20,
+    background: "rgba(255,255,255,0.06)",
+    border: "1px solid rgba(255,255,255,0.15)",
+    color: "#aaa",
+    padding: "6px 16px",
+    borderRadius: 3,
+    fontSize: 12,
+    cursor: "pointer",
+    fontFamily: "inherit",
+    letterSpacing: 1,
+    zIndex: 2,
+    transition: "all 0.2s",
   },
   footer: {
     position: "absolute",

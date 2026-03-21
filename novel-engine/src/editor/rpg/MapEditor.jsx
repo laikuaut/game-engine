@@ -46,6 +46,7 @@ export default function MapEditor({ maps: initialMaps, onUpdateMaps }) {
   const [tool, setTool] = useState("paint"); // paint | fill | eraser
   const [isPainting, setIsPainting] = useState(false);
   const [showEvents, setShowEvents] = useState(false);
+  const [editingEventIdx, setEditingEventIdx] = useState(-1);
 
   const currentMap = maps[selectedMapIndex] || null;
 
@@ -107,9 +108,17 @@ export default function MapEditor({ maps: initialMaps, onUpdateMaps }) {
       trigger: "action",
       data: { speaker: "", text: "イベントテキスト" },
     };
-    updateMap(selectedMapIndex, {
-      events: [...(currentMap.events || []), newEvent],
-    });
+    const newEvents = [...(currentMap.events || []), newEvent];
+    updateMap(selectedMapIndex, { events: newEvents });
+    setEditingEventIdx(newEvents.length - 1);
+  }, [currentMap, selectedMapIndex, updateMap]);
+
+  // イベント更新
+  const updateEvent = useCallback((idx, updates) => {
+    if (!currentMap) return;
+    const newEvents = [...(currentMap.events || [])];
+    newEvents[idx] = { ...newEvents[idx], ...updates };
+    updateMap(selectedMapIndex, { events: newEvents });
   }, [currentMap, selectedMapIndex, updateMap]);
 
   // マップリサイズ
@@ -329,14 +338,23 @@ export default function MapEditor({ maps: initialMaps, onUpdateMaps }) {
                   <span style={styles.eventHint}>※ 右クリックでマップにイベント追加</span>
                 </div>
                 {(currentMap.events || []).map((evt, i) => (
-                  <div key={evt.id || i} style={styles.eventRow}>
+                  <div
+                    key={evt.id || i}
+                    style={{
+                      ...styles.eventRow,
+                      background: editingEventIdx === i ? "rgba(200,180,140,0.12)" : "transparent",
+                    }}
+                    onClick={() => setEditingEventIdx(editingEventIdx === i ? -1 : i)}
+                  >
                     <span style={styles.eventPos}>({evt.x},{evt.y})</span>
                     <span style={styles.eventType}>{evt.type}</span>
                     <span style={styles.eventTrigger}>{evt.trigger}</span>
                     <button
-                      onClick={() => {
+                      onClick={(e) => {
+                        e.stopPropagation();
                         const newEvents = (currentMap.events || []).filter((_, j) => j !== i);
                         updateMap(selectedMapIndex, { events: newEvents });
+                        if (editingEventIdx === i) setEditingEventIdx(-1);
                       }}
                       style={styles.eventDelBtn}
                     >
@@ -344,6 +362,14 @@ export default function MapEditor({ maps: initialMaps, onUpdateMaps }) {
                     </button>
                   </div>
                 ))}
+
+                {/* イベント詳細編集 */}
+                {editingEventIdx >= 0 && (currentMap.events || [])[editingEventIdx] && (
+                  <EventDetailEditor
+                    event={(currentMap.events || [])[editingEventIdx]}
+                    onChange={(updates) => updateEvent(editingEventIdx, updates)}
+                  />
+                )}
               </div>
             )}
           </>
@@ -353,6 +379,151 @@ export default function MapEditor({ maps: initialMaps, onUpdateMaps }) {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+// イベント詳細編集サブコンポーネント
+function EventDetailEditor({ event, onChange }) {
+  const evtStyles = {
+    container: {
+      background: "rgba(0,0,0,0.3)", borderRadius: 4, padding: 12, marginTop: 8,
+      border: "1px solid rgba(200,180,140,0.15)",
+    },
+    title: { color: "#C8A870", fontSize: 12, marginBottom: 8, letterSpacing: 1 },
+    label: { color: "#888", fontSize: 10, display: "block", marginBottom: 3, marginTop: 6 },
+    input: {
+      background: "rgba(255,255,255,0.06)", border: "1px solid rgba(200,180,140,0.2)",
+      color: "#E8E4DC", padding: "5px 8px", borderRadius: 3, fontSize: 12,
+      fontFamily: "inherit", outline: "none", width: "100%", boxSizing: "border-box",
+    },
+    select: {
+      background: "rgba(255,255,255,0.06)", border: "1px solid rgba(200,180,140,0.2)",
+      color: "#E8E4DC", padding: "5px 8px", borderRadius: 3, fontSize: 12,
+      fontFamily: "inherit", outline: "none", width: "100%", boxSizing: "border-box",
+    },
+    textarea: {
+      background: "rgba(255,255,255,0.06)", border: "1px solid rgba(200,180,140,0.2)",
+      color: "#E8E4DC", padding: "5px 8px", borderRadius: 3, fontSize: 12,
+      fontFamily: "inherit", outline: "none", width: "100%", boxSizing: "border-box",
+      resize: "vertical",
+    },
+    row: { display: "flex", gap: 8 },
+    col: { flex: 1 },
+  };
+
+  const updateData = (field, value) => {
+    onChange({ data: { ...event.data, [field]: value } });
+  };
+
+  return (
+    <div style={evtStyles.container}>
+      <div style={evtStyles.title}>イベント編集: {event.id}</div>
+
+      <div style={evtStyles.row}>
+        <div style={evtStyles.col}>
+          <label style={evtStyles.label}>X</label>
+          <input type="number" value={event.x} onChange={(e) => onChange({ x: Number(e.target.value) })} style={evtStyles.input} />
+        </div>
+        <div style={evtStyles.col}>
+          <label style={evtStyles.label}>Y</label>
+          <input type="number" value={event.y} onChange={(e) => onChange({ y: Number(e.target.value) })} style={evtStyles.input} />
+        </div>
+      </div>
+
+      <label style={evtStyles.label}>種別</label>
+      <select
+        value={event.type}
+        onChange={(e) => {
+          const type = e.target.value;
+          const defaults = {
+            dialog: { speaker: "", text: "" },
+            warp: { mapIndex: 0, x: 0, y: 0 },
+            battle: { battleId: "" },
+            item: { item: "", amount: 1 },
+            shop: { items: [] },
+            script: { scriptLabel: "" },
+          };
+          onChange({ type, data: defaults[type] || {} });
+        }}
+        style={evtStyles.select}
+      >
+        <option value="dialog">ダイアログ</option>
+        <option value="warp">ワープ</option>
+        <option value="battle">バトル</option>
+        <option value="item">アイテム取得</option>
+        <option value="shop">ショップ</option>
+        <option value="script">スクリプト呼出</option>
+      </select>
+
+      <label style={evtStyles.label}>トリガー</label>
+      <select value={event.trigger} onChange={(e) => onChange({ trigger: e.target.value })} style={evtStyles.select}>
+        <option value="action">アクション（決定キー）</option>
+        <option value="touch">接触</option>
+        <option value="auto">自動</option>
+      </select>
+
+      {/* 種別ごとのデータ編集 */}
+      {event.type === "dialog" && (
+        <>
+          <label style={evtStyles.label}>話者</label>
+          <input value={event.data?.speaker || ""} onChange={(e) => updateData("speaker", e.target.value)} style={evtStyles.input} />
+          <label style={evtStyles.label}>テキスト</label>
+          <textarea value={event.data?.text || ""} onChange={(e) => updateData("text", e.target.value)} style={evtStyles.textarea} rows={3} />
+        </>
+      )}
+
+      {event.type === "warp" && (
+        <>
+          <label style={evtStyles.label}>ワープ先マップ（インデックス）</label>
+          <input type="number" value={event.data?.mapIndex ?? 0} onChange={(e) => updateData("mapIndex", Number(e.target.value))} style={evtStyles.input} />
+          <div style={evtStyles.row}>
+            <div style={evtStyles.col}>
+              <label style={evtStyles.label}>ワープ先 X</label>
+              <input type="number" value={event.data?.x ?? 0} onChange={(e) => updateData("x", Number(e.target.value))} style={evtStyles.input} />
+            </div>
+            <div style={evtStyles.col}>
+              <label style={evtStyles.label}>ワープ先 Y</label>
+              <input type="number" value={event.data?.y ?? 0} onChange={(e) => updateData("y", Number(e.target.value))} style={evtStyles.input} />
+            </div>
+          </div>
+        </>
+      )}
+
+      {event.type === "battle" && (
+        <>
+          <label style={evtStyles.label}>バトル ID</label>
+          <input value={event.data?.battleId || ""} onChange={(e) => updateData("battleId", e.target.value)} style={evtStyles.input} />
+        </>
+      )}
+
+      {event.type === "item" && (
+        <>
+          <label style={evtStyles.label}>アイテム名</label>
+          <input value={event.data?.item || ""} onChange={(e) => updateData("item", e.target.value)} style={evtStyles.input} />
+          <label style={evtStyles.label}>個数</label>
+          <input type="number" value={event.data?.amount ?? 1} onChange={(e) => updateData("amount", Number(e.target.value))} style={evtStyles.input} />
+        </>
+      )}
+
+      {event.type === "shop" && (
+        <>
+          <label style={evtStyles.label}>アイテム一覧（カンマ区切り）</label>
+          <input
+            value={(event.data?.items || []).join(", ")}
+            onChange={(e) => updateData("items", e.target.value.split(",").map((s) => s.trim()).filter(Boolean))}
+            style={evtStyles.input}
+            placeholder="potion, sword, shield"
+          />
+        </>
+      )}
+
+      {event.type === "script" && (
+        <>
+          <label style={evtStyles.label}>スクリプトラベル</label>
+          <input value={event.data?.scriptLabel || ""} onChange={(e) => updateData("scriptLabel", e.target.value)} style={evtStyles.input} />
+        </>
+      )}
     </div>
   );
 }

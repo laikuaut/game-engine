@@ -1,0 +1,88 @@
+[
+  {
+    "id": "mg_quiz",
+    "type": "quiz",
+    "title": "冒険者検定",
+    "timeLimit": 30,
+    "questions": [
+      {
+        "text": "スライムの弱点属性は？",
+        "choices": [
+          "火",
+          "水",
+          "雷",
+          "弱点なし"
+        ],
+        "answer": 3,
+        "points": 10
+      },
+      {
+        "text": "ゴブリンチーフの特技は？",
+        "choices": [
+          "鬨の声",
+          "ガード",
+          "咆哮",
+          "暗黒斬"
+        ],
+        "answer": 0,
+        "points": 10
+      },
+      {
+        "text": "封印の鍵がある場所は？",
+        "choices": [
+          "村長の家",
+          "森の奥",
+          "魔道士の塔",
+          "山頂"
+        ],
+        "answer": 2,
+        "points": 10
+      },
+      {
+        "text": "魔将ヴォルグの属性は？",
+        "choices": [
+          "火",
+          "闇",
+          "氷",
+          "無"
+        ],
+        "answer": 1,
+        "points": 20
+      },
+      {
+        "text": "勇者レイの父は何をした？",
+        "choices": [
+          "魔王を倒した",
+          "魔王を封印した",
+          "逃げた",
+          "魔王と和解した"
+        ],
+        "answer": 1,
+        "points": 20
+      }
+    ],
+    "passingScore": 40,
+    "onPass": {
+      "type": "jump",
+      "target": 0
+    },
+    "onFail": {
+      "type": "jump",
+      "target": 0
+    }
+  },
+  {
+    "id": "mg_janken",
+    "type": "janken",
+    "title": "ゴブリンとジャンケン",
+    "rounds": 3,
+    "onWin": {
+      "type": "jump",
+      "target": 0
+    },
+    "onLose": {
+      "type": "jump",
+      "target": 0
+    }
+  }
+]

@@ -1,0 +1,510 @@
+{
+  "enemies": [
+    {
+      "id": "slime",
+      "name": "スライム",
+      "hp": 20,
+      "atk": 4,
+      "def": 2,
+      "speed": 3,
+      "exp": 5,
+      "gold": 3,
+      "skills": [],
+      "drops": [
+        {
+          "item": "スライムゼリー",
+          "rate": 0.3
+        }
+      ],
+      "sprite": ""
+    },
+    {
+      "id": "goblin",
+      "name": "ゴブリン",
+      "hp": 35,
+      "atk": 8,
+      "def": 4,
+      "speed": 5,
+      "exp": 12,
+      "gold": 8,
+      "skills": [
+        "sk_slash"
+      ],
+      "drops": [
+        {
+          "item": "ゴブリンの牙",
+          "rate": 0.2
+        }
+      ],
+      "sprite": ""
+    },
+    {
+      "id": "wolf",
+      "name": "灰色オオカミ",
+      "hp": 28,
+      "atk": 10,
+      "def": 3,
+      "speed": 8,
+      "exp": 10,
+      "gold": 5,
+      "skills": [
+        "sk_bite"
+      ],
+      "drops": [],
+      "sprite": ""
+    },
+    {
+      "id": "goblin_chief",
+      "name": "ゴブリンチーフ",
+      "hp": 60,
+      "atk": 14,
+      "def": 6,
+      "speed": 5,
+      "exp": 25,
+      "gold": 20,
+      "skills": [
+        "sk_slash",
+        "sk_war_cry"
+      ],
+      "drops": [
+        {
+          "item": "鉄の剣",
+          "rate": 0.1
+        }
+      ],
+      "sprite": ""
+    },
+    {
+      "id": "gargoyle",
+      "name": "ガーゴイル",
+      "hp": 55,
+      "atk": 16,
+      "def": 12,
+      "speed": 4,
+      "exp": 22,
+      "gold": 15,
+      "skills": [
+        "sk_stone_claw"
+      ],
+      "drops": [],
+      "sprite": ""
+    },
+    {
+      "id": "harpy",
+      "name": "ハーピー",
+      "hp": 40,
+      "atk": 13,
+      "def": 5,
+      "speed": 12,
+      "exp": 18,
+      "gold": 12,
+      "skills": [
+        "sk_wind_slash"
+      ],
+      "drops": [
+        {
+          "item": "風切り羽",
+          "rate": 0.25
+        }
+      ],
+      "sprite": ""
+    },
+    {
+      "id": "golem",
+      "name": "ロックゴーレム",
+      "hp": 90,
+      "atk": 20,
+      "def": 18,
+      "speed": 1,
+      "exp": 35,
+      "gold": 25,
+      "skills": [
+        "sk_smash"
+      ],
+      "drops": [
+        {
+          "item": "魔石",
+          "rate": 0.15
+        }
+      ],
+      "sprite": ""
+    },
+    {
+      "id": "dark_knight",
+      "name": "ダークナイト",
+      "hp": 70,
+      "atk": 22,
+      "def": 14,
+      "speed": 6,
+      "exp": 40,
+      "gold": 30,
+      "skills": [
+        "sk_dark_slash",
+        "sk_guard"
+      ],
+      "drops": [],
+      "sprite": ""
+    },
+    {
+      "id": "dark_mage",
+      "name": "ダークメイジ",
+      "hp": 50,
+      "atk": 12,
+      "def": 6,
+      "speed": 9,
+      "exp": 38,
+      "gold": 28,
+      "skills": [
+        "sk_fire",
+        "sk_blizzard"
+      ],
+      "drops": [
+        {
+          "item": "魔道書",
+          "rate": 0.1
+        }
+      ],
+      "sprite": ""
+    },
+    {
+      "id": "boss_volg",
+      "name": "魔将ヴォルグ",
+      "hp": 250,
+      "atk": 30,
+      "def": 16,
+      "speed": 7,
+      "exp": 150,
+      "gold": 100,
+      "skills": [
+        "sk_dark_slash",
+        "sk_smash",
+        "sk_roar",
+        "sk_dark_flame"
+      ],
+      "drops": [
+        {
+          "item": "封印の鍵",
+          "rate": 1
+        }
+      ],
+      "sprite": ""
+    }
+  ],
+  "skills": [
+    {
+      "id": "sk_slash",
+      "name": "斬りつけ",
+      "type": "attack",
+      "power": 12,
+      "mpCost": 0,
+      "target": "single",
+      "element": "none",
+      "description": "鋭い一撃"
+    },
+    {
+      "id": "sk_bite",
+      "name": "噛みつき",
+      "type": "attack",
+      "power": 8,
+      "mpCost": 0,
+      "target": "single",
+      "element": "none",
+      "description": "素早い噛みつき"
+    },
+    {
+      "id": "sk_smash",
+      "name": "叩きつけ",
+      "type": "attack",
+      "power": 25,
+      "mpCost": 0,
+      "target": "single",
+      "element": "none",
+      "description": "強烈な一撃"
+    },
+    {
+      "id": "sk_stone_claw",
+      "name": "石の爪",
+      "type": "attack",
+      "power": 18,
+      "mpCost": 0,
+      "target": "single",
+      "element": "earth",
+      "description": "硬い爪で引き裂く"
+    },
+    {
+      "id": "sk_dark_slash",
+      "name": "暗黒斬",
+      "type": "attack",
+      "power": 22,
+      "mpCost": 3,
+      "target": "single",
+      "element": "dark",
+      "description": "闇を纏った剣撃"
+    },
+    {
+      "id": "sk_fire",
+      "name": "ファイア",
+      "type": "magic",
+      "power": 15,
+      "mpCost": 5,
+      "target": "single",
+      "element": "fire",
+      "description": "炎の魔法"
+    },
+    {
+      "id": "sk_blizzard",
+      "name": "ブリザド",
+      "type": "magic",
+      "power": 15,
+      "mpCost": 5,
+      "target": "single",
+      "element": "ice",
+      "description": "氷の魔法"
+    },
+    {
+      "id": "sk_wind_slash",
+      "name": "風の刃",
+      "type": "magic",
+      "power": 12,
+      "mpCost": 4,
+      "target": "all",
+      "element": "wind",
+      "description": "全体に風の刃を飛ばす"
+    },
+    {
+      "id": "sk_dark_flame",
+      "name": "暗黒炎",
+      "type": "magic",
+      "power": 30,
+      "mpCost": 8,
+      "target": "all",
+      "element": "dark",
+      "description": "全体を暗黒の炎で焼き尽くす"
+    },
+    {
+      "id": "sk_heal",
+      "name": "ヒール",
+      "type": "heal",
+      "power": 20,
+      "mpCost": 4,
+      "target": "self",
+      "element": "holy",
+      "description": "HPを回復"
+    },
+    {
+      "id": "sk_roar",
+      "name": "咆哮",
+      "type": "debuff",
+      "power": 0,
+      "mpCost": 0,
+      "target": "all",
+      "element": "none",
+      "description": "全体の防御を下げる"
+    },
+    {
+      "id": "sk_war_cry",
+      "name": "鬨の声",
+      "type": "buff",
+      "power": 0,
+      "mpCost": 0,
+      "target": "self",
+      "element": "none",
+      "description": "攻撃力を上げる"
+    },
+    {
+      "id": "sk_guard",
+      "name": "ガード",
+      "type": "buff",
+      "power": 0,
+      "mpCost": 0,
+      "target": "self",
+      "element": "none",
+      "description": "防御力を大幅に上げる"
+    }
+  ],
+  "battles": [
+    {
+      "id": "b_wolf",
+      "name": "オオカミとの遭遇",
+      "enemies": [
+        "wolf",
+        "slime"
+      ],
+      "bgm": "battle_theme",
+      "background": "forest",
+      "escapeAllowed": true,
+      "rewards": {
+        "exp": 15,
+        "gold": 8,
+        "items": []
+      }
+    },
+    {
+      "id": "b_goblin",
+      "name": "ゴブリンの待ち伏せ",
+      "enemies": [
+        "goblin",
+        "goblin"
+      ],
+      "bgm": "battle_theme",
+      "background": "forest",
+      "escapeAllowed": true,
+      "rewards": {
+        "exp": 24,
+        "gold": 16,
+        "items": []
+      }
+    },
+    {
+      "id": "b_wolf_pack",
+      "name": "オオカミの群れ",
+      "enemies": [
+        "wolf",
+        "wolf",
+        "wolf"
+      ],
+      "bgm": "battle_theme",
+      "background": "forest",
+      "escapeAllowed": true,
+      "rewards": {
+        "exp": 30,
+        "gold": 15,
+        "items": [
+          {
+            "item": "ポーション",
+            "amount": 1
+          }
+        ]
+      }
+    },
+    {
+      "id": "b_goblin_chief",
+      "name": "ゴブリンチーフ戦",
+      "enemies": [
+        "goblin",
+        "goblin_chief",
+        "goblin"
+      ],
+      "bgm": "boss_theme",
+      "background": "forest",
+      "escapeAllowed": false,
+      "rewards": {
+        "exp": 50,
+        "gold": 40,
+        "items": [
+          {
+            "item": "ハイポーション",
+            "amount": 1
+          }
+        ]
+      }
+    },
+    {
+      "id": "b_gargoyle",
+      "name": "ガーゴイルの襲撃",
+      "enemies": [
+        "gargoyle",
+        "gargoyle"
+      ],
+      "bgm": "battle_theme",
+      "background": "mountain",
+      "escapeAllowed": true,
+      "rewards": {
+        "exp": 44,
+        "gold": 30,
+        "items": []
+      }
+    },
+    {
+      "id": "b_harpy",
+      "name": "ハーピーの巣",
+      "enemies": [
+        "harpy",
+        "harpy",
+        "harpy"
+      ],
+      "bgm": "battle_theme",
+      "background": "mountain",
+      "escapeAllowed": true,
+      "rewards": {
+        "exp": 54,
+        "gold": 36,
+        "items": []
+      }
+    },
+    {
+      "id": "b_golem",
+      "name": "ロックゴーレム戦",
+      "enemies": [
+        "golem"
+      ],
+      "bgm": "boss_theme",
+      "background": "mountain",
+      "escapeAllowed": false,
+      "rewards": {
+        "exp": 60,
+        "gold": 40,
+        "items": [
+          {
+            "item": "魔石",
+            "amount": 1
+          }
+        ]
+      }
+    },
+    {
+      "id": "b_dark_knight",
+      "name": "ダークナイトの番人",
+      "enemies": [
+        "dark_knight",
+        "dark_knight"
+      ],
+      "bgm": "battle_theme",
+      "background": "cave",
+      "escapeAllowed": true,
+      "rewards": {
+        "exp": 80,
+        "gold": 60,
+        "items": []
+      }
+    },
+    {
+      "id": "b_dark_mage",
+      "name": "ダークメイジの罠",
+      "enemies": [
+        "dark_mage",
+        "dark_mage"
+      ],
+      "bgm": "battle_theme",
+      "background": "cave",
+      "escapeAllowed": true,
+      "rewards": {
+        "exp": 76,
+        "gold": 56,
+        "items": []
+      }
+    },
+    {
+      "id": "b_boss_volg",
+      "name": "魔将ヴォルグ",
+      "enemies": [
+        "dark_knight",
+        "boss_volg",
+        "dark_mage"
+      ],
+      "bgm": "boss_theme",
+      "background": "cave",
+      "escapeAllowed": false,
+      "rewards": {
+        "exp": 300,
+        "gold": 200,
+        "items": [
+          {
+            "item": "封印の鍵",
+            "amount": 1
+          }
+        ]
+      }
+    }
+  ]
+}

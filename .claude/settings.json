@@ -15,10 +15,15 @@
       "Bash(wc -l /c/Users/syout/OneDrive/ドキュメント/20：開発/20：ゲーム/game-engine/novel-engine/src/editor/*.jsx)",
       "Bash(wc -l /c/Users/syout/OneDrive/ドキュメント/20：開発/20：ゲーム/game-engine/novel-engine/src/**/*.jsx)",
       "Bash(grep -l \"TODO\\\\|FIXME\\\\|XXX\\\\|STUB\\\\|HACK\" /c/Users/syout/OneDrive/ドキュメント/20：開発/20：ゲーム/game-engine/novel-engine/src/**/*.jsx)",
-      "Bash(find c:UserssyoutOneDriveドキュメント20：開発20：ゲームgame-enginenovel-enginesrc -type f -name *.jsx -o -name *.js)"
+      "Bash(find c:UserssyoutOneDriveドキュメント20：開発20：ゲームgame-enginenovel-enginesrc -type f -name *.jsx -o -name *.js)",
+      "Bash(grep -n '\"\"REMOVE_CHARA_DONE\"\"\\\\|\"\"CHARA_ANIM_DONE\"\"\\\\|\"\"SHOW_CG\"\"\\\\|\"\"HIDE_CG\"\"\\\\|\"\"SET_NVL_MODE\"\"\\\\|\"\"ADD_NVL_TEXT\"\"\\\\|\"\"CLEAR_NVL\"\"\\\\|\"\"SET_SAVES\"\"' src/engine/NovelEngine.jsx src/engine/commands.js)",
+      "Bash(npm install:*)",
+      "Bash(npx vitest:*)",
+      "Bash(npm test:*)"
     ],
     "additionalDirectories": [
-      "c:\\Users\\syout\\OneDrive\\ドキュメント\\20：開発\\20：ゲーム\\game-engine\\novel-engine\\docs"
+      "c:\\Users\\syout\\OneDrive\\ドキュメント\\20：開発\\20：ゲーム\\game-engine\\novel-engine\\docs",
+      "c:\\Users\\syout\\OneDrive\\ドキュメント\\20：開発\\20：ゲーム\\game-engine\\novel-engine\\data\\projects"
     ]
   }
 }

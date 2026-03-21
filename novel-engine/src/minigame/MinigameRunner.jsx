@@ -1,8 +1,16 @@
 import QuizGame from "./QuizGame";
 import TimingGame from "./TimingGame";
 import MemoryGame from "./MemoryGame";
+import JankenGame from "./JankenGame";
+import SlotGame from "./SlotGame";
 
-const GAMES = { quiz: QuizGame, timing: TimingGame, memory: MemoryGame };
+const GAMES = {
+  quiz: QuizGame,
+  timing: TimingGame,
+  memory: MemoryGame,
+  janken: JankenGame,
+  slot: SlotGame,
+};
 
 export default function MinigameRunner({ type, config, onResult, onBack }) {
   const GameComponent = GAMES[type];

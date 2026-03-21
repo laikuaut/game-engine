@@ -1,19 +1,25 @@
+import { useState } from "react";
 import { ACTION } from "../engine/constants";
 
-const btnStyle = (active) => ({
-  background: active ? "rgba(90,180,255,0.25)" : "rgba(255,255,255,0.08)",
-  border: `1px solid ${active ? "rgba(90,180,255,0.5)" : "rgba(255,255,255,0.15)"}`,
-  color: active ? "#5BF" : "rgba(255,255,255,0.55)",
+const btnStyle = (active, hovered) => ({
+  background: hovered
+    ? "rgba(200,180,140,0.2)"
+    : active
+      ? "rgba(200,180,140,0.15)"
+      : "rgba(255,255,255,0.08)",
+  border: `1px solid ${active ? "rgba(200,180,140,0.5)" : hovered ? "rgba(200,180,140,0.4)" : "rgba(255,255,255,0.15)"}`,
+  color: hovered ? "#E8D4B0" : active ? "#C8A870" : "rgba(255,255,255,0.55)",
   padding: "4px 14px",
   borderRadius: 3,
   fontSize: 11,
   cursor: "pointer",
   transition: "all 0.2s",
   letterSpacing: 1.5,
-  fontFamily: "monospace",
+  fontFamily: "'Noto Serif JP', serif",
 });
 
 export default function Controls({ autoMode, skipMode, dispatch }) {
+  const [hoveredBtn, setHoveredBtn] = useState(null);
   const isSkipping = skipMode;
   const buttons = [
     { label: isSkipping ? "SKIP ●" : "SKIP", action: ACTION.SET_SKIP_MODE, payload: !skipMode, active: isSkipping },
@@ -35,17 +41,9 @@ export default function Controls({ autoMode, skipMode, dispatch }) {
           onClick={() =>
             dispatch({ type: btn.action, ...(btn.payload !== undefined ? { payload: btn.payload } : {}) })
           }
-          style={btnStyle(btn.active)}
-          onMouseEnter={(e) => {
-            e.target.style.background = "rgba(255,255,255,0.15)";
-            e.target.style.color = "#fff";
-          }}
-          onMouseLeave={(e) => {
-            e.target.style.background = btn.active
-              ? "rgba(90,180,255,0.25)"
-              : "rgba(255,255,255,0.08)";
-            e.target.style.color = btn.active ? "#5BF" : "rgba(255,255,255,0.55)";
-          }}
+          style={btnStyle(btn.active, hoveredBtn === btn.label)}
+          onMouseEnter={() => setHoveredBtn(btn.label)}
+          onMouseLeave={() => setHoveredBtn(null)}
         >
           {btn.label}
         </button>

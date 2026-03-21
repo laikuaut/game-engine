@@ -81,17 +81,17 @@ export function processCommand(script, index, dispatch, labelMap) {
         break;
       }
       case CMD.NVL_ON:
-        dispatch({ type: "SET_NVL_MODE", payload: true });
+        dispatch({ type: ACTION.SET_NVL_MODE, payload: true });
         break;
       case CMD.NVL_OFF:
-        dispatch({ type: "SET_NVL_MODE", payload: false });
+        dispatch({ type: ACTION.SET_NVL_MODE, payload: false });
         break;
       case CMD.NVL_CLEAR:
-        dispatch({ type: "CLEAR_NVL" });
+        dispatch({ type: ACTION.CLEAR_NVL });
         break;
       case CMD.CG:
         // CG 表示はループ中断（クリックで閉じる）
-        dispatch({ type: "SHOW_CG", payload: { id: cmd.id, src: cmd.src } });
+        dispatch({ type: ACTION.SHOW_CG, payload: { id: cmd.id, src: cmd.src } });
         return { index: i, blocking: "cg" };
       case CMD.WAIT:
         dispatch({ type: ACTION.START_WAIT });

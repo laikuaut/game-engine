@@ -11,7 +11,9 @@
     "lint": "eslint .",
     "electron:dev": "concurrently \"vite --port 5555\" \"wait-on http://localhost:5555 && electron .\"",
     "electron:build": "vite build && electron-builder --win --x64",
-    "electron:portable": "vite build && electron-builder --win portable --x64"
+    "electron:portable": "vite build && electron-builder --win portable --x64",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "build": {
     "appId": "com.doujin-engine.app",
@@ -23,11 +25,15 @@
       "target": [
         {
           "target": "nsis",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         },
         {
           "target": "portable",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "icon": null,
@@ -48,7 +54,9 @@
       {
         "from": "assets/",
         "to": "assets/",
-        "filter": ["**/*"]
+        "filter": [
+          "**/*"
+        ]
       }
     ]
   },
@@ -58,6 +66,8 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.1",
@@ -68,7 +78,9 @@
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.5.2",
     "globals": "^17.4.0",
+    "jsdom": "^29.0.1",
     "vite": "^8.0.1",
+    "vitest": "^4.1.0",
     "wait-on": "^8.0.3"
   }
 }

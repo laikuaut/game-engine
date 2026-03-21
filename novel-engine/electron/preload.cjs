@@ -20,6 +20,9 @@ contextBridge.exposeInMainWorld("electronAPI", {
   // アプリ情報
   getAppInfo: () => ipcRenderer.invoke("get-app-info"),
 
+  // アプリ終了
+  quitApp: () => ipcRenderer.invoke("quit-app"),
+
   // Electron 環境かどうか
   isElectron: true,
 });

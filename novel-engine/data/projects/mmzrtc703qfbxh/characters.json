@@ -1,0 +1,23 @@
+{
+  "yukina": {
+    "name": "雪菜",
+    "color": "#C8D8F0",
+    "expressions": {
+      "neutral": "🙂",
+      "smile": "😊",
+      "happy": "😄",
+      "shy": "😳",
+      "sad": "😢"
+    }
+  },
+  "saki": {
+    "name": "咲希",
+    "color": "#FFD700",
+    "expressions": {
+      "smile": "😊",
+      "happy": "😄",
+      "neutral": "🙂",
+      "sad": "😢"
+    }
+  }
+}

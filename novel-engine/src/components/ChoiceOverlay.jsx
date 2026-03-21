@@ -1,4 +1,39 @@
+import { useState, useEffect, useCallback } from "react";
+
 export default function ChoiceOverlay({ options, onChoice }) {
+  const [hoveredIndex, setHoveredIndex] = useState(-1);
+
+  // キーボード操作: 数字キー(1-9)で直接選択、矢印キーで移動、Enterで決定
+  const handleKeyDown = useCallback((e) => {
+    const num = parseInt(e.key, 10);
+    if (num >= 1 && num <= options.length) {
+      e.preventDefault();
+      e.stopPropagation();
+      onChoice(options[num - 1]);
+      return;
+    }
+    if (e.key === "ArrowUp" || e.key === "ArrowLeft") {
+      e.preventDefault();
+      e.stopPropagation();
+      setHoveredIndex((prev) => (prev <= 0 ? options.length - 1 : prev - 1));
+    } else if (e.key === "ArrowDown" || e.key === "ArrowRight") {
+      e.preventDefault();
+      e.stopPropagation();
+      setHoveredIndex((prev) => (prev >= options.length - 1 ? 0 : prev + 1));
+    } else if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      e.stopPropagation();
+      if (hoveredIndex >= 0 && hoveredIndex < options.length) {
+        onChoice(options[hoveredIndex]);
+      }
+    }
+  }, [options, onChoice, hoveredIndex]);
+
+  useEffect(() => {
+    window.addEventListener("keydown", handleKeyDown, true);
+    return () => window.removeEventListener("keydown", handleKeyDown, true);
+  }, [handleKeyDown]);
+
   return (
     <div
       onClick={(e) => e.stopPropagation()}
@@ -15,38 +50,34 @@ export default function ChoiceOverlay({ options, onChoice }) {
         animation: "fadeIn 0.3s ease-out",
       }}
     >
-      {options.map((opt, i) => (
-        <button
-          key={i}
-          onClick={() => onChoice(opt)}
-          style={{
-            background: "rgba(20,20,35,0.9)",
-            border: "1px solid rgba(200,180,140,0.4)",
-            color: "#E8D4B0",
-            padding: "14px 48px",
-            borderRadius: 4,
-            fontSize: 16,
-            cursor: "pointer",
-            minWidth: 280,
-            transition: "all 0.25s",
-            letterSpacing: 2,
-            fontFamily: "'Noto Serif JP', serif",
-            boxShadow: "0 4px 16px rgba(0,0,0,0.3)",
-          }}
-          onMouseEnter={(e) => {
-            e.target.style.background = "rgba(200,180,140,0.2)";
-            e.target.style.borderColor = "#E8D4B0";
-            e.target.style.transform = "scale(1.03)";
-          }}
-          onMouseLeave={(e) => {
-            e.target.style.background = "rgba(20,20,35,0.9)";
-            e.target.style.borderColor = "rgba(200,180,140,0.4)";
-            e.target.style.transform = "scale(1)";
-          }}
-        >
-          {opt.text}
-        </button>
-      ))}
+      {options.map((opt, i) => {
+        const isHovered = hoveredIndex === i;
+        return (
+          <button
+            key={i}
+            onClick={() => onChoice(opt)}
+            onMouseEnter={() => setHoveredIndex(i)}
+            onMouseLeave={() => setHoveredIndex(-1)}
+            style={{
+              background: isHovered ? "rgba(200,180,140,0.2)" : "rgba(20,20,35,0.9)",
+              border: `1px solid ${isHovered ? "#E8D4B0" : "rgba(200,180,140,0.4)"}`,
+              color: "#E8D4B0",
+              padding: "14px 48px",
+              borderRadius: 4,
+              fontSize: 16,
+              cursor: "pointer",
+              minWidth: 280,
+              transition: "all 0.25s",
+              letterSpacing: 2,
+              fontFamily: "'Noto Serif JP', serif",
+              boxShadow: "0 4px 16px rgba(0,0,0,0.3)",
+              transform: isHovered ? "scale(1.03)" : "scale(1)",
+            }}
+          >
+            {opt.text}
+          </button>
+        );
+      })}
     </div>
   );
 }

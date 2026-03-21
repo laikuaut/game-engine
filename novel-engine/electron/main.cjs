@@ -5,12 +5,15 @@ const fs = require("fs");
 // 開発モード判定
 const isDev = !app.isPackaged;
 
+// 画面サイズ設定（src/data/config.js の SCREEN と同期）
+const SCREEN = { width: 1920, height: 1080, minWidth: 960, minHeight: 540 };
+
 function createWindow() {
   const win = new BrowserWindow({
-    width: 1920,
-    height: 1080,
-    minWidth: 960,
-    minHeight: 540,
+    width: SCREEN.width,
+    height: SCREEN.height,
+    minWidth: SCREEN.minWidth,
+    minHeight: SCREEN.minHeight,
     resizable: true,
     fullscreenable: true,
     title: "Doujin Engine",
@@ -100,9 +103,38 @@ ipcMain.handle("select-folder", async (event, { title }) => {
 // === プロジェクト管理 ===
 
 function getProjectsDir() {
-  const dir = path.join(app.getPath("userData"), "projects");
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-  return dir;
+  // 開発時: プロジェクトルート/data/projects
+  // 本番時: exe と同階層の data/projects
+  const baseDir = isDev
+    ? path.join(__dirname, "..", "data", "projects")
+    : path.join(path.dirname(app.getPath("exe")), "data", "projects");
+  if (!fs.existsSync(baseDir)) {
+    fs.mkdirSync(baseDir, { recursive: true });
+    console.log("[ProjectStore] Created data dir:", baseDir);
+  }
+  return baseDir;
+}
+
+// 旧 AppData からの自動マイグレーション
+function migrateFromAppData() {
+  const oldDir = path.join(app.getPath("userData"), "projects");
+  const newDir = getProjectsDir();
+  if (!fs.existsSync(oldDir)) return;
+
+  const oldFiles = fs.readdirSync(oldDir).filter((f) => f.endsWith(".json"));
+  if (oldFiles.length === 0) return;
+
+  let migrated = 0;
+  for (const file of oldFiles) {
+    const dest = path.join(newDir, file);
+    if (!fs.existsSync(dest)) {
+      fs.copyFileSync(path.join(oldDir, file), dest);
+      migrated++;
+    }
+  }
+  if (migrated > 0) {
+    console.log(`[ProjectStore] Migrated ${migrated} files from AppData to ${newDir}`);
+  }
 }
 
 function getProjectsIndexPath() {
@@ -124,26 +156,115 @@ function writeProjectsIndex(projects) {
   fs.writeFileSync(getProjectsIndexPath(), JSON.stringify(projects, null, 2), "utf-8");
 }
 
+// --- ジャンル別ファイル分割ヘルパー ---
+// プロジェクトのデータファイル定義
+const DATA_FILES = ["script", "characters", "items", "bgStyles", "maps", "battleData", "minigames", "saves"];
+
+function getProjectDir(id) {
+  const dir = path.join(getProjectsDir(), id);
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  return dir;
+}
+
+function readJsonFile(filePath) {
+  if (!fs.existsSync(filePath)) return undefined;
+  try { return JSON.parse(fs.readFileSync(filePath, "utf-8")); } catch { return undefined; }
+}
+
+function writeJsonFile(filePath, data) {
+  fs.writeFileSync(filePath, JSON.stringify(data, null, 2), "utf-8");
+}
+
+// 旧形式（単一ファイル）→ 新形式（ディレクトリ）へのマイグレーション
+function migrateProjectToSplit(id) {
+  const oldFile = path.join(getProjectsDir(), `${id}.json`);
+  if (!fs.existsSync(oldFile)) return;
+  const projDir = getProjectDir(id);
+  const metaFile = path.join(projDir, "meta.json");
+  if (fs.existsSync(metaFile)) return; // 既に移行済み
+
+  try {
+    const project = JSON.parse(fs.readFileSync(oldFile, "utf-8"));
+    // meta.json に基本情報を書き出し
+    const meta = {};
+    for (const [k, v] of Object.entries(project)) {
+      if (!DATA_FILES.includes(k)) meta[k] = v;
+    }
+    writeJsonFile(metaFile, meta);
+    // 各データファイルを書き出し
+    for (const key of DATA_FILES) {
+      if (project[key] !== undefined) {
+        writeJsonFile(path.join(projDir, `${key}.json`), project[key]);
+      }
+    }
+    // 旧ファイルを削除
+    fs.unlinkSync(oldFile);
+    console.log(`[ProjectStore] Migrated project ${id} to split files`);
+  } catch (e) {
+    console.error(`[ProjectStore] Migration failed for ${id}:`, e);
+  }
+}
+
+// 分割ファイルからプロジェクト全体を読み込み
+function readProjectSplit(id) {
+  const projDir = path.join(getProjectsDir(), id);
+  const metaFile = path.join(projDir, "meta.json");
+  if (!fs.existsSync(metaFile)) return null;
+  try {
+    const meta = JSON.parse(fs.readFileSync(metaFile, "utf-8"));
+    const project = { ...meta };
+    for (const key of DATA_FILES) {
+      const data = readJsonFile(path.join(projDir, `${key}.json`));
+      if (data !== undefined) project[key] = data;
+    }
+    return project;
+  } catch {
+    return null;
+  }
+}
+
+// 分割ファイルにプロジェクトを保存
+function writeProjectSplit(project) {
+  const projDir = getProjectDir(project.id);
+  // meta.json
+  const meta = {};
+  for (const [k, v] of Object.entries(project)) {
+    if (!DATA_FILES.includes(k)) meta[k] = v;
+  }
+  writeJsonFile(path.join(projDir, "meta.json"), meta);
+  // 各データファイル
+  for (const key of DATA_FILES) {
+    if (project[key] !== undefined) {
+      writeJsonFile(path.join(projDir, `${key}.json`), project[key]);
+    }
+  }
+}
+
+// プロジェクトディレクトリを削除
+function deleteProjectSplit(id) {
+  const projDir = path.join(getProjectsDir(), id);
+  if (fs.existsSync(projDir)) {
+    fs.rmSync(projDir, { recursive: true, force: true });
+  }
+  // 旧形式のファイルも念のため削除
+  const oldFile = path.join(getProjectsDir(), `${id}.json`);
+  if (fs.existsSync(oldFile)) fs.unlinkSync(oldFile);
+}
+
 // プロジェクト一覧取得
 ipcMain.handle("project-list", async () => {
   return readProjectsIndex();
 });
 
-// プロジェクト取得（ID 指定）
+// プロジェクト取得（ID 指定）— 旧形式は自動マイグレーション
 ipcMain.handle("project-get", async (event, id) => {
-  const filePath = path.join(getProjectsDir(), `${id}.json`);
-  if (!fs.existsSync(filePath)) return null;
-  try {
-    return JSON.parse(fs.readFileSync(filePath, "utf-8"));
-  } catch {
-    return null;
-  }
+  migrateProjectToSplit(id);
+  return readProjectSplit(id);
 });
 
 // プロジェクト保存（作成 or 更新）
 ipcMain.handle("project-save", async (event, project) => {
-  const filePath = path.join(getProjectsDir(), `${project.id}.json`);
-  fs.writeFileSync(filePath, JSON.stringify(project, null, 2), "utf-8");
+  writeProjectSplit(project);
 
   // インデックス更新
   const index = readProjectsIndex();
@@ -170,11 +291,15 @@ ipcMain.handle("project-save", async (event, project) => {
 
 // プロジェクト削除
 ipcMain.handle("project-delete", async (event, id) => {
-  const filePath = path.join(getProjectsDir(), `${id}.json`);
-  if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+  deleteProjectSplit(id);
   const index = readProjectsIndex().filter((p) => p.id !== id);
   writeProjectsIndex(index);
   return { success: true };
+});
+
+// アプリ終了
+ipcMain.handle("quit-app", async () => {
+  app.quit();
 });
 
 // アプリ情報
@@ -189,7 +314,10 @@ ipcMain.handle("get-app-info", async () => {
 
 // === アプリライフサイクル ===
 
-app.whenReady().then(createWindow);
+app.whenReady().then(() => {
+  migrateFromAppData();
+  createWindow();
+});
 
 app.on("window-all-closed", () => {
   app.quit();

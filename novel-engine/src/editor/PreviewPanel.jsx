@@ -1,7 +1,7 @@
-import { useState, useCallback, useReducer, useEffect, useRef } from "react";
+import { useState, useCallback, useReducer, useEffect, useRef, useMemo } from "react";
 import { CMD, ACTION } from "../engine/constants";
 import { engineReducer, initialState } from "../engine/reducer";
-import { processCommand } from "../engine/commands";
+import { processCommand, buildLabelMap } from "../engine/commands";
 import Background from "../components/Background";
 import Character from "../components/Character";
 
@@ -11,24 +11,27 @@ export default function PreviewPanel({ script, startIndex }) {
   const [currentLine, setCurrentLine] = useState(startIndex);
   const initialized = useRef(false);
 
+  const labelMap = useMemo(() => buildLabelMap(script), [script]);
+
   // スクリプト変更時にリセット＆再実行
   useEffect(() => {
     if (script.length === 0) return;
-    // 初期コマンドを処理
-    const i = processCommand(script, 0, dispatch);
+    const result = processCommand(script, 0, dispatch, labelMap);
+    const i = result.index;
     if (i < script.length && script[i].type === CMD.DIALOG) {
       dispatch({ type: ACTION.SET_SPEAKER, payload: script[i].speaker });
       dispatch({ type: ACTION.SET_DISPLAYED_TEXT, payload: script[i].text });
     }
     setCurrentLine(i);
     initialized.current = true;
-  }, [script]);
+  }, [script, labelMap]);
 
   // 次のコマンドへ進む
   const advancePreview = useCallback(() => {
     let next = currentLine + 1;
     if (next >= script.length) return;
-    next = processCommand(script, next, dispatch);
+    const result = processCommand(script, next, dispatch, labelMap);
+    next = result.index;
     if (next >= script.length) return;
     setCurrentLine(next);
     const cmd = script[next];
@@ -36,7 +39,13 @@ export default function PreviewPanel({ script, startIndex }) {
       dispatch({ type: ACTION.SET_SPEAKER, payload: cmd.speaker });
       dispatch({ type: ACTION.SET_DISPLAYED_TEXT, payload: cmd.text });
     }
-  }, [currentLine, script]);
+    // blocking コマンド（wait/effect/cg）はプレビューではスキップ
+    if (result.blocking) {
+      if (result.blocking === "wait") dispatch({ type: ACTION.END_WAIT });
+      if (result.blocking === "effect") dispatch({ type: ACTION.EFFECT_END });
+      if (result.blocking === "cg") dispatch({ type: ACTION.HIDE_CG });
+    }
+  }, [currentLine, script, labelMap]);
 
   return (
     <div style={styles.wrapper}>
@@ -44,10 +53,16 @@ export default function PreviewPanel({ script, startIndex }) {
         プレビュー — line {currentLine}/{script.length - 1}
       </div>
       <div style={styles.screen} onClick={advancePreview}>
-        <Background currentBg={state.currentBg} bgTransition={state.bgTransition} />
+        <Background
+          currentBg={state.currentBg}
+          prevBg={state.prevBg}
+          bgTransition={state.bgTransition}
+          bgTransitionType={state.bgTransitionType}
+          bgTransitionTime={state.bgTransitionTime}
+        />
 
         {Object.entries(state.characters).map(([id, chara]) => (
-          <Character key={id} id={id} position={chara.position} expression={chara.expression} />
+          <Character key={id} id={id} position={chara.position} expression={chara.expression} animState={chara.animState} />
         ))}
 
         {/* BGM インジケーター */}

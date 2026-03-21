@@ -226,6 +226,10 @@ doujin-engine/
 # 開発サーバー起動（ブラウザプレビュー）
 npm run dev
 
+# テスト実行
+npm test              # 全テスト実行（vitest run）
+npm run test:watch    # ウォッチモード（vitest）
+
 # Electron で起動（デスクトップアプリとしてプレビュー）
 npm run electron:dev
 

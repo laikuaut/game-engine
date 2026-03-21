@@ -1,4 +1,5 @@
 import { ACTION } from "../engine/constants";
+import { COLORS, CLOSE_BTN_STYLE, OVERLAY_HEADER_STYLE, OVERLAY_TITLE_STYLE } from "../data/config";
 
 export default function ConfigView({ textSpeed, volumeMaster, volumeBGM, volumeSE, dispatch }) {
   return (
@@ -8,29 +9,21 @@ export default function ConfigView({ textSpeed, volumeMaster, volumeBGM, volumeS
         position: "absolute",
         inset: 0,
         zIndex: 40,
-        background: "rgba(10,10,20,0.95)",
+        background: COLORS.bgOverlay,
         padding: "24px 32px",
       }}
     >
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
-        <span style={{ color: "#E8D4B0", fontSize: 18, letterSpacing: 3 }}>設定</span>
+      <div style={OVERLAY_HEADER_STYLE}>
+        <span style={OVERLAY_TITLE_STYLE}>設定</span>
         <button
           onClick={() => dispatch({ type: ACTION.TOGGLE_CONFIG })}
-          style={{
-            background: "none",
-            border: "1px solid rgba(255,255,255,0.2)",
-            color: "#aaa",
-            padding: "4px 16px",
-            borderRadius: 3,
-            cursor: "pointer",
-            fontSize: 12,
-          }}
+          style={CLOSE_BTN_STYLE}
         >
           閉じる
         </button>
       </div>
       <div style={{ marginBottom: 24 }}>
-        <label style={{ color: "#C8A870", fontSize: 14, display: "block", marginBottom: 10 }}>
+        <label style={{ color: COLORS.goldAccent, fontSize: 14, display: "block", marginBottom: 10 }}>
           テキスト速度: {textSpeed}ms
         </label>
         <input
@@ -40,9 +33,9 @@ export default function ConfigView({ textSpeed, volumeMaster, volumeBGM, volumeS
           step={5}
           value={textSpeed}
           onChange={(e) => dispatch({ type: ACTION.SET_TEXT_SPEED, payload: Number(e.target.value) })}
-          style={{ width: "100%", accentColor: "#C8A870" }}
+          style={{ width: "100%", accentColor: COLORS.goldAccent }}
         />
-        <div style={{ display: "flex", justifyContent: "space-between", color: "#666", fontSize: 11, marginTop: 4 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", color: COLORS.textFaint, fontSize: 11, marginTop: 4 }}>
           <span>速い ←</span>
           <span>→ 遅い</span>
         </div>
@@ -54,7 +47,7 @@ export default function ConfigView({ textSpeed, volumeMaster, volumeBGM, volumeS
         { label: "SE 音量", value: volumeSE ?? 1.0, action: ACTION.SET_VOLUME_SE },
       ].map((vol) => (
         <div key={vol.action} style={{ marginBottom: 16 }}>
-          <label style={{ color: "#C8A870", fontSize: 13, display: "block", marginBottom: 6 }}>
+          <label style={{ color: COLORS.goldAccent, fontSize: 13, display: "block", marginBottom: 6 }}>
             {vol.label}: {Math.round(vol.value * 100)}%
           </label>
           <input
@@ -64,17 +57,18 @@ export default function ConfigView({ textSpeed, volumeMaster, volumeBGM, volumeS
             step={5}
             value={Math.round(vol.value * 100)}
             onChange={(e) => dispatch({ type: vol.action, payload: Number(e.target.value) / 100 })}
-            style={{ width: "100%", accentColor: "#C8A870" }}
+            style={{ width: "100%", accentColor: COLORS.goldAccent }}
           />
         </div>
       ))}
 
-      <div style={{ color: "#888", fontSize: 12, lineHeight: 2, marginTop: 8 }}>
-        <p>操作方法:</p>
+      <div style={{ color: COLORS.textDim, fontSize: 12, lineHeight: 2, marginTop: 8 }}>
+        <p style={{ color: COLORS.goldAccent, marginBottom: 4 }}>操作方法:</p>
         <p>　クリック / Enter / Space … テキスト送り</p>
+        <p>　数字キー (1-9) … 選択肢を直接選択</p>
+        <p>　矢印キー … 選択肢の移動</p>
         <p>　Ctrl 長押し … スキップ</p>
         <p>　Escape … メニューを閉じる</p>
-        <p>　AUTO … 自動再生の切替</p>
       </div>
     </div>
   );

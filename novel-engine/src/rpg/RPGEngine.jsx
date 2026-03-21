@@ -3,9 +3,9 @@ import MapRenderer from "./MapRenderer";
 import BattleEngine from "./BattleEngine";
 
 // RPG メインエンジン — マップ移動 + バトル + イベント
-export default function RPGEngine({ maps, battleData, onEvent, onBack }) {
-  const [currentMapIndex, setCurrentMapIndex] = useState(0);
-  const [playerPos, setPlayerPos] = useState({ x: 4, y: 7 });
+export default function RPGEngine({ maps, battleData, onEvent, onBack, onScriptEvent, initialState }) {
+  const [currentMapIndex, setCurrentMapIndex] = useState(initialState?.mapIndex ?? 0);
+  const [playerPos, setPlayerPos] = useState(initialState?.playerPos ?? { x: 4, y: 7 });
   const [inBattle, setInBattle] = useState(null);
   const [message, setMessage] = useState(null);
 
@@ -30,10 +30,17 @@ export default function RPGEngine({ maps, battleData, onEvent, onBack }) {
       case "item":
         setMessage({ speaker: "SYSTEM", text: `${event.data.item} x${event.data.amount} を手に入れた！` });
         break;
+      case "script":
+        // ノベルスクリプトを呼び出す → App.jsx 経由でノベルモードへ
+        if (onScriptEvent && event.data?.scriptLabel) {
+          const rpgState = { mapIndex: currentMapIndex, playerPos };
+          onScriptEvent(event.data.scriptLabel, rpgState);
+        }
+        break;
       default:
         if (onEvent) onEvent(event);
     }
-  }, [battleData, onEvent]);
+  }, [battleData, onEvent, onScriptEvent, currentMapIndex, playerPos]);
 
   // バトル終了
   const handleBattleEnd = useCallback((result) => {

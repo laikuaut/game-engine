@@ -102,12 +102,12 @@ export function engineReducer(state, action) {
         },
       };
     }
-    case "REMOVE_CHARA_DONE": {
+    case ACTION.REMOVE_CHARA_DONE: {
       const c = { ...state.characters };
       delete c[action.payload];
       return { ...state, characters: c };
     }
-    case "CHARA_ANIM_DONE": {
+    case ACTION.CHARA_ANIM_DONE: {
       if (!state.characters[action.payload]) return state;
       return {
         ...state,
@@ -153,6 +153,7 @@ export function engineReducer(state, action) {
         date: new Date().toLocaleString("ja-JP"),
         speaker: state.currentSpeaker,
         text: state.displayedText,
+        thumbnail: action.payload.thumbnail || null,
       };
       return { ...state, saves: newSaves };
     }
@@ -176,7 +177,7 @@ export function engineReducer(state, action) {
         showConfig: false,
       };
     }
-    case "SET_SAVES":
+    case ACTION.SET_SAVES:
       return { ...state, saves: action.payload };
     case ACTION.CLOSE_ALL_UI:
       return { ...state, showBacklog: false, showConfig: false, showSaveLoad: false };
@@ -218,16 +219,16 @@ export function engineReducer(state, action) {
     case ACTION.SET_CTRL_PRESSED:
       return { ...state, ctrlPressed: action.payload };
     // CG 表示
-    case "SHOW_CG":
+    case ACTION.SHOW_CG:
       return { ...state, showCG: action.payload };
-    case "HIDE_CG":
+    case ACTION.HIDE_CG:
       return { ...state, showCG: null };
     // NVL モード
-    case "SET_NVL_MODE":
+    case ACTION.SET_NVL_MODE:
       return { ...state, nvlMode: action.payload, nvlLog: action.payload ? [] : state.nvlLog };
-    case "ADD_NVL_TEXT":
+    case ACTION.ADD_NVL_TEXT:
       return { ...state, nvlLog: [...state.nvlLog, action.payload] };
-    case "CLEAR_NVL":
+    case ACTION.CLEAR_NVL:
       return { ...state, nvlLog: [] };
     default:
       return state;

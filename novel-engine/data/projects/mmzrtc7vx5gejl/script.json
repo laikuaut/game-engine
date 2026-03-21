@@ -1,0 +1,383 @@
+[
+  {
+    "type": "label",
+    "name": "prologue"
+  },
+  {
+    "type": "bg",
+    "src": "field",
+    "transition": "fade",
+    "time": 1500
+  },
+  {
+    "type": "bgm",
+    "name": "village_theme"
+  },
+  {
+    "type": "nvl_on"
+  },
+  {
+    "type": "dialog",
+    "speaker": "",
+    "text": "かつて、この世界は魔王の脅威に怯えていた。"
+  },
+  {
+    "type": "dialog",
+    "speaker": "",
+    "text": "しかし一人の勇者が立ち上がり、\n魔王を封印の塔に閉じ込めた。"
+  },
+  {
+    "type": "dialog",
+    "speaker": "",
+    "text": "それから百年——\n封印が綻び始めているという噂が流れ始めた。"
+  },
+  {
+    "type": "nvl_clear"
+  },
+  {
+    "type": "dialog",
+    "speaker": "",
+    "text": "小さな村に暮らす少年レイは、\n村長から呼び出しを受けた。"
+  },
+  {
+    "type": "nvl_off"
+  },
+  {
+    "type": "chara",
+    "id": "elder",
+    "position": "center",
+    "expression": "neutral"
+  },
+  {
+    "type": "dialog",
+    "speaker": "村長",
+    "text": "レイよ、お前の父は先代の勇者だった。"
+  },
+  {
+    "type": "dialog",
+    "speaker": "村長",
+    "text": "封印の塔に異変が起きておる。\nお前にしか頼めぬことがある。"
+  },
+  {
+    "type": "dialog",
+    "speaker": "レイ",
+    "text": "俺が……勇者の息子だって？"
+  },
+  {
+    "type": "chara_mod",
+    "id": "elder",
+    "expression": "sad"
+  },
+  {
+    "type": "dialog",
+    "speaker": "村長",
+    "text": "お前の父はな、封印の代償に命を落とした。\nだがその力は、お前に受け継がれておる。"
+  },
+  {
+    "type": "dialog",
+    "speaker": "レイ",
+    "text": "…………わかった。行くよ。"
+  },
+  {
+    "type": "chara_mod",
+    "id": "elder",
+    "expression": "smile"
+  },
+  {
+    "type": "dialog",
+    "speaker": "村長",
+    "text": "ありがとう。まずは西の森を抜け、\n山岳地帯の先にある魔道士の塔を目指すのだ。"
+  },
+  {
+    "type": "dialog",
+    "speaker": "村長",
+    "text": "そこに封印の鍵がある。"
+  },
+  {
+    "type": "chara_hide",
+    "id": "elder"
+  },
+  {
+    "type": "se",
+    "name": "item_get"
+  },
+  {
+    "type": "dialog",
+    "speaker": "",
+    "text": "レイは村長から『勇者の剣』を受け取った。"
+  },
+  {
+    "type": "effect",
+    "name": "fadeout",
+    "color": "#000",
+    "time": 1000
+  },
+  {
+    "type": "bg",
+    "src": "field",
+    "transition": "none"
+  },
+  {
+    "type": "effect",
+    "name": "fadein",
+    "time": 1000
+  },
+  {
+    "type": "chara",
+    "id": "lina",
+    "position": "center",
+    "expression": "smile"
+  },
+  {
+    "type": "dialog",
+    "speaker": "リナ",
+    "text": "レイ！ 私も一緒に行くよ！"
+  },
+  {
+    "type": "dialog",
+    "speaker": "レイ",
+    "text": "リナ……危険だぞ？"
+  },
+  {
+    "type": "chara_mod",
+    "id": "lina",
+    "expression": "happy"
+  },
+  {
+    "type": "dialog",
+    "speaker": "リナ",
+    "text": "私だって回復魔法くらい使えるんだから！\n一人で行かせるわけないでしょ！"
+  },
+  {
+    "type": "dialog",
+    "speaker": "レイ",
+    "text": "……ありがとう。心強いよ。"
+  },
+  {
+    "type": "chara_hide",
+    "id": "lina"
+  },
+  {
+    "type": "dialog",
+    "speaker": "",
+    "text": "こうして二人の冒険が始まった——"
+  },
+  {
+    "type": "label",
+    "name": "after_forest"
+  },
+  {
+    "type": "bg",
+    "src": "field",
+    "transition": "fade"
+  },
+  {
+    "type": "chara",
+    "id": "lina",
+    "position": "center",
+    "expression": "smile"
+  },
+  {
+    "type": "dialog",
+    "speaker": "リナ",
+    "text": "森を抜けたね。次は山岳地帯だ。"
+  },
+  {
+    "type": "dialog",
+    "speaker": "レイ",
+    "text": "ああ。でもモンスターが強くなってきたな。"
+  },
+  {
+    "type": "chara_mod",
+    "id": "lina",
+    "expression": "neutral"
+  },
+  {
+    "type": "dialog",
+    "speaker": "リナ",
+    "text": "大丈夫。二人なら何とかなるよ。"
+  },
+  {
+    "type": "chara_hide",
+    "id": "lina"
+  },
+  {
+    "type": "label",
+    "name": "before_tower"
+  },
+  {
+    "type": "effect",
+    "name": "fadeout",
+    "color": "#000",
+    "time": 1000
+  },
+  {
+    "type": "bg",
+    "src": "rooftop",
+    "transition": "none"
+  },
+  {
+    "type": "bgm",
+    "name": "dungeon_theme"
+  },
+  {
+    "type": "effect",
+    "name": "fadein",
+    "time": 1000
+  },
+  {
+    "type": "dialog",
+    "speaker": "",
+    "text": "二人は魔道士の塔にたどり着いた。\n不気味な魔力が渦巻いている。"
+  },
+  {
+    "type": "chara",
+    "id": "lina",
+    "position": "center",
+    "expression": "sad"
+  },
+  {
+    "type": "dialog",
+    "speaker": "リナ",
+    "text": "嫌な気配……気をつけてね。"
+  },
+  {
+    "type": "chara_hide",
+    "id": "lina"
+  },
+  {
+    "type": "label",
+    "name": "before_boss"
+  },
+  {
+    "type": "effect",
+    "name": "shake",
+    "intensity": 5,
+    "time": 600
+  },
+  {
+    "type": "dialog",
+    "speaker": "？？？",
+    "text": "愚かな人間どもが……\nこの塔に足を踏み入れるとはな。"
+  },
+  {
+    "type": "chara",
+    "id": "demon",
+    "position": "center",
+    "expression": "neutral"
+  },
+  {
+    "type": "dialog",
+    "speaker": "魔将ヴォルグ",
+    "text": "我は魔王の右腕、魔将ヴォルグ。\n封印の鍵は渡さん。"
+  },
+  {
+    "type": "dialog",
+    "speaker": "レイ",
+    "text": "お前を倒してでも、鍵は手に入れる！"
+  },
+  {
+    "type": "chara_hide",
+    "id": "demon"
+  },
+  {
+    "type": "label",
+    "name": "after_boss"
+  },
+  {
+    "type": "bgm",
+    "name": "victory_theme"
+  },
+  {
+    "type": "se",
+    "name": "item_get"
+  },
+  {
+    "type": "dialog",
+    "speaker": "",
+    "text": "魔将ヴォルグを倒し、封印の鍵を手に入れた！"
+  },
+  {
+    "type": "chara",
+    "id": "lina",
+    "position": "center",
+    "expression": "happy"
+  },
+  {
+    "type": "dialog",
+    "speaker": "リナ",
+    "text": "やった……やったよレイ！"
+  },
+  {
+    "type": "dialog",
+    "speaker": "レイ",
+    "text": "ああ。でもこれはまだ始まりだ。\n封印の塔で魔王を止めなきゃ。"
+  },
+  {
+    "type": "chara_mod",
+    "id": "lina",
+    "expression": "smile"
+  },
+  {
+    "type": "dialog",
+    "speaker": "リナ",
+    "text": "うん。最後まで一緒に行くよ。"
+  },
+  {
+    "type": "chara_hide",
+    "id": "lina"
+  },
+  {
+    "type": "label",
+    "name": "ending"
+  },
+  {
+    "type": "effect",
+    "name": "fadeout",
+    "color": "#000",
+    "time": 1500
+  },
+  {
+    "type": "bgm_stop",
+    "fadeout": 1500
+  },
+  {
+    "type": "wait",
+    "time": 500
+  },
+  {
+    "type": "bg",
+    "src": "school_gate",
+    "transition": "none"
+  },
+  {
+    "type": "bgm",
+    "name": "ending_theme"
+  },
+  {
+    "type": "effect",
+    "name": "fadein",
+    "time": 1500
+  },
+  {
+    "type": "nvl_on"
+  },
+  {
+    "type": "dialog",
+    "speaker": "",
+    "text": "封印の鍵を手に、\nレイとリナは封印の塔を目指す。"
+  },
+  {
+    "type": "dialog",
+    "speaker": "",
+    "text": "二人の冒険はまだ続く——"
+  },
+  {
+    "type": "dialog",
+    "speaker": "",
+    "text": "『勇者レイの冒険』\n\n—— 第一章 完 ——"
+  },
+  {
+    "type": "nvl_off"
+  }
+]

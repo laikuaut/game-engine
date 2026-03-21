@@ -6,9 +6,24 @@ import { useEffect, useRef, useState } from "react";
 
 const POS_MAP = { left: "20%", center: "50%", right: "80%" };
 
-const PIXI_CDN = "https://cdn.jsdelivr.net/npm/pixi.js@7.3.2/dist/pixi.min.js";
-const LIVE2D_CDN = "https://cdn.jsdelivr.net/npm/pixi-live2d-display@0.4.0/dist/index.min.js";
-const CUBISM_CORE = "https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js";
+// ローカルファイル優先、CDN フォールバック
+const SCRIPTS = [
+  {
+    local: "./assets/lib/pixi.min.js",
+    cdn: "https://cdn.jsdelivr.net/npm/pixi.js@7.3.2/dist/pixi.min.js",
+    check: () => !!window.PIXI,
+  },
+  {
+    local: "./assets/lib/live2dcubismcore.min.js",
+    cdn: "https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js",
+    check: () => !!window.Live2DCubismCore,
+  },
+  {
+    local: "./assets/lib/pixi-live2d-display.min.js",
+    cdn: "https://cdn.jsdelivr.net/npm/pixi-live2d-display@0.4.0/dist/index.min.js",
+    check: () => !!window.PIXI?.live2d,
+  },
+];
 
 let _loaded = false;
 let _loadPromise = null;
@@ -17,20 +32,30 @@ async function loadLibraries() {
   if (_loaded) return;
   if (_loadPromise) return _loadPromise;
   _loadPromise = (async () => {
-    const loadScript = (src) => new Promise((resolve, reject) => {
+    for (const script of SCRIPTS) {
+      if (script.check()) continue;
+      await loadScriptWithFallback(script.local, script.cdn);
+    }
+    _loaded = true;
+  })();
+  return _loadPromise;
+}
+
+function loadScriptWithFallback(localSrc, cdnSrc) {
+  return new Promise((resolve, reject) => {
+    const tryLoad = (src, onError) => {
       if (document.querySelector(`script[src="${src}"]`)) { resolve(); return; }
       const s = document.createElement("script");
       s.src = src;
       s.onload = resolve;
-      s.onerror = reject;
+      s.onerror = onError;
       document.head.appendChild(s);
+    };
+    // ローカルを先に試す → 失敗したら CDN
+    tryLoad(localSrc, () => {
+      tryLoad(cdnSrc, reject);
     });
-    await loadScript(PIXI_CDN);
-    await loadScript(CUBISM_CORE);
-    await loadScript(LIVE2D_CDN);
-    _loaded = true;
-  })();
-  return _loadPromise;
+  });
 }
 
 export default function Live2DCharacter({ modelPath, position, expression, scale = 0.25, animState }) {
