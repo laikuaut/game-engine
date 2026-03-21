@@ -19,9 +19,12 @@ export default function Character({ id, position, expression, animState, charaDa
   if (!data) return null;
 
   // スプライト画像のURLを解決
+  // 絶対パス（/assets/...）はそのまま使い、ファイル名のみならアセットシステム経由
   const spriteFile = data.sprites?.[expression];
   const spriteUrl = spriteFile
-    ? (projectId ? getAssetUrl(projectId, "chara", spriteFile) : `./assets/chara/${spriteFile}`)
+    ? (spriteFile.startsWith("/") ? spriteFile
+      : projectId ? getAssetUrl(projectId, "chara", spriteFile)
+      : `./assets/chara/${spriteFile}`)
     : null;
 
   // Live2D モデルがある場合

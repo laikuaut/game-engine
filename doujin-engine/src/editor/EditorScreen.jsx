@@ -605,7 +605,9 @@ const styles = {
   },
   tabBtn: {
     background: "transparent",
-    border: "1px solid transparent",
+    borderWidth: 1,
+    borderStyle: "solid",
+    borderColor: "transparent",
     color: "#888",
     padding: "4px 14px",
     borderRadius: 3,

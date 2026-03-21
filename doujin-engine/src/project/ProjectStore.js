@@ -53,38 +53,39 @@ const DEFAULT_CHARACTERS = {
       surprise: "😲",
     },
   },
+  rin: {
+    name: "白石凛",
+    color: "#FFD700",
+    expressions: {
+      neutral: "🙂",
+      smile: "😊",
+      happy: "😄",
+      tease: "😏",
+      sad: "😢",
+      surprise: "😲",
+    },
+    sprites: {
+      neutral: "/assets/chara/shiraishi_rin/natural.png",
+      smile: "/assets/chara/shiraishi_rin/smile.png",
+      sad: "/assets/chara/shiraishi_rin/sad.png",
+    }
+  },
 };
 
 const DEFAULT_BG_STYLES = {
-  school_gate: {
-    background: "linear-gradient(170deg, #87CEEB 0%, #E0F0FF 40%, #98D8A0 60%, #5A8F3C 100%)",
+  school_gate_昼: {
+    // background: "linear-gradient(170deg, #87CEEB 0%, #E0F0FF 40%, #98D8A0 60%, #5A8F3C 100%)",
+    background: "url(/assets/bg/bg_schoolgate_an.jpg) center/cover no-repeat",
   },
-  classroom: {
-    background: "linear-gradient(180deg, #F5E6D0 0%, #E8D5B8 30%, #C4956A 80%, #8B6914 100%)",
+  classroom_昼: {
+    // background: "linear-gradient(180deg, #F5E6D0 0%, #E8D5B8 30%, #C4956A 80%, #8B6914 100%)",
+    background: "url(/assets/bg/bg_classroom_an.jpg) center/cover no-repeat",
   },
-  rooftop: {
-    background: "linear-gradient(180deg, #4A90D9 0%, #87CEEB 40%, #B0C4DE 90%)",
+  classroom_夕方: {
+    background: "url(/assets/bg/bg_classroom_af.jpg) center/cover no-repeat",
   },
-  hallway: {
-    background: "linear-gradient(180deg, #D5C4A1 0%, #C4B896 40%, #A89060 100%)",
-  },
-  night_room: {
-    background: "linear-gradient(180deg, #0a0a2e 0%, #1a1a3e 40%, #2a2a4e 100%)",
-  },
-  sunset: {
-    background: "linear-gradient(180deg, #FF7E5F 0%, #FEB47B 30%, #FFD194 60%, #1a1a2e 100%)",
-  },
-  park: {
-    background: "linear-gradient(170deg, #87CEEB 0%, #B0E0E6 30%, #98FB98 60%, #228B22 100%)",
-  },
-  night_street: {
-    background: "linear-gradient(180deg, #0C1445 0%, #1A237E 40%, #283593 70%, #1a1a2e 100%)",
-  },
-  cafe: {
-    background: "linear-gradient(180deg, #D7CCC8 0%, #BCAAA4 30%, #8D6E63 70%, #5D4037 100%)",
-  },
-  beach: {
-    background: "linear-gradient(180deg, #87CEEB 0%, #00BCD4 40%, #FFE0B2 70%, #FFCC80 100%)",
+  classroom_夜: {
+    background: "url(/assets/bg/bg_classroom_nt.jpg) center/cover no-repeat",
   },
 };
 
@@ -463,6 +464,8 @@ export async function deleteAsset(projectId, type, filename) {
 // アセットの表示用URLを取得
 export function getAssetUrl(projectId, type, filename) {
   if (!projectId || !filename) return null;
+  // 絶対パス（/assets/...）はデフォルト素材としてそのまま返す
+  if (filename.startsWith("/")) return filename;
   // ゲームモード（ビルド済みゲーム）: game-assets/ から配信
   if (projectId === "__game__") {
     return `./game-assets/${type}/${filename}`;

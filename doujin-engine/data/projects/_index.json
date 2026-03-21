@@ -1,49 +1,26 @@
 [
   {
-    "id": "mn01bv9m3r96zb",
-    "name": "てｓｔ",
-    "description": "",
-    "gameType": "novel",
-    "createdAt": "2026-03-21T07:57:17.194Z",
-    "updatedAt": "2026-03-21T09:05:53.056Z",
-    "scriptLength": 6,
-    "mapCount": 0,
-    "minigameCount": 0
-  },
-  {
-    "id": "mn0454cdbw5c7z",
+    "id": "mn06s87jpj3hrm",
     "name": "放課後の幽霊少女",
     "dirName": "放課後の幽霊少女",
     "description": "ラノベ風サンプルシナリオ（約10分・2ルート完結）",
     "gameType": "novel",
-    "createdAt": "2026-03-21T09:16:01.213Z",
-    "updatedAt": "2026-03-21T09:16:01.233Z",
+    "createdAt": "2026-03-21T10:29:58.543Z",
+    "updatedAt": "2026-03-21T10:29:58.581Z",
     "scriptLength": 290,
     "mapCount": 0,
     "minigameCount": 0
   },
   {
-    "id": "mn0454ddoigaw5",
+    "id": "mn06s88v89cdda",
     "name": "勇者レイの冒険",
     "dirName": "勇者レイの冒険",
     "description": "RPGサンプル（マップ4面・ボス戦付き）",
     "gameType": "rpg",
-    "createdAt": "2026-03-21T09:16:01.249Z",
-    "updatedAt": "2026-03-21T09:16:01.352Z",
+    "createdAt": "2026-03-21T10:29:58.591Z",
+    "updatedAt": "2026-03-21T10:29:58.697Z",
     "scriptLength": 80,
     "mapCount": 4,
     "minigameCount": 2
-  },
-  {
-    "id": "mn049zk8v354f8",
-    "name": "所有（ノベルサンプル）",
-    "dirName": "所有（ノベルサンプル）",
-    "description": "放課後の教室 — 選択肢あり・バッドエンド分岐",
-    "gameType": "novel",
-    "createdAt": "2026-03-21T09:19:48.296Z",
-    "updatedAt": "2026-03-21T09:19:48.346Z",
-    "scriptLength": 331,
-    "mapCount": 0,
-    "minigameCount": 0
   }
 ]
