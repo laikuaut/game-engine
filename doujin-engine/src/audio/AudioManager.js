@@ -179,6 +179,27 @@ export default class AudioManager {
     this.seGain.gain.setValueAtTime(this.volumes.se, this.ctx.currentTime);
   }
 
+  // ArrayBuffer をフェッチ（file:// 対応）
+  async _fetchArrayBuffer(url) {
+    // file:// の場合は XMLHttpRequest を使う（fetch は file:// で失敗する環境がある）
+    if (url.startsWith("file://")) {
+      return new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open("GET", url, true);
+        xhr.responseType = "arraybuffer";
+        xhr.onload = () => {
+          if (xhr.status === 0 || xhr.status === 200) resolve(xhr.response);
+          else reject(new Error(`XHR ${xhr.status}`));
+        };
+        xhr.onerror = () => reject(new Error("XHR error"));
+        xhr.send();
+      });
+    }
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.arrayBuffer();
+  }
+
   // オーディオファイルのロード + キャッシュ
   async _loadAudio(name, type) {
     const key = `${type}/${name}`;
@@ -191,19 +212,14 @@ export default class AudioManager {
     const catalogFilename = this._catalogMap[type]?.[name];
     if (catalogFilename) {
       log("_loadAudio: カタログ解決 →", name, "→", catalogFilename);
-      // 絶対パス（/assets/...）はそのまま、それ以外はプロジェクトアセット経由
       const path = getAssetUrl(this.projectId, type, catalogFilename);
       try {
-        const res = await fetch(path);
-        if (res.ok) {
-          const arrayBuffer = await res.arrayBuffer();
-          log("_loadAudio: デコード中 →", key, ", size =", arrayBuffer.byteLength, "bytes");
-          const audioBuffer = await this.ctx.decodeAudioData(arrayBuffer);
-          this.cache.set(key, audioBuffer);
-          log("_loadAudio: デコード成功 →", key);
-          return audioBuffer;
-        }
-        log("_loadAudio: HTTP", res.status, "→", path);
+        const arrayBuffer = await this._fetchArrayBuffer(path);
+        log("_loadAudio: デコード中 →", key, ", size =", arrayBuffer.byteLength, "bytes");
+        const audioBuffer = await this.ctx.decodeAudioData(arrayBuffer);
+        this.cache.set(key, audioBuffer);
+        log("_loadAudio: デコード成功 →", key);
+        return audioBuffer;
       } catch (err) {
         log("_loadAudio: カタログパス エラー →", path, err.message || err);
       }
@@ -215,12 +231,7 @@ export default class AudioManager {
       const path = this._resolveAssetPath(name, type, ext);
       log("_loadAudio: fetch 試行 →", path);
       try {
-        const res = await fetch(path);
-        if (!res.ok) {
-          log("_loadAudio: HTTP", res.status, "→", path);
-          continue;
-        }
-        const arrayBuffer = await res.arrayBuffer();
+        const arrayBuffer = await this._fetchArrayBuffer(path);
         log("_loadAudio: デコード中 →", key, ", size =", arrayBuffer.byteLength, "bytes");
         const audioBuffer = await this.ctx.decodeAudioData(arrayBuffer);
         this.cache.set(key, audioBuffer);

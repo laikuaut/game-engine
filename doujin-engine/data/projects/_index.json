@@ -58,5 +58,17 @@
     "scriptLength": 5,
     "mapCount": 0,
     "minigameCount": 0
+  },
+  {
+    "id": "mn0afl7gig2i1n",
+    "name": "ddd",
+    "dirName": "ddd",
+    "description": "",
+    "gameType": "novel",
+    "createdAt": "2026-03-21T12:12:07.324Z",
+    "updatedAt": "2026-03-21T12:18:14.146Z",
+    "scriptLength": 3,
+    "mapCount": 0,
+    "minigameCount": 0
   }
 ]
