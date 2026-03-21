@@ -1,9 +1,11 @@
-import { useEffect, useCallback, useRef } from "react";
+import { useEffect, useCallback, useRef, useMemo } from "react";
+import { getAssetUrl } from "../project/ProjectStore";
 
-// タイルの色マップ
+// 組み込みタイルの色マップ
 const TILE_COLORS = {
   grass: "#4a7a3a", tree: "#2d5a1e", dirt: "#8B7355", stone: "#888",
   water: "#3a6a9a", exit: "#6a4a2a", sand: "#c2b280", lava: "#cc3300",
+  wall: "#5D4037", ice: "#B3E5FC", door: "#8B4513",
   null: "transparent",
 };
 const OBJ_COLORS = {
@@ -11,12 +13,41 @@ const OBJ_COLORS = {
   door: "#8B4513", spawn: "#5BF", sign: "#aaa",
 };
 
-export default function MapRenderer({ map, playerPos, onMove, onEvent }) {
+export default function MapRenderer({ map, playerPos, onMove, onEvent, customTiles, projectId }) {
   const canvasRef = useRef(null);
   const tileSize = 32;
+  const imageCache = useRef({}); // { filename: HTMLImageElement }
 
-  // マップ描画
+  // カスタムタイルの画像URLマップ
+  const tileImageMap = useMemo(() => {
+    const m = {};
+    if (customTiles) {
+      for (const tile of customTiles) {
+        if (tile.image) {
+          m[tile.id] = getAssetUrl(projectId, "tile", tile.image);
+        }
+      }
+    }
+    return m;
+  }, [customTiles, projectId]);
+
+  // 画像をプリロード
   useEffect(() => {
+    const urls = Object.values(tileImageMap);
+    for (const url of urls) {
+      if (!url || imageCache.current[url]) continue;
+      const img = new Image();
+      img.src = url;
+      img.onload = () => {
+        imageCache.current[url] = img;
+        // 再描画をトリガー（canvas を再描画）
+        drawMap();
+      };
+    }
+  }, [tileImageMap]);
+
+  // マップ描画関数
+  const drawMap = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas || !map) return;
     const ctx = canvas.getContext("2d");
@@ -33,18 +64,31 @@ export default function MapRenderer({ map, playerPos, onMove, onEvent }) {
       layer.tiles.forEach((row, y) => {
         row.forEach((tile, x) => {
           if (!tile) return;
-          const colors = layer.type === "collision" ? null : (layer.name === "オブジェクト" ? OBJ_COLORS : TILE_COLORS);
-          if (!colors) return;
-          const color = colors[tile] || "#555";
-          ctx.fillStyle = color;
-          if (layer.name === "オブジェクト") {
-            // オブジェクトは小さく描画
-            ctx.fillRect(x * tileSize + 6, y * tileSize + 6, tileSize - 12, tileSize - 12);
+
+          // カスタムタイル画像があるか確認
+          const imgUrl = tileImageMap[tile];
+          const cachedImg = imgUrl ? imageCache.current[imgUrl] : null;
+
+          if (cachedImg) {
+            // 画像タイル描画
+            ctx.imageSmoothingEnabled = false;
+            if (layer.name === "オブジェクト") {
+              ctx.drawImage(cachedImg, x * tileSize + 4, y * tileSize + 4, tileSize - 8, tileSize - 8);
+            } else {
+              ctx.drawImage(cachedImg, x * tileSize, y * tileSize, tileSize, tileSize);
+            }
           } else {
-            ctx.fillRect(x * tileSize, y * tileSize, tileSize, tileSize);
-            // グリッド線
-            ctx.strokeStyle = "rgba(0,0,0,0.15)";
-            ctx.strokeRect(x * tileSize, y * tileSize, tileSize, tileSize);
+            // 色ベース描画
+            const colors = layer.name === "オブジェクト" ? OBJ_COLORS : TILE_COLORS;
+            const color = colors[tile] || "#555";
+            ctx.fillStyle = color;
+            if (layer.name === "オブジェクト") {
+              ctx.fillRect(x * tileSize + 6, y * tileSize + 6, tileSize - 12, tileSize - 12);
+            } else {
+              ctx.fillRect(x * tileSize, y * tileSize, tileSize, tileSize);
+              ctx.strokeStyle = "rgba(0,0,0,0.15)";
+              ctx.strokeRect(x * tileSize, y * tileSize, tileSize, tileSize);
+            }
           }
         });
       });
@@ -70,7 +114,12 @@ export default function MapRenderer({ map, playerPos, onMove, onEvent }) {
       ctx.lineWidth = 2;
       ctx.strokeRect(ev.x * tileSize + 2, ev.y * tileSize + 2, tileSize - 4, tileSize - 4);
     });
-  }, [map, playerPos, tileSize]);
+  }, [map, playerPos, tileSize, tileImageMap]);
+
+  // 描画トリガー
+  useEffect(() => {
+    drawMap();
+  }, [drawMap]);
 
   // キー入力で移動
   const handleKeyDown = useCallback((e) => {
@@ -87,19 +136,16 @@ export default function MapRenderer({ map, playerPos, onMove, onEvent }) {
     const nx = playerPos.x + dir.x;
     const ny = playerPos.y + dir.y;
 
-    // 範囲外チェック
     if (nx < 0 || nx >= map.width || ny < 0 || ny >= map.height) return;
 
-    // 衝突判定（tree, water は通行不可）
     const groundLayer = map.layers.find((l) => l.name === "地形");
     if (groundLayer) {
       const tile = groundLayer.tiles[ny]?.[nx];
-      if (tile === "tree" || tile === "water") return;
+      if (tile === "tree" || tile === "water" || tile === "wall") return;
     }
 
     onMove({ x: nx, y: ny });
 
-    // イベントチェック
     const event = (map.events || []).find((ev) => ev.x === nx && ev.y === ny);
     if (event) {
       if (event.trigger === "auto" || (event.trigger === "action" && (e.key === " " || e.key === "Enter"))) {
@@ -108,14 +154,11 @@ export default function MapRenderer({ map, playerPos, onMove, onEvent }) {
     }
   }, [playerPos, map, onMove, onEvent]);
 
-  // action トリガー（スペース/Enter）
   const handleAction = useCallback((e) => {
     if (e.key !== " " && e.key !== "Enter") return;
     e.preventDefault();
-    // 現在位置のイベント
     const event = (map.events || []).find((ev) => ev.x === playerPos.x && ev.y === playerPos.y && ev.trigger === "action");
     if (event) onEvent(event);
-    // 隣接タイルのイベント
     const dirs = [{ x: 0, y: -1 }, { x: 0, y: 1 }, { x: -1, y: 0 }, { x: 1, y: 0 }];
     for (const d of dirs) {
       const adj = (map.events || []).find((ev) =>

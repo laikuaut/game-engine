@@ -13,7 +13,13 @@ import BattleEditor from "./rpg/BattleEditor";
 import MinigameEditor from "./minigame/MinigameEditor";
 import DeployPanel from "./DeployPanel";
 import CharacterEditor from "./CharacterEditor";
+import BackgroundEditor from "./BackgroundEditor";
 import ItemEditor from "./ItemEditor";
+import EventEditor from "./EventEditor";
+import CGCatalogEditor from "./CGCatalogEditor";
+import SceneCatalogEditor from "./SceneCatalogEditor";
+import HelpModal, { HelpButton } from "../components/HelpModal";
+import { EDITOR_HELP, MAP_EDITOR_HELP } from "../data/helpContent";
 
 // 編集用の初期スクリプト（空テンプレート）
 const DEFAULT_SCRIPT = [
@@ -26,7 +32,11 @@ const TABS = [
   { id: "script",   label: "スクリプト", group: "novel" },
   { id: "text",     label: "テキスト",   group: "novel" },
   { id: "chara",    label: "キャラ",     group: "novel" },
+  { id: "bg",       label: "背景",       group: "novel" },
   { id: "item",     label: "アイテム",   group: "rpg" },
+  { id: "cg",       label: "CG",         group: "novel" },
+  { id: "scene",    label: "シーン",     group: "novel" },
+  { id: "event",    label: "イベント",   group: "novel" },
   { id: "flow",     label: "フロー",     group: "novel" },
   { id: "map",      label: "マップ",     group: "rpg" },
   { id: "battle",   label: "バトル",     group: "rpg" },
@@ -53,13 +63,60 @@ export default function EditorScreen({ onBack, initialScript, projectId, project
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [activeTab, setActiveTab] = useState("script");
   const [characters, setCharacters] = useState({});
+  const [bgStyles, setBgStyles] = useState({});
   const [items, setItems] = useState([]);
+  const [gameEvents, setGameEvents] = useState([]);
   const [maps, setMaps] = useState([]);
+  const [customTiles, setCustomTiles] = useState([]);
   const [battleData, setBattleData] = useState({ enemies: [], skills: [], battles: [] });
   const [minigames, setMinigames] = useState([]);
+  const [cgCatalog, setCgCatalog] = useState([]);
+  const [sceneCatalog, setSceneCatalog] = useState([]);
   const [dirty, setDirty] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
   const [saveStatus, setSaveStatus] = useState(null); // null | "saving" | "saved"
+  const [previewStartIndex, setPreviewStartIndex] = useState(0);
+  const [showSplitPreview, setShowSplitPreview] = useState(false);
+  // Undo/Redo 履歴
+  const [undoStack, setUndoStack] = useState([]);
+  const [redoStack, setRedoStack] = useState([]);
+  const MAX_UNDO = 50;
   const saveTimerRef = useRef(null);
+
+  // Undo/Redo 用のスクリプト更新（履歴を記録）
+  const pushUndo = useCallback((prevScript) => {
+    setUndoStack((stack) => {
+      const next = [...stack, prevScript];
+      return next.length > MAX_UNDO ? next.slice(-MAX_UNDO) : next;
+    });
+    setRedoStack([]);
+  }, []);
+
+  const undo = useCallback(() => {
+    setUndoStack((stack) => {
+      if (stack.length === 0) return stack;
+      const prev = stack[stack.length - 1];
+      setRedoStack((redo) => [...redo, script]);
+      setScript(prev);
+      return stack.slice(0, -1);
+    });
+  }, [script]);
+
+  const redo = useCallback(() => {
+    setRedoStack((stack) => {
+      if (stack.length === 0) return stack;
+      const next = stack[stack.length - 1];
+      setUndoStack((undo) => [...undo, script]);
+      setScript(next);
+      return stack.slice(0, -1);
+    });
+  }, [script]);
+
+  // 「この行から再生」ハンドラ
+  const handlePlayFrom = useCallback((index) => {
+    setPreviewStartIndex(index);
+    setShowSplitPreview(true);
+  }, []);
 
   // プロジェクトから追加データを非同期ロード
   useEffect(() => {
@@ -68,10 +125,15 @@ export default function EditorScreen({ onBack, initialScript, projectId, project
       const proj = await getProject(projectId);
       if (proj) {
         setCharacters(proj.characters || {});
+        setBgStyles(proj.bgStyles || {});
         setItems(proj.items || []);
+        setGameEvents(proj.gameEvents || []);
         setMaps(proj.maps || []);
+        setCustomTiles(proj.customTiles || []);
         setBattleData(proj.battleData || { enemies: [], skills: [], battles: [] });
         setMinigames(proj.minigames || []);
+        setCgCatalog(proj.cgCatalog || []);
+        setSceneCatalog(proj.sceneCatalog || []);
       }
     })();
   }, [projectId]);
@@ -80,24 +142,32 @@ export default function EditorScreen({ onBack, initialScript, projectId, project
   const saveProject = useCallback(async () => {
     if (!projectId) return;
     setSaveStatus("saving");
-    await updateProject(projectId, { script, characters, items, maps, battleData, minigames });
+    await updateProject(projectId, { script, characters, bgStyles, items, gameEvents, maps, customTiles, battleData, minigames, cgCatalog, sceneCatalog });
     setDirty(false);
     setSaveStatus("saved");
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(() => setSaveStatus(null), 2000);
   }, [projectId, script, maps, battleData, minigames]);
 
-  // Ctrl+S で保存
+  // Ctrl+S: 保存、Ctrl+Z: Undo、Ctrl+Y/Ctrl+Shift+Z: Redo
   useEffect(() => {
     const handleKeyDown = (e) => {
       if ((e.ctrlKey || e.metaKey) && e.key === "s") {
         e.preventDefault();
         saveProject();
       }
+      if ((e.ctrlKey || e.metaKey) && e.key === "z" && !e.shiftKey) {
+        e.preventDefault();
+        undo();
+      }
+      if ((e.ctrlKey || e.metaKey) && (e.key === "y" || (e.key === "z" && e.shiftKey))) {
+        e.preventDefault();
+        redo();
+      }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [saveProject]);
+  }, [saveProject, undo, redo]);
 
   // 変更マーク用ヘルパー
   const markDirty = useCallback(() => {
@@ -107,19 +177,21 @@ export default function EditorScreen({ onBack, initialScript, projectId, project
 
   // スクリプト更新（ローカルステートのみ、保存はボタンで）
   const persistScript = useCallback((newScript) => {
+    pushUndo(script);
     setScript(newScript);
     markDirty();
-  }, [markDirty]);
+  }, [markDirty, pushUndo, script]);
 
   // コマンド更新
   const updateCommand = useCallback((index, updated) => {
+    pushUndo(script);
     setScript((prev) => {
       const next = [...prev];
       next[index] = { ...next[index], ...updated };
       return next;
     });
     markDirty();
-  }, [markDirty]);
+  }, [markDirty, pushUndo, script]);
 
   // コマンド追加
   const addCommand = useCallback((type, afterIndex) => {
@@ -139,6 +211,7 @@ export default function EditorScreen({ onBack, initialScript, projectId, project
       [CMD.LABEL]: { type: CMD.LABEL, name: "" },
     };
     const newCmd = templates[type] || { type: CMD.DIALOG, speaker: "", text: "" };
+    pushUndo(script);
     setScript((prev) => {
       const next = [...prev];
       next.splice(afterIndex + 1, 0, newCmd);
@@ -146,10 +219,11 @@ export default function EditorScreen({ onBack, initialScript, projectId, project
     });
     setSelectedIndex(afterIndex + 1);
     markDirty();
-  }, [markDirty]);
+  }, [markDirty, pushUndo, script]);
 
   // コマンド削除
   const removeCommand = useCallback((index) => {
+    pushUndo(script);
     setScript((prev) => {
       if (prev.length <= 1) return prev;
       const next = [...prev];
@@ -158,10 +232,11 @@ export default function EditorScreen({ onBack, initialScript, projectId, project
     });
     setSelectedIndex((prev) => Math.max(0, prev - 1));
     markDirty();
-  }, [markDirty]);
+  }, [markDirty, pushUndo, script]);
 
   // コマンド並べ替え
   const moveCommand = useCallback((index, direction) => {
+    pushUndo(script);
     setScript((prev) => {
       const target = index + direction;
       if (target < 0 || target >= prev.length) return prev;
@@ -174,7 +249,7 @@ export default function EditorScreen({ onBack, initialScript, projectId, project
       return Math.max(0, Math.min(script.length - 1, target));
     });
     markDirty();
-  }, [script.length, markDirty]);
+  }, [script.length, markDirty, pushUndo, script]);
 
   // JSON エクスポート
   const exportScript = useCallback(() => {
@@ -198,6 +273,15 @@ export default function EditorScreen({ onBack, initialScript, projectId, project
           <CharacterEditor
             characters={characters}
             onUpdateCharacters={(c) => { setCharacters(c); markDirty(); }}
+            projectId={projectId}
+          />
+        );
+      case "bg":
+        return (
+          <BackgroundEditor
+            bgStyles={bgStyles}
+            onUpdateBgStyles={(s) => { setBgStyles(s); markDirty(); }}
+            projectId={projectId}
           />
         );
       case "item":
@@ -207,16 +291,39 @@ export default function EditorScreen({ onBack, initialScript, projectId, project
             onUpdateItems={(i) => { setItems(i); markDirty(); }}
           />
         );
+      case "cg":
+        return (
+          <CGCatalogEditor
+            catalog={cgCatalog}
+            onUpdateCatalog={(c) => { setCgCatalog(c); markDirty(); }}
+            script={script}
+          />
+        );
+      case "scene":
+        return (
+          <SceneCatalogEditor
+            catalog={sceneCatalog}
+            onUpdateCatalog={(c) => { setSceneCatalog(c); markDirty(); }}
+            script={script}
+          />
+        );
+      case "event":
+        return (
+          <EventEditor
+            events={gameEvents}
+            onUpdateEvents={(e) => { setGameEvents(e); markDirty(); }}
+          />
+        );
       case "flow":
         return <FlowGraph script={script} />;
       case "preview":
         return (
           <div style={{ padding: 16, height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <PreviewPanel script={script} startIndex={0} />
+            <PreviewPanel script={script} startIndex={previewStartIndex} />
           </div>
         );
       case "debug":
-        return <DebugPanel engineState={{}} script={script} />;
+        return <DebugPanel script={script} characters={characters} />;
       case "save":
         return <SaveDataEditor projectId={projectId} />;
       case "map":
@@ -224,6 +331,9 @@ export default function EditorScreen({ onBack, initialScript, projectId, project
           <MapEditor
             maps={maps}
             onUpdateMaps={(m) => { setMaps(m); markDirty(); }}
+            projectId={projectId}
+            customTiles={customTiles}
+            onUpdateCustomTiles={(t) => { setCustomTiles(t); markDirty(); }}
           />
         );
       case "battle":
@@ -244,16 +354,38 @@ export default function EditorScreen({ onBack, initialScript, projectId, project
         return <DeployPanel projectId={projectId} projectName={projectName} />;
       case "script":
       default:
-        return script[selectedIndex] ? (
-          <div style={{ padding: 20 }}>
-            <CommandEditor
-              command={script[selectedIndex]}
-              index={selectedIndex}
-              onChange={(updated) => updateCommand(selectedIndex, updated)}
-            />
+        return (
+          <div style={{ display: "flex", height: "100%", overflow: "hidden" }}>
+            {/* エディタ部分 */}
+            <div style={{ flex: 1, overflowY: "auto", padding: 20 }}>
+              {script[selectedIndex] ? (
+                <CommandEditor
+                  command={script[selectedIndex]}
+                  index={selectedIndex}
+                  onChange={(updated) => updateCommand(selectedIndex, updated)}
+                  characters={characters}
+                  script={script}
+                />
+              ) : (
+                <div style={styles.emptyState}>コマンドを選択してください</div>
+              )}
+            </div>
+            {/* 分割プレビュー */}
+            {showSplitPreview && (
+              <div style={styles.splitPreview}>
+                <div style={styles.splitPreviewHeader}>
+                  <span style={{ fontSize: 11, color: "#C8A870" }}>プレビュー</span>
+                  <button
+                    onClick={() => setShowSplitPreview(false)}
+                    style={styles.splitPreviewClose}
+                  >
+                    ✕
+                  </button>
+                </div>
+                <PreviewPanel script={script} startIndex={previewStartIndex} />
+              </div>
+            )}
           </div>
-        ) : (
-          <div style={styles.emptyState}>コマンドを選択してください</div>
         );
     }
   };
@@ -281,6 +413,32 @@ export default function EditorScreen({ onBack, initialScript, projectId, project
           ))}
         </div>
         <div style={styles.headerRight}>
+          <button
+            onClick={undo}
+            disabled={undoStack.length === 0}
+            style={{ ...styles.headerBtn, opacity: undoStack.length === 0 ? 0.3 : 1 }}
+            title="元に戻す (Ctrl+Z)"
+          >
+            ↩
+          </button>
+          <button
+            onClick={redo}
+            disabled={redoStack.length === 0}
+            style={{ ...styles.headerBtn, opacity: redoStack.length === 0 ? 0.3 : 1 }}
+            title="やり直し (Ctrl+Y)"
+          >
+            ↪
+          </button>
+          <button
+            onClick={() => { setShowSplitPreview(!showSplitPreview); setPreviewStartIndex(selectedIndex); }}
+            style={{
+              ...styles.headerBtn,
+              ...(showSplitPreview ? { background: "rgba(200,180,140,0.15)", color: "#E8D4B0" } : {}),
+            }}
+            title="分割プレビュー"
+          >
+            ▶
+          </button>
           <span style={styles.cmdCount}>{script.length} cmd</span>
           {saveStatus === "saved" && <span style={styles.savedLabel}>保存しました</span>}
           {saveStatus === "saving" && <span style={styles.savingLabel}>保存中...</span>}
@@ -296,6 +454,7 @@ export default function EditorScreen({ onBack, initialScript, projectId, project
             保存
           </button>
           <button onClick={exportScript} style={styles.headerBtn}>エクスポート</button>
+          <HelpButton onClick={() => setShowHelp(true)} />
         </div>
       </div>
 
@@ -311,6 +470,7 @@ export default function EditorScreen({ onBack, initialScript, projectId, project
               onAdd={addCommand}
               onRemove={removeCommand}
               onMove={moveCommand}
+              onPlayFrom={handlePlayFrom}
             />
           </div>
         )}
@@ -320,6 +480,12 @@ export default function EditorScreen({ onBack, initialScript, projectId, project
           {renderCenter()}
         </div>
       </div>
+      {showHelp && (
+        <HelpModal
+          {...(activeTab === "map" ? MAP_EDITOR_HELP : EDITOR_HELP)}
+          onClose={() => setShowHelp(false)}
+        />
+      )}
     </div>
   );
 }
@@ -441,5 +607,30 @@ const styles = {
   savingLabel: {
     fontSize: 10,
     color: "#C8A870",
+  },
+  splitPreview: {
+    width: 400,
+    flexShrink: 0,
+    borderLeft: "1px solid rgba(200,180,140,0.15)",
+    background: "#0f0f1a",
+    display: "flex",
+    flexDirection: "column",
+    overflow: "hidden",
+  },
+  splitPreviewHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: "6px 12px",
+    borderBottom: "1px solid rgba(200,180,140,0.1)",
+    flexShrink: 0,
+  },
+  splitPreviewClose: {
+    background: "none",
+    border: "none",
+    color: "#888",
+    fontSize: 12,
+    cursor: "pointer",
+    fontFamily: "inherit",
   },
 };

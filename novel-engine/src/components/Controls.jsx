@@ -18,7 +18,7 @@ const btnStyle = (active, hovered) => ({
   fontFamily: "'Noto Serif JP', serif",
 });
 
-export default function Controls({ autoMode, skipMode, dispatch }) {
+export default function Controls({ autoMode, skipMode, dispatch, onHelp }) {
   const [hoveredBtn, setHoveredBtn] = useState(null);
   const isSkipping = skipMode;
   const buttons = [
@@ -48,6 +48,16 @@ export default function Controls({ autoMode, skipMode, dispatch }) {
           {btn.label}
         </button>
       ))}
+      {onHelp && (
+        <button
+          onClick={onHelp}
+          style={btnStyle(false, hoveredBtn === "HELP")}
+          onMouseEnter={() => setHoveredBtn("HELP")}
+          onMouseLeave={() => setHoveredBtn(null)}
+        >
+          ?
+        </button>
+      )}
     </div>
   );
 }

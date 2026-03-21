@@ -1,9 +1,10 @@
 import { CMD } from "../engine/constants";
+import { useMemo } from "react";
 
 // 各コマンドタイプ用の編集フィールド定義
 const FIELD_DEFS = {
   [CMD.DIALOG]: [
-    { key: "speaker", label: "話者", type: "text", placeholder: "空欄でナレーション" },
+    { key: "speaker", label: "話者", type: "text", placeholder: "空欄でナレーション", autocomplete: "speakers" },
     { key: "text", label: "テキスト", type: "textarea", placeholder: "セリフを入力…" },
   ],
   [CMD.BG]: [
@@ -23,16 +24,16 @@ const FIELD_DEFS = {
     { key: "volume", label: "音量 (0-1)", type: "number", min: 0, max: 1, step: 0.1 },
   ],
   [CMD.CHARA]: [
-    { key: "id", label: "キャラID", type: "text", placeholder: "sakura" },
+    { key: "id", label: "キャラID", type: "text", placeholder: "sakura", autocomplete: "charaIds" },
     { key: "position", label: "位置", type: "select", options: ["left", "center", "right"] },
-    { key: "expression", label: "表情", type: "text", placeholder: "smile" },
+    { key: "expression", label: "表情", type: "text", placeholder: "smile", autocomplete: "expressions" },
   ],
   [CMD.CHARA_MOD]: [
-    { key: "id", label: "キャラID", type: "text", placeholder: "sakura" },
-    { key: "expression", label: "表情", type: "text", placeholder: "happy" },
+    { key: "id", label: "キャラID", type: "text", placeholder: "sakura", autocomplete: "charaIds" },
+    { key: "expression", label: "表情", type: "text", placeholder: "happy", autocomplete: "expressions" },
   ],
   [CMD.CHARA_HIDE]: [
-    { key: "id", label: "キャラID", type: "text", placeholder: "sakura" },
+    { key: "id", label: "キャラID", type: "text", placeholder: "sakura", autocomplete: "charaIds" },
   ],
   [CMD.CHOICE]: [],
   [CMD.EFFECT]: [
@@ -44,14 +45,14 @@ const FIELD_DEFS = {
     { key: "time", label: "待機時間 (ms)", type: "number", min: 0, step: 100 },
   ],
   [CMD.JUMP]: [
-    { key: "target", label: "ジャンプ先 (index)", type: "number", min: 0 },
+    { key: "target", label: "ジャンプ先", type: "text", placeholder: "index or label", autocomplete: "labels" },
   ],
   [CMD.LABEL]: [
     { key: "name", label: "ラベル名", type: "text", placeholder: "chapter1_start" },
   ],
 };
 
-function FieldInput({ field, value, onChange }) {
+function FieldInput({ field, value, onChange, suggestions }) {
   const commonStyle = {
     width: "100%",
     background: "rgba(255,255,255,0.06)",
@@ -63,6 +64,9 @@ function FieldInput({ field, value, onChange }) {
     fontFamily: "inherit",
     outline: "none",
   };
+
+  // バリデーション: 候補がある場合、値が候補に含まれないなら警告表示
+  const hasWarning = suggestions && suggestions.length > 0 && value && !suggestions.includes(value);
 
   switch (field.type) {
     case "textarea":
@@ -110,16 +114,36 @@ function FieldInput({ field, value, onChange }) {
           style={{ ...commonStyle, width: 160 }}
         />
       );
-    default:
+    default: {
+      const listId = suggestions ? `dl-${field.key}-${Date.now()}` : undefined;
       return (
-        <input
-          type="text"
-          value={value || ""}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={field.placeholder}
-          style={commonStyle}
-        />
+        <div>
+          <input
+            type="text"
+            value={value || ""}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder={field.placeholder}
+            style={{
+              ...commonStyle,
+              ...(hasWarning ? { borderColor: "rgba(255,183,77,0.6)" } : {}),
+            }}
+            list={listId}
+          />
+          {suggestions && (
+            <datalist id={listId}>
+              {suggestions.map((s) => (
+                <option key={s} value={s} />
+              ))}
+            </datalist>
+          )}
+          {hasWarning && (
+            <div style={{ fontSize: 10, color: "#FFB74D", marginTop: 4 }}>
+              未定義の値です（候補: {suggestions.join(", ")}）
+            </div>
+          )}
+        </div>
       );
+    }
   }
 }
 
@@ -212,8 +236,37 @@ function ChoiceEditor({ command, onChange }) {
   );
 }
 
-export default function CommandEditor({ command, index, onChange }) {
+export default function CommandEditor({ command, index, onChange, characters, script }) {
   const fields = FIELD_DEFS[command.type] || [];
+
+  // オートコンプリート候補を構築
+  const suggestionMap = useMemo(() => {
+    const map = {};
+    // キャラID一覧
+    const charaIds = Object.keys(characters || {});
+    map.charaIds = charaIds;
+
+    // 選択中キャラの表情一覧
+    const selectedCharaId = command.id;
+    const charaData = characters?.[selectedCharaId];
+    map.expressions = charaData?.expressions ? Object.keys(charaData.expressions) : [];
+
+    // スクリプト内の話者一覧（重複排除）
+    const speakerSet = new Set();
+    (script || []).forEach((cmd) => {
+      if (cmd.type === CMD.DIALOG && cmd.speaker) speakerSet.add(cmd.speaker);
+    });
+    map.speakers = [...speakerSet];
+
+    // ラベル一覧
+    const labels = [];
+    (script || []).forEach((cmd, i) => {
+      if (cmd.type === CMD.LABEL && cmd.name) labels.push(cmd.name);
+    });
+    map.labels = labels;
+
+    return map;
+  }, [characters, command.id, script]);
 
   return (
     <div>
@@ -232,6 +285,7 @@ export default function CommandEditor({ command, index, onChange }) {
               field={field}
               value={command[field.key]}
               onChange={(val) => onChange({ [field.key]: val })}
+              suggestions={field.autocomplete ? suggestionMap[field.autocomplete] : undefined}
             />
           </div>
         ))}

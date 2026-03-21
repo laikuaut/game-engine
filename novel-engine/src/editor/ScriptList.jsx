@@ -41,8 +41,9 @@ function commandSummary(cmd) {
   }
 }
 
-export default function ScriptList({ script, selectedIndex, onSelect, onAdd, onRemove, onMove }) {
+export default function ScriptList({ script, selectedIndex, onSelect, onAdd, onRemove, onMove, onPlayFrom }) {
   const [showAddMenu, setShowAddMenu] = useState(false);
+  const [contextMenu, setContextMenu] = useState(null); // { x, y, index }
 
   const cmdTypes = Object.keys(CMD_META);
 
@@ -86,7 +87,7 @@ export default function ScriptList({ script, selectedIndex, onSelect, onAdd, onR
       )}
 
       {/* コマンドリスト */}
-      <div style={styles.list}>
+      <div style={styles.list} onClick={() => setContextMenu(null)}>
         {script.map((cmd, i) => {
           const meta = CMD_META[cmd.type] || { label: cmd.type, color: "#888" };
           const selected = i === selectedIndex;
@@ -94,6 +95,10 @@ export default function ScriptList({ script, selectedIndex, onSelect, onAdd, onR
             <div
               key={i}
               onClick={() => onSelect(i)}
+              onContextMenu={(e) => {
+                e.preventDefault();
+                setContextMenu({ x: e.clientX, y: e.clientY, index: i });
+              }}
               style={{
                 ...styles.item,
                 background: selected ? "rgba(200,180,140,0.1)" : "transparent",
@@ -109,6 +114,39 @@ export default function ScriptList({ script, selectedIndex, onSelect, onAdd, onR
           );
         })}
       </div>
+
+      {/* 右クリックコンテキストメニュー */}
+      {contextMenu && (
+        <div
+          style={{
+            ...styles.contextMenu,
+            top: contextMenu.y,
+            left: contextMenu.x,
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {onPlayFrom && (
+            <button
+              style={styles.contextMenuItem}
+              onClick={() => { onPlayFrom(contextMenu.index); setContextMenu(null); }}
+            >
+              ▶ この行から再生
+            </button>
+          )}
+          <button
+            style={styles.contextMenuItem}
+            onClick={() => { onSelect(contextMenu.index); setContextMenu(null); }}
+          >
+            編集
+          </button>
+          <button
+            style={styles.contextMenuItem}
+            onClick={() => { onRemove(contextMenu.index); setContextMenu(null); }}
+          >
+            削除
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -206,5 +244,29 @@ const styles = {
     overflow: "hidden",
     textOverflow: "ellipsis",
     whiteSpace: "nowrap",
+  },
+  contextMenu: {
+    position: "fixed",
+    zIndex: 1000,
+    background: "#1e1e30",
+    border: "1px solid rgba(200,180,140,0.3)",
+    borderRadius: 4,
+    padding: 4,
+    boxShadow: "0 4px 16px rgba(0,0,0,0.5)",
+    minWidth: 160,
+  },
+  contextMenuItem: {
+    display: "block",
+    width: "100%",
+    background: "transparent",
+    border: "none",
+    color: "#ccc",
+    padding: "6px 12px",
+    fontSize: 12,
+    cursor: "pointer",
+    fontFamily: "inherit",
+    textAlign: "left",
+    borderRadius: 3,
+    transition: "background 0.15s",
   },
 };

@@ -8,21 +8,44 @@ import Character from "../components/Character";
 // エディタ内のミニプレビュー（読み取り専用のエンジン表示）
 export default function PreviewPanel({ script, startIndex }) {
   const [state, dispatch] = useReducer(engineReducer, initialState);
-  const [currentLine, setCurrentLine] = useState(startIndex);
+  const [currentLine, setCurrentLine] = useState(startIndex || 0);
   const initialized = useRef(false);
+  const prevStartIndex = useRef(startIndex || 0);
 
   const labelMap = useMemo(() => buildLabelMap(script), [script]);
 
-  // スクリプト変更時にリセット＆再実行
+  // startIndex が外部から変更された場合にリセット
   useEffect(() => {
-    if (script.length === 0) return;
-    const result = processCommand(script, 0, dispatch, labelMap);
+    if (startIndex !== prevStartIndex.current) {
+      prevStartIndex.current = startIndex;
+      runFromIndex(startIndex || 0);
+    }
+  }, [startIndex]);
+
+  // 指定indexからプレビュー実行
+  const runFromIndex = useCallback((fromIndex) => {
+    // ステートをリセット
+    dispatch({ type: ACTION.SET_DISPLAYED_TEXT, payload: "" });
+    dispatch({ type: ACTION.SET_SPEAKER, payload: "" });
+    if (script.length === 0 || fromIndex >= script.length) return;
+    const result = processCommand(script, fromIndex, dispatch, labelMap);
     const i = result.index;
     if (i < script.length && script[i].type === CMD.DIALOG) {
       dispatch({ type: ACTION.SET_SPEAKER, payload: script[i].speaker });
       dispatch({ type: ACTION.SET_DISPLAYED_TEXT, payload: script[i].text });
     }
     setCurrentLine(i);
+    if (result.blocking) {
+      if (result.blocking === "wait") dispatch({ type: ACTION.END_WAIT });
+      if (result.blocking === "effect") dispatch({ type: ACTION.EFFECT_END });
+      if (result.blocking === "cg") dispatch({ type: ACTION.HIDE_CG });
+    }
+  }, [script, labelMap]);
+
+  // スクリプト変更時にリセット＆再実行
+  useEffect(() => {
+    if (script.length === 0) return;
+    runFromIndex(startIndex || 0);
     initialized.current = true;
   }, [script, labelMap]);
 
@@ -127,24 +150,24 @@ const styles = {
     right: 0,
     zIndex: 10,
     background: "linear-gradient(180deg, transparent 0%, rgba(10,10,20,0.9) 30%)",
-    padding: "20px 16px 12px",
+    padding: "24px 20px 16px",
   },
   speaker: {
     display: "inline-block",
-    marginBottom: 4,
+    marginBottom: 6,
     background: "rgba(255,255,255,0.12)",
-    padding: "1px 8px",
+    padding: "2px 10px",
     borderRadius: 2,
-    fontSize: 10,
+    fontSize: 13,
     color: "#E8D4B0",
     letterSpacing: 1,
   },
   text: {
-    fontSize: 11,
-    lineHeight: 1.7,
+    fontSize: 14,
+    lineHeight: 1.8,
     color: "#E8E4DC",
     whiteSpace: "pre-wrap",
-    minHeight: 30,
+    minHeight: 40,
   },
   clickHint: {
     position: "absolute",

@@ -1,4 +1,12 @@
-// 画面サイズ設定
+// 画面サイズプリセット
+export const SCREEN_PRESETS = [
+  { label: "960×540",   width: 960,  height: 540 },
+  { label: "1280×720",  width: 1280, height: 720 },
+  { label: "1600×900",  width: 1600, height: 900 },
+  { label: "1920×1080", width: 1920, height: 1080 },
+];
+
+// 画面サイズ設定（デフォルト）
 export const SCREEN = {
   width: 1280,
   height: 720,

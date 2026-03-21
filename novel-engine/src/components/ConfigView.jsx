@@ -1,13 +1,11 @@
 import { ACTION } from "../engine/constants";
-import { COLORS, CLOSE_BTN_STYLE, OVERLAY_HEADER_STYLE, OVERLAY_TITLE_STYLE } from "../data/config";
+import { COLORS, CLOSE_BTN_STYLE, OVERLAY_HEADER_STYLE, OVERLAY_TITLE_STYLE, SCREEN_PRESETS } from "../data/config";
 
-export default function ConfigView({ textSpeed, volumeMaster, volumeBGM, volumeSE, dispatch }) {
+export default function ConfigView({ textSpeed, volumeMaster, volumeBGM, volumeSE, screenSize, dispatch }) {
   return (
     <div
       onClick={(e) => e.stopPropagation()}
       style={{
-        position: "absolute",
-        inset: 0,
         zIndex: 40,
         background: COLORS.bgOverlay,
         padding: "24px 32px",
@@ -61,6 +59,39 @@ export default function ConfigView({ textSpeed, volumeMaster, volumeBGM, volumeS
           />
         </div>
       ))}
+
+      {/* 画面サイズ */}
+      {screenSize !== undefined && (
+        <div style={{ marginBottom: 24 }}>
+          <label style={{ color: COLORS.goldAccent, fontSize: 13, display: "block", marginBottom: 8 }}>
+            画面サイズ
+          </label>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+            {SCREEN_PRESETS.map((preset) => {
+              const isActive = screenSize === preset.label;
+              return (
+                <button
+                  key={preset.label}
+                  onClick={() => dispatch({ type: "SET_SCREEN_SIZE", payload: preset.label })}
+                  style={{
+                    padding: "5px 14px",
+                    fontSize: 12,
+                    borderRadius: 3,
+                    cursor: "pointer",
+                    fontFamily: "inherit",
+                    border: `1px solid ${isActive ? COLORS.goldAccent : "rgba(255,255,255,0.15)"}`,
+                    background: isActive ? "rgba(200,180,140,0.2)" : "rgba(255,255,255,0.04)",
+                    color: isActive ? COLORS.gold : COLORS.textDim,
+                    transition: "all 0.2s",
+                  }}
+                >
+                  {preset.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       <div style={{ color: COLORS.textDim, fontSize: 12, lineHeight: 2, marginTop: 8 }}>
         <p style={{ color: COLORS.goldAccent, marginBottom: 4 }}>操作方法:</p>

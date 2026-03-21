@@ -158,7 +158,7 @@ function writeProjectsIndex(projects) {
 
 // --- ジャンル別ファイル分割ヘルパー ---
 // プロジェクトのデータファイル定義
-const DATA_FILES = ["script", "characters", "items", "bgStyles", "maps", "battleData", "minigames", "saves"];
+const DATA_FILES = ["script", "characters", "items", "gameEvents", "bgStyles", "maps", "customTiles", "battleData", "minigames", "saves"];
 
 function getProjectDir(id) {
   const dir = path.join(getProjectsDir(), id);
@@ -295,6 +295,180 @@ ipcMain.handle("project-delete", async (event, id) => {
   const index = readProjectsIndex().filter((p) => p.id !== id);
   writeProjectsIndex(index);
   return { success: true };
+});
+
+// === アセット管理 ===
+
+function getAssetDir(projectId, type) {
+  const dir = path.join(getProjectsDir(), projectId, "assets", type);
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  return dir;
+}
+
+ipcMain.handle("asset-upload", async (event, { projectId, type, filename, data }) => {
+  const safeName = filename.replace(/[^a-zA-Z0-9_\-\.]/g, "_");
+  const filePath = path.join(getAssetDir(projectId, type), safeName);
+  const buf = Buffer.from(data.replace(/^data:[^;]+;base64,/, ""), "base64");
+  fs.writeFileSync(filePath, buf);
+  return { success: true, filename: safeName };
+});
+
+ipcMain.handle("asset-list", async (event, { projectId, type }) => {
+  const dir = getAssetDir(projectId, type);
+  return fs.readdirSync(dir).filter((f) => /\.(png|jpg|jpeg|webp|gif)$/i.test(f));
+});
+
+ipcMain.handle("asset-delete", async (event, { projectId, type, filename }) => {
+  const filePath = path.join(getAssetDir(projectId, type), filename);
+  if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+  return { success: true };
+});
+
+ipcMain.handle("asset-get-url", async (event, { projectId, type, filename }) => {
+  const filePath = path.join(getAssetDir(projectId, type), filename);
+  return `file://${filePath.replace(/\\/g, "/")}`;
+});
+
+// === ゲームエクスポート ===
+
+function copyDirSync(src, dest) {
+  if (!fs.existsSync(dest)) fs.mkdirSync(dest, { recursive: true });
+  for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
+    const srcPath = path.join(src, entry.name);
+    const destPath = path.join(dest, entry.name);
+    if (entry.isDirectory()) copyDirSync(srcPath, destPath);
+    else fs.copyFileSync(srcPath, destPath);
+  }
+}
+
+ipcMain.handle("export-game", async (event, projectId) => {
+  try {
+    const project = readProjectSplit(projectId);
+    if (!project) throw new Error("Project not found");
+
+    const projectRoot = isDev
+      ? path.join(__dirname, "..")
+      : path.join(path.dirname(app.getPath("exe")));
+    const publicDir = path.join(projectRoot, "public");
+    if (!fs.existsSync(publicDir)) fs.mkdirSync(publicDir, { recursive: true });
+
+    // game-data.json
+    const gameData = {
+      name: project.name,
+      gameType: project.gameType || "novel",
+      script: project.script || [],
+      characters: project.characters || {},
+      bgStyles: project.bgStyles || {},
+      maps: project.maps || [],
+      customTiles: project.customTiles || [],
+      battleData: project.battleData || {},
+      minigames: project.minigames || [],
+      cgCatalog: project.cgCatalog || [],
+      sceneCatalog: project.sceneCatalog || [],
+      saves: [null, null, null],
+    };
+    writeJsonFile(path.join(publicDir, "game-data.json"), gameData);
+
+    // アセットコピー
+    const srcAssets = path.join(getProjectsDir(), projectId, "assets");
+    const destAssets = path.join(publicDir, "game-assets");
+    if (fs.existsSync(srcAssets)) copyDirSync(srcAssets, destAssets);
+
+    return { success: true };
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
+});
+
+ipcMain.handle("export-game-cleanup", async () => {
+  const projectRoot = isDev
+    ? path.join(__dirname, "..")
+    : path.join(path.dirname(app.getPath("exe")));
+  const publicDir = path.join(projectRoot, "public");
+  const f = path.join(publicDir, "game-data.json");
+  const d = path.join(publicDir, "game-assets");
+  if (fs.existsSync(f)) fs.unlinkSync(f);
+  if (fs.existsSync(d)) fs.rmSync(d, { recursive: true, force: true });
+  return { success: true };
+});
+
+// === ビルド実行 ===
+const { execFile } = require("child_process");
+
+ipcMain.handle("run-build", async (event, { mode, projectName }) => {
+  const projectRoot = isDev
+    ? path.join(__dirname, "..")
+    : path.join(path.dirname(app.getPath("exe")));
+  const buildScript = path.join(projectRoot, "build.sh");
+  const sender = event.sender;
+
+  // build.sh が存在しない場合は npm スクリプトで直接実行
+  const useShell = fs.existsSync(buildScript);
+  // プロジェクト名をフォルダ名に使える形に変換
+  const safeName = projectName ? projectName.replace(/[<>:"/\\|?*\x00-\x1f]/g, "_") : "";
+  const outDir = safeName ? `release/${safeName}` : "release";
+
+  let cmd, args;
+  if (useShell) {
+    cmd = "bash";
+    args = [buildScript, mode, ...(safeName ? [safeName] : [])];
+  } else {
+    // npm scripts fallback
+    if (mode === "web") {
+      cmd = "npx";
+      args = ["vite", "build", ...(safeName ? ["--outDir", `dist/${safeName}`] : [])];
+    } else if (mode === "portable") {
+      cmd = "npx";
+      args = ["electron-builder", "--win", "portable", "--x64", `-c.directories.output=${outDir}`];
+    } else {
+      cmd = "npx";
+      args = ["electron-builder", "--win", "--x64", `-c.directories.output=${outDir}`];
+    }
+  }
+
+  // 古いビルド成果物をクリーン
+  const winUnpacked = path.join(projectRoot, "release", "win-unpacked");
+  if (fs.existsSync(winUnpacked)) {
+    try { fs.rmSync(winUnpacked, { recursive: true, force: true }); } catch {}
+  }
+  const outDirAbs = path.join(projectRoot, outDir);
+  if (fs.existsSync(outDirAbs)) {
+    try { fs.rmSync(outDirAbs, { recursive: true, force: true }); } catch {}
+  }
+
+  return new Promise((resolve) => {
+    sender.send("build-log", { type: "info", text: `ビルド開始: ${mode}` });
+    sender.send("build-log", { type: "cmd", text: `> ${cmd} ${args.join(" ")}` });
+
+    const proc = execFile(cmd, args, {
+      cwd: projectRoot,
+      shell: true,
+      env: { ...process.env, FORCE_COLOR: "0" },
+    });
+
+    proc.stdout.on("data", (data) => {
+      sender.send("build-log", { type: "stdout", text: data.toString() });
+    });
+
+    proc.stderr.on("data", (data) => {
+      sender.send("build-log", { type: "stderr", text: data.toString() });
+    });
+
+    proc.on("close", (code) => {
+      if (code === 0) {
+        sender.send("build-log", { type: "success", text: "ビルド完了!" });
+        resolve({ success: true });
+      } else {
+        sender.send("build-log", { type: "error", text: `ビルド失敗 (exit code: ${code})` });
+        resolve({ success: false, code });
+      }
+    });
+
+    proc.on("error", (err) => {
+      sender.send("build-log", { type: "error", text: `実行エラー: ${err.message}` });
+      resolve({ success: false, error: err.message });
+    });
+  });
 });
 
 // アプリ終了

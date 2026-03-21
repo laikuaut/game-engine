@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { GAME_CONTAINER_STYLE } from "../data/config";
 
 // タイトル画面 — NEW GAME / CONTINUE / CG GALLERY / CONFIG / EXIT
 export default function TitleScreen({
@@ -64,7 +63,10 @@ export default function TitleScreen({
 
 const styles = {
   container: {
-    ...GAME_CONTAINER_STYLE,
+    width: "100%",
+    height: "100%",
+    position: "relative",
+    overflow: "hidden",
     fontFamily: "'Noto Serif JP', 'Yu Mincho', 'HGS明朝E', serif",
     userSelect: "none",
     display: "flex",

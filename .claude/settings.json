@@ -19,7 +19,9 @@
       "Bash(grep -n '\"\"REMOVE_CHARA_DONE\"\"\\\\|\"\"CHARA_ANIM_DONE\"\"\\\\|\"\"SHOW_CG\"\"\\\\|\"\"HIDE_CG\"\"\\\\|\"\"SET_NVL_MODE\"\"\\\\|\"\"ADD_NVL_TEXT\"\"\\\\|\"\"CLEAR_NVL\"\"\\\\|\"\"SET_SAVES\"\"' src/engine/NovelEngine.jsx src/engine/commands.js)",
       "Bash(npm install:*)",
       "Bash(npx vitest:*)",
-      "Bash(npm test:*)"
+      "Bash(npm test:*)",
+      "Bash(find /c/Users/syout/OneDrive/ドキュメント/20：開発/20：ゲーム/game-engine/novel-engine -type f \\\\\\(-name *.sh -o -name build.* -o -name *deploy* \\\\\\))",
+      "Bash(cmd //c \"rmdir /s /q release\\\\win-unpacked\")"
     ],
     "additionalDirectories": [
       "c:\\Users\\syout\\OneDrive\\ドキュメント\\20：開発\\20：ゲーム\\game-engine\\novel-engine\\docs",

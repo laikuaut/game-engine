@@ -3,7 +3,7 @@ import { ACTION, CMD } from "./constants";
 import { engineReducer, initialState } from "./reducer";
 import { processCommand, buildLabelMap, resolveTarget } from "./commands";
 import DEFAULT_SCRIPT from "../data/script";
-import { GAME_CONTAINER_STYLE } from "../data/config";
+
 import Background from "../components/Background";
 import Character from "../components/Character";
 import TextBox from "../components/TextBox";
@@ -17,8 +17,10 @@ import ScreenEffects from "../effects/ScreenEffects";
 import useAudio from "../audio/useAudio";
 import { saveGame, loadGame, listSlots } from "../save/SaveManager";
 import { unlock as unlockCG } from "../save/UnlockStore";
+import HelpModal from "../components/HelpModal";
+import { NOVEL_HELP } from "../data/helpContent";
 
-export default function NovelEngine({ script, characters, bgStyles, onBack, projectId, startLabel, initialConfig }) {
+export default function NovelEngine({ script, characters, bgStyles, onBack, projectId, startLabel, initialConfig, onConfigChange }) {
   const SCRIPT = script || DEFAULT_SCRIPT;
   const [state, dispatch] = useReducer(engineReducer, {
     ...initialState,
@@ -36,6 +38,7 @@ export default function NovelEngine({ script, characters, bgStyles, onBack, proj
   const autoRef = useRef(null);
   const waitRef = useRef(null);
   const skipRef = useRef(null);
+  const [showHelp, setShowHelp] = useState(false);
   const fullTextRef = useRef("");
   const containerRef = useRef(null);
   const scriptRef = useRef(SCRIPT);
@@ -345,8 +348,10 @@ export default function NovelEngine({ script, characters, bgStyles, onBack, proj
     <div
       ref={containerRef}
       style={{
-        ...GAME_CONTAINER_STYLE,
-        margin: "0 auto",
+        width: "100%",
+        height: "100%",
+        position: "relative",
+        overflow: "hidden",
         cursor: "pointer",
         fontFamily: "'Noto Serif JP', 'Yu Mincho', 'HGS明朝E', serif",
         userSelect: "none",
@@ -370,6 +375,7 @@ export default function NovelEngine({ script, characters, bgStyles, onBack, proj
           expression={chara.expression}
           animState={chara.animState}
           charaData={characters}
+          projectId={projectId}
         />
       ))}
 
@@ -492,7 +498,7 @@ export default function NovelEngine({ script, characters, bgStyles, onBack, proj
         />
       )}
       <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, zIndex: 11, padding: "0 32px 20px" }}>
-        <Controls autoMode={state.autoMode} skipMode={state.skipMode} dispatch={dispatch} />
+        <Controls autoMode={state.autoMode} skipMode={state.skipMode} dispatch={dispatch} onHelp={() => setShowHelp(true)} />
       </div>
 
       {state.showChoice && <ChoiceOverlay options={state.choiceOptions} onChoice={handleChoice} />}
@@ -507,14 +513,34 @@ export default function NovelEngine({ script, characters, bgStyles, onBack, proj
         />
       )}
       {state.showConfig && (
-        <ConfigView
-          textSpeed={state.textSpeed}
-          volumeMaster={state.volumeMaster}
-          volumeBGM={state.volumeBGM}
-          volumeSE={state.volumeSE}
-          dispatch={dispatch}
-        />
+        <div style={{ position: "absolute", inset: 0, zIndex: 40 }}>
+          <ConfigView
+            textSpeed={state.textSpeed}
+            volumeMaster={state.volumeMaster}
+            volumeBGM={state.volumeBGM}
+            volumeSE={state.volumeSE}
+            screenSize={initialConfig?.screenSize}
+            dispatch={(action) => {
+              if (action.type === "SET_SCREEN_SIZE") {
+                if (onConfigChange) onConfigChange({ screenSize: action.payload });
+                return;
+              }
+              dispatch(action);
+              // 音量・速度変更も上位に通知
+              const map = {
+                SET_TEXT_SPEED: "textSpeed",
+                SET_VOLUME_MASTER: "volumeMaster",
+                SET_VOLUME_BGM: "volumeBGM",
+                SET_VOLUME_SE: "volumeSE",
+              };
+              const key = map[action.type];
+              if (key && onConfigChange) onConfigChange({ [key]: action.payload });
+            }}
+          />
+        </div>
       )}
+
+      {showHelp && <HelpModal {...NOVEL_HELP} onClose={() => setShowHelp(false)} />}
 
       {/* CSS アニメーション */}
       <style>{`

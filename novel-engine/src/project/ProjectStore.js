@@ -265,7 +265,64 @@ export async function importProject(jsonString) {
   }
 }
 
-// デモプロジェクトを初期作成（初回起動時用）
+// ============================
+// アセット管理
+// ============================
+
+// アセットをアップロード（type: "chara" | "bg"）
+export async function uploadAsset(projectId, type, file) {
+  const base64 = await fileToBase64(file);
+  if (isElectron()) {
+    return await window.electronAPI.assetUpload(projectId, type, file.name, base64);
+  }
+  return apiPost("/api/asset-upload", {
+    projectId, type, filename: file.name, data: base64,
+  });
+}
+
+// アセット一覧を取得
+export async function listAssets(projectId, type) {
+  if (isElectron()) {
+    return await window.electronAPI.assetList(projectId, type);
+  }
+  return apiPost("/api/asset-list", { projectId, type });
+}
+
+// アセットを削除
+export async function deleteAsset(projectId, type, filename) {
+  if (isElectron()) {
+    return await window.electronAPI.assetDelete(projectId, type, filename);
+  }
+  return apiPost("/api/asset-delete", { projectId, type, filename });
+}
+
+// アセットの表示用URLを取得
+export function getAssetUrl(projectId, type, filename) {
+  if (!projectId || !filename) return null;
+  // ゲームモード（ビルド済みゲーム）: game-assets/ から配信
+  if (projectId === "__game__") {
+    return `./game-assets/${type}/${filename}`;
+  }
+  // Electron: file:// プロトコルで直接アクセス（非同期APIもあるが同期的にパス生成）
+  // ブラウザ: Vite dev server のミドルウェアから配信
+  return `/project-assets/${projectId}/${type}/${filename}`;
+}
+
+// File → base64 data URL
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+// サンプルプロジェクト定義
+const DEMO_NOVEL_NAME = "放課後の幽霊少女";
+const DEMO_RPG_NAME = "勇者レイの冒険";
+
+// デモプロジェクトを初期作成（不足分を補完）
 let _demoLock = null;
 export async function ensureDemoProject() {
   if (_demoLock) return _demoLock;
@@ -274,11 +331,57 @@ export async function ensureDemoProject() {
 }
 async function _ensureDemoProjectImpl() {
   const projects = await getProjects();
-  if (projects.length > 0) return;
+  const hasNovel = projects.some((p) => p.name === DEMO_NOVEL_NAME);
+  const hasRPG = projects.some((p) => p.name === DEMO_RPG_NAME);
+  if (hasNovel && hasRPG) return;
 
-  // ノベルサンプル
+  // ノベルサンプル（存在しなければ作成）
+  if (!hasNovel) {
+    const { default: SAMPLE_SCENARIO } = await import("../data/sample_scenario.js");
+    const novel = await createProject(DEMO_NOVEL_NAME, "ラノベ風サンプルシナリオ（約10分・2ルート完結）");
+    await updateProject(novel.id, {
+      script: SAMPLE_SCENARIO,
+      characters: {
+        yukina: {
+          name: "雪菜",
+          color: "#C8D8F0",
+          expressions: { neutral: "🙂", smile: "😊", happy: "😄", shy: "😳", sad: "😢" },
+        },
+        saki: {
+          name: "咲希",
+          color: "#FFD700",
+          expressions: { smile: "😊", happy: "😄", neutral: "🙂", sad: "😢" },
+        },
+      },
+    });
+  }
+
+  // RPGサンプル（存在しなければ作成）
+  if (!hasRPG) {
+    const { RPG_SCRIPT, RPG_CHARACTERS, RPG_MAPS, RPG_BATTLE_DATA, RPG_MINIGAMES } = await import("../data/sample_rpg.js");
+    const rpg = await createProject(DEMO_RPG_NAME, "RPGサンプル（マップ4面・ボス戦付き）", "rpg");
+    await updateProject(rpg.id, {
+      script: RPG_SCRIPT,
+      characters: RPG_CHARACTERS,
+      maps: RPG_MAPS,
+      battleData: RPG_BATTLE_DATA,
+      minigames: RPG_MINIGAMES,
+    });
+  }
+}
+
+// サンプルプロジェクトを手動で復元
+export async function restoreDemoProjects() {
+  // 既存の同名サンプルを削除してから再作成
+  const projects = await getProjects();
+  for (const p of projects) {
+    if (p.name === DEMO_NOVEL_NAME || p.name === DEMO_RPG_NAME) {
+      await deleteProject(p.id);
+    }
+  }
+
   const { default: SAMPLE_SCENARIO } = await import("../data/sample_scenario.js");
-  const novel = await createProject("放課後の幽霊少女", "ラノベ風サンプルシナリオ（約10分・2ルート完結）");
+  const novel = await createProject(DEMO_NOVEL_NAME, "ラノベ風サンプルシナリオ（約10分・2ルート完結）");
   await updateProject(novel.id, {
     script: SAMPLE_SCENARIO,
     characters: {
@@ -295,9 +398,8 @@ async function _ensureDemoProjectImpl() {
     },
   });
 
-  // RPGサンプル
   const { RPG_SCRIPT, RPG_CHARACTERS, RPG_MAPS, RPG_BATTLE_DATA, RPG_MINIGAMES } = await import("../data/sample_rpg.js");
-  const rpg = await createProject("勇者レイの冒険", "RPGサンプル（マップ4面・ボス戦付き）", "rpg");
+  const rpg = await createProject(DEMO_RPG_NAME, "RPGサンプル（マップ4面・ボス戦付き）", "rpg");
   await updateProject(rpg.id, {
     script: RPG_SCRIPT,
     characters: RPG_CHARACTERS,

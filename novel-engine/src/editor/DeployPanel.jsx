@@ -1,9 +1,174 @@
-import { useState } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 
-// ビルド設定とデプロイ手順を表示するパネル
+// ビルドステージ定義（ターゲットごとの進捗マッピング）
+const STAGE_PATTERNS = [
+  { pattern: /npm install/i,                    stage: "依存関係インストール",  weight: 5 },
+  { pattern: /Building web|vite build|\[1\/[23]\]/i, stage: "Vite ビルド",      weight: 20 },
+  { pattern: /transforming/i,                   stage: "モジュール変換",        weight: 30 },
+  { pattern: /rendering chunks/i,              stage: "チャンク生成",          weight: 40 },
+  { pattern: /computing gzip/i,                stage: "サイズ計算",            weight: 50 },
+  { pattern: /✓ built in|built in \d/i,        stage: "Vite 完了",            weight: 55 },
+  { pattern: /Building Electron|electron-builder|\[2\/[23]\]|packaging/i, stage: "Electron パッケージング", weight: 60 },
+  { pattern: /building.*target/i,              stage: "ターゲットビルド",      weight: 70 },
+  { pattern: /asar/i,                          stage: "asar パッキング",       weight: 80 },
+  { pattern: /nsis|portable.*exe/i,            stage: "インストーラ生成",      weight: 85 },
+  { pattern: /\[3\/3\]/i,                      stage: "Portable ビルド",       weight: 90 },
+  { pattern: /Done!|Build complete/i,          stage: "完了",                  weight: 100 },
+];
+
+function estimateProgress(logs) {
+  let maxWeight = 0;
+  let currentStage = "準備中";
+  for (const log of logs) {
+    const text = log.text || "";
+    for (const sp of STAGE_PATTERNS) {
+      if (sp.pattern.test(text) && sp.weight > maxWeight) {
+        maxWeight = sp.weight;
+        currentStage = sp.stage;
+      }
+    }
+  }
+  return { percent: maxWeight, stage: currentStage };
+}
+
+// ビルド実行・デプロイパネル
 export default function DeployPanel({ projectId, projectName }) {
   const [buildTarget, setBuildTarget] = useState("portable");
+  const [building, setBuilding] = useState(false);
+  const [buildResult, setBuildResult] = useState(null);
+  const [logs, setLogs] = useState([]);
+  const [progress, setProgress] = useState({ percent: 0, stage: "" });
+  const logEndRef = useRef(null);
+  const cleanupRef = useRef(null);
   const isElectron = typeof window !== "undefined" && window.electronAPI?.isElectron;
+
+  // ログ末尾に自動スクロール
+  useEffect(() => {
+    logEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [logs]);
+
+  // ログ変更時に進捗を再計算
+  useEffect(() => {
+    if (building) setProgress(estimateProgress(logs));
+  }, [logs, building]);
+
+  // Electron のビルドログリスナー
+  useEffect(() => {
+    if (!isElectron || !window.electronAPI.onBuildLog) return;
+    const cleanup = window.electronAPI.onBuildLog((data) => {
+      setLogs((prev) => [...prev, data]);
+      if (data.type === "success") {
+        setBuilding(false);
+        setProgress({ percent: 100, stage: "完了" });
+        setBuildResult({ success: true, text: data.text });
+      } else if (data.type === "error") {
+        setBuilding(false);
+        setBuildResult({ success: false, text: data.text });
+      }
+    });
+    cleanupRef.current = cleanup;
+    return () => { if (cleanupRef.current) cleanupRef.current(); };
+  }, [isElectron]);
+
+  // ビルド実行
+  const runBuild = useCallback(async () => {
+    if (building) return;
+    setBuilding(true);
+    setBuildResult(null);
+    setLogs([]);
+    setProgress({ percent: 0, stage: "ゲームデータ書き出し" });
+
+    // Step 1: プロジェクトデータをエクスポート
+    const addLog = (log) => setLogs((prev) => [...prev, log]);
+    addLog({ type: "info", text: "ゲームデータをエクスポート中..." });
+
+    try {
+      let exportResult;
+      if (isElectron && window.electronAPI.exportGame) {
+        exportResult = await window.electronAPI.exportGame(projectId);
+      } else {
+        const res = await fetch("/api/export-game", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ projectId }),
+        });
+        exportResult = await res.json();
+      }
+      if (!exportResult?.success) {
+        throw new Error(exportResult?.error || "エクスポート失敗");
+      }
+      addLog({ type: "success", text: "ゲームデータ書き出し完了" });
+      setProgress({ percent: 10, stage: "ビルド開始" });
+    } catch (err) {
+      addLog({ type: "error", text: `エクスポート失敗: ${err.message}` });
+      setBuildResult({ success: false, text: "エクスポート失敗" });
+      setBuilding(false);
+      return;
+    }
+
+    // Step 2: ビルド実行
+    const cleanup = async () => {
+      try {
+        if (isElectron && window.electronAPI.exportGameCleanup) {
+          await window.electronAPI.exportGameCleanup();
+        } else {
+          await fetch("/api/export-game-cleanup", { method: "POST" });
+        }
+      } catch {}
+    };
+
+    if (isElectron && window.electronAPI.runBuild) {
+      await window.electronAPI.runBuild({ mode: buildTarget, projectName });
+      await cleanup();
+    } else {
+      // ブラウザ: SSE でリアルタイム受信
+      try {
+        const res = await fetch("/api/build", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ mode: buildTarget, projectName }),
+        });
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          buffer = lines.pop() || "";
+          for (const line of lines) {
+            if (!line.startsWith("data: ")) continue;
+            try {
+              const data = JSON.parse(line.slice(6));
+              addLog(data);
+              if (data.type === "success") {
+                setProgress({ percent: 100, stage: "完了" });
+                setBuildResult({ success: true, text: data.text });
+              } else if (data.type === "error") {
+                setBuildResult({ success: false, text: data.text });
+              }
+            } catch {}
+          }
+        }
+      } catch (err) {
+        addLog({ type: "error", text: `通信エラー: ${err.message}` });
+        setBuildResult({ success: false, text: err.message });
+      }
+      // Step 3: クリーンアップ（public/ から game-data.json と game-assets/ を削除）
+      await cleanup();
+      setBuilding(false);
+    }
+  }, [building, buildTarget, isElectron, projectName, projectId]);
+
+  const safeName = projectName ? projectName.replace(/[<>:"/\\|?*\x00-\x1f]/g, "_") : "";
+  const BUILD_TARGETS = [
+    { id: "web", label: "Web", desc: `ブラウザ向けビルド (${safeName ? `dist/${safeName}/` : "dist/"})` },
+    { id: "portable", label: "Portable EXE", desc: `単体実行ファイル (${safeName ? `release/${safeName}/` : "release/"})` },
+    { id: "electron", label: "Installer + Portable", desc: `NSIS + Portable (${safeName ? `release/${safeName}/` : "release/"})` },
+    { id: "all", label: "All", desc: "全ターゲットをビルド" },
+  ];
 
   return (
     <div style={styles.container}>
@@ -22,22 +187,19 @@ export default function DeployPanel({ projectId, projectName }) {
           <Row label="エンジンバージョン" value="0.1.0" />
         </Section>
 
-        {/* ビルドターゲット */}
+        {/* ビルドターゲット選択 */}
         <Section title="ビルドターゲット">
           <div style={styles.targetGrid}>
-            {[
-              { id: "web", label: "Web", desc: "ブラウザ向けビルド (dist/)", cmd: "./build.sh web" },
-              { id: "portable", label: "Portable EXE", desc: "単体実行ファイル (release/)", cmd: "./build.sh portable" },
-              { id: "electron", label: "Installer + Portable", desc: "NSIS インストーラ + Portable (release/)", cmd: "./build.sh electron" },
-              { id: "all", label: "All", desc: "全ターゲットをビルド", cmd: "./build.sh all" },
-            ].map((target) => (
+            {BUILD_TARGETS.map((target) => (
               <div
                 key={target.id}
-                onClick={() => setBuildTarget(target.id)}
+                onClick={() => !building && setBuildTarget(target.id)}
                 style={{
                   ...styles.targetCard,
                   borderColor: buildTarget === target.id ? "#E8D4B0" : "rgba(255,255,255,0.08)",
                   background: buildTarget === target.id ? "rgba(200,180,140,0.08)" : "transparent",
+                  opacity: building ? 0.5 : 1,
+                  cursor: building ? "not-allowed" : "pointer",
                 }}
               >
                 <div style={styles.targetLabel}>{target.label}</div>
@@ -47,34 +209,85 @@ export default function DeployPanel({ projectId, projectName }) {
           </div>
         </Section>
 
-        {/* ビルドコマンド */}
-        <Section title="ビルド手順">
-          <div style={styles.steps}>
-            <Step num={1} title="依存関係インストール" cmd="npm install" />
-            <Step num={2} title="Web ビルド" cmd="npm run build" />
-            {buildTarget !== "web" && (
-              <Step
-                num={3}
-                title="EXE ビルド"
-                cmd={
-                  buildTarget === "portable"
-                    ? "npx electron-builder --win portable --x64"
-                    : buildTarget === "all"
-                    ? "npx electron-builder --win --x64"
-                    : "npx electron-builder --win --x64"
-                }
-              />
+        {/* ビルド実行 */}
+        <Section title="ビルド実行">
+          <div style={styles.buildActions}>
+            <button
+              onClick={runBuild}
+              disabled={building}
+              style={{
+                ...styles.buildBtn,
+                opacity: building ? 0.6 : 1,
+                cursor: building ? "not-allowed" : "pointer",
+              }}
+            >
+              {building ? (
+                <span style={styles.buildBtnInner}>
+                  <span style={styles.spinner} />
+                  ビルド中...
+                </span>
+              ) : (
+                `${BUILD_TARGETS.find((t) => t.id === buildTarget)?.label || buildTarget} をビルド`
+              )}
+            </button>
+
+            {buildResult && (
+              <div style={{
+                ...styles.resultBadge,
+                background: buildResult.success ? "rgba(139,195,74,0.12)" : "rgba(239,83,80,0.12)",
+                borderColor: buildResult.success ? "rgba(139,195,74,0.3)" : "rgba(239,83,80,0.3)",
+                color: buildResult.success ? "#8BC34A" : "#EF5350",
+              }}>
+                {buildResult.success ? "✓" : "✗"} {buildResult.text}
+              </div>
             )}
-            <Step
-              num={buildTarget === "web" ? 3 : 4}
-              title="出力確認"
-              cmd={buildTarget === "web" ? "ls dist/" : "ls release/"}
-            />
           </div>
-          <div style={styles.quickCmd}>
-            <span style={styles.quickLabel}>ワンコマンド:</span>
-            <code style={styles.codeBlock}>./build.sh {buildTarget}</code>
-          </div>
+
+          {/* プログレスバー */}
+          {(building || progress.percent > 0) && (
+            <div style={styles.progressWrap}>
+              <div style={styles.progressHeader}>
+                <span style={styles.progressStage}>{progress.stage}</span>
+                <span style={styles.progressPercent}>{progress.percent}%</span>
+              </div>
+              <div style={styles.progressTrack}>
+                <div style={{
+                  ...styles.progressBar,
+                  width: `${progress.percent}%`,
+                  background: buildResult
+                    ? (buildResult.success ? "#8BC34A" : "#EF5350")
+                    : "linear-gradient(90deg, #C8A870, #E8D4B0)",
+                  transition: "width 0.4s ease-out",
+                }} />
+              </div>
+            </div>
+          )}
+
+          {/* ビルドログ */}
+          {logs.length > 0 && (
+            <div style={styles.logContainer}>
+              <div style={styles.logHeader}>
+                <span>ビルドログ</span>
+                <button
+                  onClick={() => { setLogs([]); setBuildResult(null); setProgress({ percent: 0, stage: "" }); }}
+                  style={styles.logClearBtn}
+                >
+                  クリア
+                </button>
+              </div>
+              <div style={styles.logBody}>
+                {logs.map((log, i) => (
+                  <div key={i} style={{
+                    ...styles.logLine,
+                    color: LOG_COLORS[log.type] || "#aaa",
+                  }}>
+                    {log.text}
+                  </div>
+                ))}
+                <div ref={logEndRef} />
+              </div>
+            </div>
+          )}
         </Section>
 
         {/* 開発コマンド */}
@@ -94,7 +307,7 @@ export default function DeployPanel({ projectId, projectName }) {
           <Row label="ターゲット" value="NSIS installer + Portable" />
           <Row label="アーキテクチャ" value="x64" />
           <Row label="asar" value="true（素材保護）" />
-          <Row label="出力先" value="release/" />
+          <Row label="出力先" value={safeName ? `release/${safeName}/` : "release/"} />
           <Row label="アイコン" value="assets/icon.ico" />
         </Section>
 
@@ -120,9 +333,24 @@ export default function DeployPanel({ projectId, projectName }) {
           </div>
         </Section>
       </div>
+
+      <style>{`
+        @keyframes deploySpinner {
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
     </div>
   );
 }
+
+const LOG_COLORS = {
+  info: "#5BF",
+  cmd: "#C8A870",
+  stdout: "#aaa",
+  stderr: "#FFB74D",
+  success: "#8BC34A",
+  error: "#EF5350",
+};
 
 function Section({ title, children }) {
   return (
@@ -138,18 +366,6 @@ function Row({ label, value }) {
     <div style={styles.row}>
       <span style={styles.rowLabel}>{label}</span>
       <span style={styles.rowValue}>{value}</span>
-    </div>
-  );
-}
-
-function Step({ num, title, cmd }) {
-  return (
-    <div style={styles.step}>
-      <span style={styles.stepNum}>{num}</span>
-      <div>
-        <div style={styles.stepTitle}>{title}</div>
-        <code style={styles.stepCmd}>{cmd}</code>
-      </div>
     </div>
   );
 }
@@ -186,31 +402,83 @@ const styles = {
   rowValue: { color: "#ccc" },
   targetGrid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 },
   targetCard: {
-    border: "1px solid", borderRadius: 4, padding: "12px 14px", cursor: "pointer",
+    border: "1px solid", borderRadius: 4, padding: "12px 14px",
     transition: "all 0.2s",
   },
   targetLabel: { fontSize: 14, color: "#E8D4B0", fontWeight: 600, marginBottom: 4 },
   targetDesc: { fontSize: 11, color: "#888" },
-  steps: { display: "flex", flexDirection: "column", gap: 8 },
-  step: { display: "flex", alignItems: "flex-start", gap: 10 },
-  stepNum: {
-    width: 24, height: 24, borderRadius: "50%", background: "rgba(200,180,140,0.15)",
-    color: "#E8D4B0", display: "flex", alignItems: "center", justifyContent: "center",
-    fontSize: 12, fontWeight: 700, flexShrink: 0,
+  buildActions: {
+    display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap",
   },
-  stepTitle: { fontSize: 13, color: "#ccc", marginBottom: 2 },
-  stepCmd: {
-    fontSize: 11, color: "#5BF", fontFamily: "monospace", background: "rgba(0,0,0,0.3)",
-    padding: "2px 8px", borderRadius: 3,
+  buildBtn: {
+    background: "rgba(200,180,140,0.15)",
+    border: "1px solid rgba(200,180,140,0.4)",
+    color: "#E8D4B0",
+    padding: "10px 28px",
+    borderRadius: 4,
+    fontSize: 14,
+    fontWeight: 600,
+    fontFamily: "inherit",
+    letterSpacing: 1,
+    transition: "all 0.2s",
   },
-  quickCmd: {
-    marginTop: 12, padding: "10px 14px", background: "rgba(0,0,0,0.2)",
-    borderRadius: 4, display: "flex", alignItems: "center", gap: 10,
+  buildBtnInner: {
+    display: "flex", alignItems: "center", gap: 8,
   },
-  quickLabel: { fontSize: 11, color: "#888" },
-  codeBlock: {
-    fontSize: 13, color: "#5BF", fontFamily: "monospace", background: "rgba(90,180,255,0.08)",
-    padding: "4px 12px", borderRadius: 3, border: "1px solid rgba(90,180,255,0.2)",
+  spinner: {
+    display: "inline-block",
+    width: 14, height: 14,
+    border: "2px solid rgba(200,180,140,0.3)",
+    borderTopColor: "#E8D4B0",
+    borderRadius: "50%",
+    animation: "deploySpinner 0.8s linear infinite",
+  },
+  resultBadge: {
+    padding: "6px 16px", borderRadius: 4, fontSize: 13,
+    border: "1px solid", fontWeight: 600,
+  },
+  progressWrap: {
+    marginTop: 12,
+  },
+  progressHeader: {
+    display: "flex", justifyContent: "space-between", alignItems: "center",
+    marginBottom: 6,
+  },
+  progressStage: {
+    fontSize: 12, color: "#C8A870", letterSpacing: 0.5,
+  },
+  progressPercent: {
+    fontSize: 13, color: "#E8D4B0", fontWeight: 700, fontFamily: "monospace",
+  },
+  progressTrack: {
+    width: "100%", height: 8, borderRadius: 4,
+    background: "rgba(255,255,255,0.06)",
+    overflow: "hidden",
+  },
+  progressBar: {
+    height: "100%", borderRadius: 4,
+    minWidth: 0,
+  },
+  logContainer: {
+    marginTop: 12, border: "1px solid rgba(255,255,255,0.06)",
+    borderRadius: 4, overflow: "hidden",
+  },
+  logHeader: {
+    display: "flex", justifyContent: "space-between", alignItems: "center",
+    padding: "6px 12px", background: "rgba(0,0,0,0.3)",
+    fontSize: 11, color: "#888",
+  },
+  logClearBtn: {
+    background: "none", border: "none", color: "#666", fontSize: 10,
+    cursor: "pointer", fontFamily: "inherit",
+  },
+  logBody: {
+    maxHeight: 300, overflowY: "auto", padding: "8px 12px",
+    background: "rgba(0,0,0,0.2)", fontFamily: "monospace", fontSize: 11,
+    lineHeight: 1.6,
+  },
+  logLine: {
+    whiteSpace: "pre-wrap", wordBreak: "break-all",
   },
   cmdList: { display: "flex", flexDirection: "column", gap: 6 },
   cmdRow: {

@@ -1,13 +1,16 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useCallback } from "react";
 import MapRenderer from "./MapRenderer";
 import BattleEngine from "./BattleEngine";
+import HelpModal, { HelpButton } from "../components/HelpModal";
+import { RPG_HELP } from "../data/helpContent";
 
 // RPG メインエンジン — マップ移動 + バトル + イベント
-export default function RPGEngine({ maps, battleData, onEvent, onBack, onScriptEvent, initialState }) {
+export default function RPGEngine({ maps, battleData, onEvent, onBack, onScriptEvent, initialState, customTiles, projectId }) {
   const [currentMapIndex, setCurrentMapIndex] = useState(initialState?.mapIndex ?? 0);
   const [playerPos, setPlayerPos] = useState(initialState?.playerPos ?? { x: 4, y: 7 });
   const [inBattle, setInBattle] = useState(null);
   const [message, setMessage] = useState(null);
+  const [showHelp, setShowHelp] = useState(false);
 
   const map = maps?.[currentMapIndex];
   if (!map) return <div style={{ color: "#fff", padding: 20 }}>マップデータがありません</div>;
@@ -72,7 +75,10 @@ export default function RPGEngine({ maps, battleData, onEvent, onBack, onScriptE
   return (
     <div style={styles.container}>
       {/* 戻るボタン */}
-      <div onClick={onBack} style={styles.backBtn}>← BACK</div>
+      <div style={{ position: "absolute", top: 12, left: 16, zIndex: 20, display: "flex", gap: 8, alignItems: "center" }}>
+        <div onClick={onBack} style={styles.backBtn}>← BACK</div>
+        <HelpButton onClick={() => setShowHelp(true)} />
+      </div>
 
       {/* マップ名 */}
       <div style={styles.mapName}>{map.name}</div>
@@ -83,6 +89,8 @@ export default function RPGEngine({ maps, battleData, onEvent, onBack, onScriptE
         playerPos={playerPos}
         onMove={setPlayerPos}
         onEvent={handleEvent}
+        customTiles={customTiles}
+        projectId={projectId}
       />
 
       {/* メッセージウィンドウ */}
@@ -95,6 +103,7 @@ export default function RPGEngine({ maps, battleData, onEvent, onBack, onScriptE
           </div>
         </div>
       )}
+      {showHelp && <HelpModal {...RPG_HELP} onClose={() => setShowHelp(false)} />}
     </div>
   );
 }
@@ -106,7 +115,6 @@ const styles = {
     fontFamily: "'Noto Serif JP', serif",
   },
   backBtn: {
-    position: "absolute", top: 12, left: 16, zIndex: 20,
     fontSize: 11, color: "rgba(255,255,255,0.4)", fontFamily: "monospace",
     background: "rgba(0,0,0,0.3)", padding: "3px 10px", borderRadius: 12,
     cursor: "pointer",

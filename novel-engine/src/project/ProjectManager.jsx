@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from "react";
-import { GAME_CONTAINER_STYLE } from "../data/config";
+
+import HelpModal, { HelpButton } from "../components/HelpModal";
+import { PROJECT_HELP } from "../data/helpContent";
 import {
   getProjects,
   createProject,
@@ -8,6 +10,7 @@ import {
   exportProject,
   importProject,
   ensureDemoProject,
+  restoreDemoProjects,
   GAME_TYPE_LABELS,
 } from "./ProjectStore";
 
@@ -17,7 +20,7 @@ const BADGE_COLORS = {
   minigame: { bg: "rgba(140,220,140,0.12)", text: "#8CDC8C", border: "rgba(140,220,140,0.3)" },
 };
 
-export default function ProjectManager({ onSelectProject, onEditProject, onExit }) {
+export default function ProjectManager({ onSelectProject, onEditProject, onExit, onConfig }) {
   const [projects, setProjects] = useState([]);
   const [showCreate, setShowCreate] = useState(false);
   const [newName, setNewName] = useState("");
@@ -25,6 +28,7 @@ export default function ProjectManager({ onSelectProject, onEditProject, onExit 
   const [newGameType, setNewGameType] = useState("novel");
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [importError, setImportError] = useState(null);
+  const [showHelp, setShowHelp] = useState(false);
   const [hoveredCard, setHoveredCard] = useState(null);
   const fileInputRef = useRef(null);
 
@@ -109,7 +113,15 @@ export default function ProjectManager({ onSelectProject, onEditProject, onExit 
 
       {/* ヘッダー */}
       <div style={styles.header}>
-        <h1 style={styles.title}>Doujin Engine</h1>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, justifyContent: "center" }}>
+          <h1 style={styles.title}>Doujin Engine</h1>
+          {onConfig && (
+            <button onClick={onConfig} style={styles.configBtn}>
+              設定
+            </button>
+          )}
+          <HelpButton onClick={() => setShowHelp(true)} />
+        </div>
         <p style={styles.subtitle}>プロジェクト管理</p>
       </div>
 
@@ -165,6 +177,15 @@ export default function ProjectManager({ onSelectProject, onEditProject, onExit 
             </button>
             <button onClick={handleImportClick} style={styles.importBtn}>
               インポート
+            </button>
+            <button
+              onClick={async () => {
+                await restoreDemoProjects();
+                await refresh();
+              }}
+              style={styles.importBtn}
+            >
+              サンプル復元
             </button>
           </div>
         )}
@@ -268,13 +289,17 @@ export default function ProjectManager({ onSelectProject, onEditProject, onExit 
 
       {/* フッター */}
       <div style={styles.footer}>Doujin Engine v0.1.0</div>
+      {showHelp && <HelpModal {...PROJECT_HELP} onClose={() => setShowHelp(false)} />}
     </div>
   );
 }
 
 const styles = {
   container: {
-    ...GAME_CONTAINER_STYLE,
+    width: "100%",
+    height: "100%",
+    position: "relative",
+    overflow: "hidden",
     fontFamily: "'Noto Serif JP', 'Yu Mincho', 'HGS明朝E', serif",
     userSelect: "none",
     display: "flex",
@@ -531,6 +556,19 @@ const styles = {
     fontSize: 11,
     cursor: "pointer",
     fontFamily: "inherit",
+  },
+  configBtn: {
+    background: "rgba(200,180,140,0.1)",
+    border: "1px solid rgba(200,180,140,0.3)",
+    color: "#C8A870",
+    padding: "4px 14px",
+    borderRadius: 3,
+    fontSize: 12,
+    cursor: "pointer",
+    fontFamily: "inherit",
+    letterSpacing: 1,
+    transition: "all 0.2s",
+    zIndex: 1,
   },
   exitBtn: {
     position: "absolute",

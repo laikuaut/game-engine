@@ -17,6 +17,25 @@ contextBridge.exposeInMainWorld("electronAPI", {
   projectSave: (project) => ipcRenderer.invoke("project-save", project),
   projectDelete: (id) => ipcRenderer.invoke("project-delete", id),
 
+  // アセット管理
+  assetUpload: (projectId, type, filename, base64Data) =>
+    ipcRenderer.invoke("asset-upload", { projectId, type, filename, data: base64Data }),
+  assetList: (projectId, type) => ipcRenderer.invoke("asset-list", { projectId, type }),
+  assetDelete: (projectId, type, filename) =>
+    ipcRenderer.invoke("asset-delete", { projectId, type, filename }),
+  assetGetUrl: (projectId, type, filename) =>
+    ipcRenderer.invoke("asset-get-url", { projectId, type, filename }),
+
+  // ゲームエクスポート・ビルド
+  exportGame: (projectId) => ipcRenderer.invoke("export-game", projectId),
+  exportGameCleanup: () => ipcRenderer.invoke("export-game-cleanup"),
+  runBuild: (opts) => ipcRenderer.invoke("run-build", opts),
+  onBuildLog: (callback) => {
+    const handler = (_event, data) => callback(data);
+    ipcRenderer.on("build-log", handler);
+    return () => ipcRenderer.removeListener("build-log", handler);
+  },
+
   // アプリ情報
   getAppInfo: () => ipcRenderer.invoke("get-app-info"),
 
