@@ -189,9 +189,10 @@ export default class AudioManager {
 
     // カタログから実ファイル名を解決
     const catalogFilename = this._catalogMap[type]?.[name];
-    if (catalogFilename && this.projectId) {
+    if (catalogFilename) {
       log("_loadAudio: カタログ解決 →", name, "→", catalogFilename);
-      const path = getAssetUrl(this.projectId, type, catalogFilename);
+      // 絶対パス（/assets/...）はそのまま、それ以外はプロジェクトアセット経由
+      const path = catalogFilename.startsWith("/") ? catalogFilename : getAssetUrl(this.projectId, type, catalogFilename);
       try {
         const res = await fetch(path);
         if (res.ok) {

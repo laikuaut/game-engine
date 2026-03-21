@@ -90,7 +90,7 @@ const DEFAULT_BG_STYLES = {
 };
 
 const DEFAULT_BGM_CATALOG = [
-  { id: "bgm_calm_afternoon", name: "calm_afternoon", filename: null, description: "穏やかな午後", volume: 0.8, loop: true, fadeIn: 500, fadeOut: 500 },
+  { id: "bgm_hirusagari", name: "昼下がりのハバネラ", filename: "/assets/bgm/昼下がりのハバネラ.mp3", description: "穏やかな午後（甘茶の音楽工房）", volume: 0.8, loop: true, fadeIn: 500, fadeOut: 500 },
   { id: "bgm_morning_theme", name: "morning_theme", filename: null, description: "朝のテーマ", volume: 0.8, loop: true, fadeIn: 500, fadeOut: 500 },
   { id: "bgm_tension", name: "tension", filename: null, description: "緊迫シーン", volume: 0.8, loop: true, fadeIn: 300, fadeOut: 500 },
   { id: "bgm_sadness", name: "sadness", filename: null, description: "悲しいシーン", volume: 0.7, loop: true, fadeIn: 1000, fadeOut: 1000 },
