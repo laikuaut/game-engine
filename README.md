@@ -13,3 +13,4 @@ React製ノベルゲームエンジン（DLsite同人向け）
 
 ### SE
 - **Moon☆Wind** — デフォルトSEとして使用
+- **Springin' Sound Stock** — デフォルトSEとして使用

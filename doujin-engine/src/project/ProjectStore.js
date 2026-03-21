@@ -101,7 +101,8 @@ const DEFAULT_BGM_CATALOG = [
 ];
 
 const DEFAULT_SE_CATALOG = [
-  { id: "se_click", name: "click", filename: null, description: "決定音", volume: 1.0 },
+  { id: "se_click", name: "click", filename: "/assets/se/click.mp3", description: "click", volume: 1.0 },
+  { id: "se_dblclick", name: "dblclick", filename: "/assets/se/dblclick.mp3", description: "dblclick", volume: 1.0 },
   { id: "se_cancel", name: "cancel", filename: null, description: "キャンセル音", volume: 1.0 },
   { id: "se_chime", name: "chime", filename: null, description: "チャイム", volume: 1.0 },
   { id: "se_door", name: "door", filename: null, description: "ドア開閉", volume: 0.8 },

@@ -22,5 +22,17 @@
     "scriptLength": 80,
     "mapCount": 4,
     "minigameCount": 2
+  },
+  {
+    "id": "mn07hmcu9fltat",
+    "name": "aaa",
+    "dirName": "aaa",
+    "description": "",
+    "gameType": "novel",
+    "createdAt": "2026-03-21T10:49:43.278Z",
+    "updatedAt": "2026-03-21T10:49:43.278Z",
+    "scriptLength": 2,
+    "mapCount": 0,
+    "minigameCount": 0
   }
 ]
