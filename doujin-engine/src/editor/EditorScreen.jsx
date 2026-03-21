@@ -66,6 +66,7 @@ export default function EditorScreen({ onBack, initialScript, projectId, project
   });
   const [script, setScript] = useState(initialScript || DEFAULT_SCRIPT);
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [selectedSceneChild, setSelectedSceneChild] = useState(null); // { sceneId, childIndex }
   const [activeTab, setActiveTab] = useState("script");
   const [characters, setCharacters] = useState({});
   const [bgStyles, setBgStyles] = useState({});
@@ -84,8 +85,13 @@ export default function EditorScreen({ onBack, initialScript, projectId, project
   const [dirty, setDirty] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const [saveStatus, setSaveStatus] = useState(null); // null | "saving" | "saved"
-  const [previewStartIndex, setPreviewStartIndex] = useState(0);
+  const [previewStartIndex, setPreviewStartIndex] = useState({ index: 0, seq: 0 });
   const [showSplitPreview, setShowSplitPreview] = useState(false);
+  const previewSeq = useRef(0);
+  const setPreviewIndex = useCallback((i) => {
+    previewSeq.current += 1;
+    setPreviewStartIndex({ index: i, seq: previewSeq.current });
+  }, []);
   // Undo/Redo 履歴
   const [undoStack, setUndoStack] = useState([]);
   const [redoStack, setRedoStack] = useState([]);
@@ -123,9 +129,9 @@ export default function EditorScreen({ onBack, initialScript, projectId, project
 
   // 「この行から再生」ハンドラ
   const handlePlayFrom = useCallback((index) => {
-    setPreviewStartIndex(index);
+    setPreviewIndex(index);
     setShowSplitPreview(true);
-  }, []);
+  }, [setPreviewIndex]);
 
   // プロジェクトから追加データを非同期ロード
   useEffect(() => {
@@ -392,11 +398,11 @@ export default function EditorScreen({ onBack, initialScript, projectId, project
           />
         );
       case "flow":
-        return <FlowGraph script={script} />;
+        return <FlowGraph script={script} storyScenes={storyScenes} />;
       case "preview":
         return (
           <div style={{ padding: 16, height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <PreviewPanel script={script} startIndex={previewStartIndex} storyScenes={storyScenes} />
+            <PreviewPanel script={script} startIndex={previewStartIndex} storyScenes={storyScenes} characters={characters} bgStyles={bgStyles} projectId={projectId} />
           </div>
         );
       case "debug":
@@ -430,12 +436,52 @@ export default function EditorScreen({ onBack, initialScript, projectId, project
       case "deploy":
         return <DeployPanel projectId={projectId} projectName={projectName} />;
       case "script":
-      default:
+      default: {
+        // シーン子コマンドの解決
+        const sceneChildCmd = (() => {
+          if (!selectedSceneChild) return null;
+          const scene = storyScenes.find((s) => s.id === selectedSceneChild.sceneId);
+          return scene?.commands?.[selectedSceneChild.childIndex] || null;
+        })();
+        const sceneChildScene = selectedSceneChild
+          ? storyScenes.find((s) => s.id === selectedSceneChild.sceneId)
+          : null;
+
+        const updateSceneChildCmd = (updated) => {
+          if (!selectedSceneChild) return;
+          const newScenes = storyScenes.map((s) => {
+            if (s.id !== selectedSceneChild.sceneId) return s;
+            const newCmds = [...s.commands];
+            newCmds[selectedSceneChild.childIndex] = updated;
+            return { ...s, commands: newCmds };
+          });
+          setStoryScenes(newScenes);
+          markDirty();
+        };
+
         return (
           <div style={{ display: "flex", height: "100%", overflow: "hidden" }}>
             {/* エディタ部分 */}
             <div style={{ flex: 1, overflowY: "auto", padding: 20 }}>
-              {script[selectedIndex] ? (
+              {sceneChildCmd ? (
+                <>
+                  <div style={{ fontSize: 11, color: "#66BB6A", marginBottom: 8, padding: "4px 8px", background: "rgba(100,200,100,0.08)", borderRadius: 3, display: "inline-block" }}>
+                    {sceneChildScene?.name} #{selectedSceneChild.childIndex}
+                  </div>
+                  <CommandEditor
+                    command={sceneChildCmd}
+                    index={selectedSceneChild.childIndex}
+                    onChange={updateSceneChildCmd}
+                    characters={characters}
+                    script={sceneChildScene?.commands || []}
+                    storyScenes={storyScenes}
+                    projectId={projectId}
+                    bgmCatalog={bgmCatalog}
+                    seCatalog={seCatalog}
+                    bgStyles={bgStyles}
+                  />
+                </>
+              ) : script[selectedIndex] ? (
                 <CommandEditor
                   command={script[selectedIndex]}
                   index={selectedIndex}
@@ -464,11 +510,12 @@ export default function EditorScreen({ onBack, initialScript, projectId, project
                     ✕
                   </button>
                 </div>
-                <PreviewPanel script={script} startIndex={previewStartIndex} storyScenes={storyScenes} />
+                <PreviewPanel script={script} startIndex={previewStartIndex} storyScenes={storyScenes} characters={characters} bgStyles={bgStyles} projectId={projectId} />
               </div>
             )}
           </div>
         );
+      }
     }
   };
 
@@ -512,7 +559,7 @@ export default function EditorScreen({ onBack, initialScript, projectId, project
             ↪
           </button>
           <button
-            onClick={() => { setShowSplitPreview(!showSplitPreview); setPreviewStartIndex(selectedIndex); }}
+            onClick={() => { setShowSplitPreview(!showSplitPreview); setPreviewIndex(selectedIndex); }}
             style={{
               ...styles.headerBtn,
               ...(showSplitPreview ? { background: "rgba(200,180,140,0.15)", color: "#E8D4B0" } : {}),
@@ -543,20 +590,20 @@ export default function EditorScreen({ onBack, initialScript, projectId, project
       {/* メインエリア */}
       <div style={styles.main}>
         {/* 左: スクリプトリスト（ノベル系タブのみ表示） */}
-        {["script", "text", "flow", "preview", "debug", "save", "deploy"].includes(activeTab) && (
+        {["script", "preview", "debug"].includes(activeTab) && (
           <div style={styles.leftPanel}>
             <ScriptList
               script={script}
               selectedIndex={selectedIndex}
-              onSelect={(i) => { setSelectedIndex(i); setActiveTab("script"); }}
+              onSelect={(i) => { setSelectedIndex(i); setSelectedSceneChild(null); if (showSplitPreview || activeTab === "preview") setPreviewIndex(i); else setActiveTab("script"); }}
               onAdd={addCommand}
               onRemove={removeCommand}
               onMove={moveCommand}
               onPlayFrom={handlePlayFrom}
               storyScenes={storyScenes}
+              selectedSceneChild={selectedSceneChild}
               onSelectSceneChild={(sceneId, childIndex) => {
-                // シーン編集タブに切り替えて該当シーン・コマンドを選択
-                setActiveTab("scenes");
+                setSelectedSceneChild({ sceneId, childIndex });
               }}
             />
           </div>
@@ -669,7 +716,11 @@ const styles = {
   },
   centerPanel: {
     flex: 1,
-    overflowY: "auto",
+    minHeight: 0,
+    minWidth: 0,
+    display: "flex",
+    flexDirection: "column",
+    overflow: "auto",
   },
   emptyState: {
     color: "#555",

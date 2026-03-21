@@ -54,6 +54,13 @@ const FIELD_DEFS = {
   [CMD.SCENE]: [
     { key: "sceneId", label: "シーン", type: "scene_select", autocomplete: "scenes" },
   ],
+  [CMD.CG]: [
+    { key: "id", label: "CG ID", type: "text", placeholder: "cg01" },
+    { key: "src", label: "画像ファイル", type: "text", placeholder: "event_cg_01.png" },
+  ],
+  [CMD.NVL_ON]: [],
+  [CMD.NVL_OFF]: [],
+  [CMD.NVL_CLEAR]: [],
 };
 
 function FieldInput({ field, value, onChange, suggestions }) {

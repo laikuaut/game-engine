@@ -1,8 +1,16 @@
 import { useState, useMemo, useRef } from "react";
+import { CMD } from "../engine/constants";
 import { uploadAsset, deleteAsset, getAssetUrl } from "../project/ProjectStore";
 
+// 解放条件タイプ
+const UNLOCK_TYPES = [
+  { value: "auto", label: "自動（シーン再生時）" },
+  { value: "label", label: "ラベル到達時" },
+  { value: "manual", label: "手動（イベントから）" },
+];
+
 // シーン回想カタログ管理エディタ
-// catalog: [{ name (シーン名), title, chapter, thumbnail }]
+// catalog: [{ name (シーン名), title, chapter, thumbnail, unlockType, unlockLabel }]
 // storyScenes: [{ id, name, description, commands }]
 export default function SceneCatalogEditor({ catalog, onUpdateCatalog, script, storyScenes, projectId }) {
   const [selectedIndex, setSelectedIndex] = useState(null);
@@ -15,6 +23,13 @@ export default function SceneCatalogEditor({ catalog, onUpdateCatalog, script, s
 
   // シーン名一覧（プルダウン用）
   const sceneNames = useMemo(() => scenes.map((s) => s.name), [scenes]);
+
+  // ラベル候補
+  const labels = useMemo(() => {
+    return (script || [])
+      .filter((c) => c.type === CMD.LABEL && c.name)
+      .map((c) => c.name);
+  }, [script]);
 
   // 登録済みシーン名のセット
   const registeredNames = useMemo(() => new Set(items.map((s) => s.name)), [items]);
@@ -258,6 +273,40 @@ export default function SceneCatalogEditor({ catalog, onUpdateCatalog, script, s
             </div>
 
             <div style={styles.section}>
+              <div style={styles.sectionTitle}>解放条件</div>
+              <select
+                value={selected.unlockType || "auto"}
+                onChange={(e) => updateField("unlockType", e.target.value)}
+                style={{ ...styles.input, cursor: "pointer" }}
+              >
+                {UNLOCK_TYPES.map((t) => (
+                  <option key={t.value} value={t.value} style={styles.optionStyle}>{t.label}</option>
+                ))}
+              </select>
+              {(selected.unlockType || "auto") === "label" && (
+                <>
+                  <label style={styles.label}>解放ラベル</label>
+                  <select
+                    value={selected.unlockLabel || ""}
+                    onChange={(e) => updateField("unlockLabel", e.target.value)}
+                    style={{ ...styles.input, cursor: "pointer" }}
+                  >
+                    <option value="" style={styles.optionStyle}>-- ラベルを選択 --</option>
+                    {labels.map((l) => (
+                      <option key={l} value={l} style={styles.optionStyle}>{l}</option>
+                    ))}
+                  </select>
+                </>
+              )}
+              {(selected.unlockType || "auto") === "auto" && (
+                <div style={styles.hint}>シーン再生時に自動解放</div>
+              )}
+              {(selected.unlockType || "auto") === "manual" && (
+                <div style={styles.hint}>イベントエディタの「シーン解放」アクションで解放</div>
+              )}
+            </div>
+
+            <div style={styles.section}>
               <div style={styles.sectionTitle}>操作</div>
               <div style={{ display: "flex", gap: 8 }}>
                 <button
@@ -380,5 +429,7 @@ const styles = {
     display: "flex", justifyContent: "space-between", alignItems: "center",
     padding: "4px 6px", marginBottom: 2,
   },
+  optionStyle: { background: "#1a1a2e", color: "#E8E4DC" },
+  hint: { fontSize: 10, color: "#666", marginTop: 6, fontStyle: "italic" },
   empty: { color: "#555", fontSize: 13, textAlign: "center", marginTop: 40 },
 };

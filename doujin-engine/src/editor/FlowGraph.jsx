@@ -1,8 +1,40 @@
 import { useMemo, useState, useCallback } from "react";
 import { CMD } from "../engine/constants";
+import { expandScenes } from "../engine/commands";
 
 // スクリプト内の choice / jump / label を解析し、分岐フローを可視化する
-export default function FlowGraph({ script }) {
+export default function FlowGraph({ script, storyScenes }) {
+  // シーン参照を展開してからフロー解析
+  const expandedScript = useMemo(() => expandScenes(script, storyScenes), [script, storyScenes]);
+
+  // シーン境界マップ: 展開後のindex → シーン名
+  const sceneBoundaries = useMemo(() => {
+    const sceneMap = {};
+    (storyScenes || []).forEach((s) => { sceneMap[s.id] = s; });
+    const boundaries = []; // [{ startIndex, sceneName }]
+    let idx = 0;
+    for (const cmd of (script || [])) {
+      if (cmd.type === CMD.SCENE) {
+        const scene = sceneMap[cmd.sceneId];
+        if (scene) {
+          boundaries.push({ startIndex: idx, sceneName: scene.name, sceneId: cmd.sceneId });
+          idx += 1 + (scene.commands?.length || 0); // label + commands
+        }
+      } else {
+        idx += 1;
+      }
+    }
+    return boundaries;
+  }, [script, storyScenes]);
+
+  // index → 所属シーン名
+  const getSceneName = (index) => {
+    for (let i = sceneBoundaries.length - 1; i >= 0; i--) {
+      if (index >= sceneBoundaries[i].startIndex) return sceneBoundaries[i].sceneName;
+    }
+    return null;
+  };
+
   // ノードとエッジの抽出
   const { nodes, edges } = useMemo(() => {
     const nodes = [];
@@ -10,7 +42,7 @@ export default function FlowGraph({ script }) {
     const labels = {};
 
     // 1pass: label を収集
-    script.forEach((cmd, i) => {
+    expandedScript.forEach((cmd, i) => {
       if (cmd.type === CMD.LABEL) {
         labels[cmd.name] = i;
       }
@@ -20,6 +52,7 @@ export default function FlowGraph({ script }) {
     let blockStart = 0;
     let blockDialogCount = 0;
     let blockSpeakers = new Set();
+    let currentSceneName = null;
 
     const flushBlock = (endIndex) => {
       if (blockDialogCount > 0 || blockStart < endIndex) {
@@ -29,23 +62,32 @@ export default function FlowGraph({ script }) {
           endIndex: endIndex - 1,
           dialogCount: blockDialogCount,
           speakers: [...blockSpeakers],
+          sceneName: currentSceneName,
         });
       }
       blockDialogCount = 0;
       blockSpeakers = new Set();
     };
 
-    script.forEach((cmd, i) => {
+    expandedScript.forEach((cmd, i) => {
+      // シーン境界の検出
+      const sn = getSceneName(i);
+      if (sn !== currentSceneName) {
+        flushBlock(i);
+        blockStart = i;
+        currentSceneName = sn;
+      }
+
       switch (cmd.type) {
         case CMD.LABEL:
           flushBlock(i);
-          nodes.push({ type: "label", index: i, name: cmd.name });
+          nodes.push({ type: "label", index: i, name: cmd.name, sceneName: currentSceneName });
           blockStart = i + 1;
           break;
 
         case CMD.CHOICE:
           flushBlock(i);
-          nodes.push({ type: "choice", index: i, options: cmd.options || [] });
+          nodes.push({ type: "choice", index: i, options: cmd.options || [], sceneName: currentSceneName });
           (cmd.options || []).forEach((opt, oi) => {
             edges.push({
               from: i,
@@ -60,7 +102,7 @@ export default function FlowGraph({ script }) {
         case CMD.JUMP: {
           flushBlock(i);
           const target = typeof cmd.target === "string" ? labels[cmd.target] : cmd.target;
-          nodes.push({ type: "jump", index: i, target });
+          nodes.push({ type: "jump", index: i, target, sceneName: currentSceneName });
           if (target !== undefined) {
             edges.push({ from: i, to: target, label: "jump" });
           }
@@ -75,10 +117,10 @@ export default function FlowGraph({ script }) {
       }
     });
     // 最後のブロック
-    flushBlock(script.length);
+    flushBlock(expandedScript.length);
 
     return { nodes, edges };
-  }, [script]);
+  }, [expandedScript, sceneBoundaries]);
 
   // 展開中ノードの管理
   const [expanded, setExpanded] = useState(new Set());
@@ -137,8 +179,19 @@ export default function FlowGraph({ script }) {
           const isExpanded = expanded.has(node.index);
           const isClickable = node.type === "block" && node.dialogCount > 0;
 
+          // シーン境界の検出: 前のノードと違うシーンならヘッダー表示
+          const prevSceneName = ni > 0 ? nodes[ni - 1].sceneName : null;
+          const showSceneHeader = node.sceneName && node.sceneName !== prevSceneName;
+
           return (
             <div key={ni} style={styles.nodeRow}>
+              {/* シーン境界ヘッダー */}
+              {showSceneHeader && (
+                <div style={styles.sceneHeader}>
+                  <span style={styles.sceneHeaderIcon}>■</span>
+                  <span style={styles.sceneHeaderName}>{node.sceneName}</span>
+                </div>
+              )}
               {/* ノード */}
               <div
                 onClick={isClickable ? () => toggleExpand(node.index) : undefined}
@@ -186,7 +239,7 @@ export default function FlowGraph({ script }) {
               {/* 展開中のコマンド一覧 */}
               {isExpanded && node.type === "block" && (
                 <div style={styles.expandedBlock}>
-                  {script.slice(node.index, node.endIndex + 1).map((cmd, ci) => {
+                  {expandedScript.slice(node.index, node.endIndex + 1).map((cmd, ci) => {
                     const s = cmdSummary(cmd, node.index + ci);
                     return (
                       <div key={ci} style={styles.expandedCmd}>
@@ -353,6 +406,25 @@ const styles = {
     overflow: "hidden",
     textOverflow: "ellipsis",
     whiteSpace: "nowrap",
+  },
+  sceneHeader: {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    padding: "8px 12px 4px",
+    marginTop: 12,
+    marginBottom: 2,
+    borderTop: "1px solid rgba(100,200,100,0.15)",
+  },
+  sceneHeaderIcon: {
+    color: "#66BB6A",
+    fontSize: 8,
+  },
+  sceneHeaderName: {
+    color: "#66BB6A",
+    fontSize: 12,
+    fontWeight: 600,
+    letterSpacing: 1,
   },
   empty: {
     color: "#555",

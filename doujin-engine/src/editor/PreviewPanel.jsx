@@ -6,33 +6,38 @@ import Background from "../components/Background";
 import Character from "../components/Character";
 
 // エディタ内のミニプレビュー（読み取り専用のエンジン表示）
-export default function PreviewPanel({ script, startIndex, storyScenes }) {
+// 外側ラッパー: key で再マウントを制御
+export default function PreviewPanel({ script, startIndex: startIndexProp, storyScenes, characters, bgStyles, projectId }) {
+  const startIndex = typeof startIndexProp === "object" ? startIndexProp.index : (startIndexProp || 0);
+  const startSeq = typeof startIndexProp === "object" ? startIndexProp.seq : 0;
+  return (
+    <PreviewPanelInner
+      key={startSeq}
+      script={script}
+      startIndex={startIndex}
+      storyScenes={storyScenes}
+      characters={characters}
+      bgStyles={bgStyles}
+      projectId={projectId}
+    />
+  );
+}
+
+function PreviewPanelInner({ script, startIndex, storyScenes, characters, bgStyles, projectId }) {
   const [state, dispatch] = useReducer(engineReducer, initialState);
-  const [currentLine, setCurrentLine] = useState(startIndex || 0);
-  const initialized = useRef(false);
-  const prevStartIndex = useRef(startIndex || 0);
+  const [currentLine, setCurrentLine] = useState(startIndex);
 
   // シーン参照を展開
   const expandedScript = useMemo(() => expandScenes(script, storyScenes), [script, storyScenes]);
   const labelMap = useMemo(() => buildLabelMap(expandedScript), [expandedScript]);
 
-  // startIndex が外部から変更された場合にリセット
-  useEffect(() => {
-    if (startIndex !== prevStartIndex.current) {
-      prevStartIndex.current = startIndex;
-      runFromIndex(startIndex || 0);
-    }
-  }, [startIndex]);
-
-  // 指定indexからプレビュー実行
   const runFromIndex = useCallback((fromIndex) => {
-    // ステートをリセット
     dispatch({ type: ACTION.SET_DISPLAYED_TEXT, payload: "" });
     dispatch({ type: ACTION.SET_SPEAKER, payload: "" });
     if (expandedScript.length === 0 || fromIndex >= expandedScript.length) return;
     const result = processCommand(expandedScript, fromIndex, dispatch, labelMap);
     const i = result.index;
-    if (i < expandedScript.length && expandedScript[i].type === CMD.DIALOG) {
+    if (i < expandedScript.length && expandedScript[i]?.type === CMD.DIALOG) {
       dispatch({ type: ACTION.SET_SPEAKER, payload: expandedScript[i].speaker });
       dispatch({ type: ACTION.SET_DISPLAYED_TEXT, payload: expandedScript[i].text });
     }
@@ -44,12 +49,10 @@ export default function PreviewPanel({ script, startIndex, storyScenes }) {
     }
   }, [expandedScript, labelMap]);
 
-  // スクリプト変更時にリセット＆再実行
+  // マウント時に startIndex から実行
   useEffect(() => {
-    if (expandedScript.length === 0) return;
-    runFromIndex(startIndex || 0);
-    initialized.current = true;
-  }, [expandedScript, labelMap]);
+    runFromIndex(startIndex);
+  }, [runFromIndex, startIndex]);
 
   // 次のコマンドへ進む
   const advancePreview = useCallback(() => {
@@ -84,15 +87,16 @@ export default function PreviewPanel({ script, startIndex, storyScenes }) {
           bgTransition={state.bgTransition}
           bgTransitionType={state.bgTransitionType}
           bgTransitionTime={state.bgTransitionTime}
+          bgStyles={bgStyles}
         />
 
         {Object.entries(state.characters).map(([id, chara]) => (
-          <Character key={id} id={id} position={chara.position} expression={chara.expression} animState={chara.animState} />
+          <Character key={id} id={id} position={chara.position} expression={chara.expression} animState={chara.animState} charaData={characters} projectId={projectId} />
         ))}
 
         {/* BGM インジケーター */}
         {state.bgmPlaying && (
-          <div style={styles.bgmIndicator}>♪ {state.bgmPlaying}</div>
+          <div style={styles.bgmIndicator}>♪ {typeof state.bgmPlaying === "string" ? state.bgmPlaying : state.bgmPlaying.name}</div>
         )}
 
         {/* テキスト表示 */}

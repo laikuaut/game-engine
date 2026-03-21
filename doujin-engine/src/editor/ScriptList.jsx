@@ -17,6 +17,10 @@ const CMD_META = {
   [CMD.JUMP]:       { label: "ジャンプ", color: "#EF5350" },
   [CMD.LABEL]:      { label: "ラベル", color: "#A5D6A7" },
   [CMD.SCENE]:      { label: "シーン", color: "#66BB6A" },
+  [CMD.CG]:         { label: "CG",     color: "#F48FB1" },
+  [CMD.NVL_ON]:     { label: "NVL開始", color: "#A5D6A7" },
+  [CMD.NVL_OFF]:    { label: "NVL終了", color: "#A5D6A7" },
+  [CMD.NVL_CLEAR]:  { label: "NVLクリア", color: "#A5D6A7" },
 };
 
 // コマンドの1行サマリー
@@ -39,6 +43,7 @@ function commandSummary(cmd) {
     case CMD.JUMP:      return `→ ${cmd.target}`;
     case CMD.LABEL:     return cmd.name || "(未設定)";
     case CMD.SCENE:     return cmd.label || cmd.sceneId || "(未設定)";
+    case CMD.CG:        return cmd.id || cmd.src || "(未設定)";
     default:            return cmd.type;
   }
 }
@@ -65,12 +70,20 @@ function SceneChildItem({ cmd, childIndex, sceneName, scriptIndex, isSelected, o
   );
 }
 
-export default function ScriptList({ script, selectedIndex, onSelect, onAdd, onRemove, onMove, onPlayFrom, storyScenes, onSelectSceneChild }) {
+export default function ScriptList({ script, selectedIndex, onSelect, onAdd, onRemove, onMove, onPlayFrom, storyScenes, onSelectSceneChild, selectedSceneChild }) {
   const [showAddMenu, setShowAddMenu] = useState(false);
   const [contextMenu, setContextMenu] = useState(null);
   const [expandedScenes, setExpandedScenes] = useState(new Set());
+  const [filterType, setFilterType] = useState("");
 
   const cmdTypes = Object.keys(CMD_META);
+
+  // スクリプト内で実際に使われているコマンドタイプを収集
+  const usedTypes = useMemo(() => {
+    const types = new Set();
+    (script || []).forEach((cmd) => types.add(cmd.type));
+    return [...types].filter((t) => CMD_META[t]);
+  }, [script]);
 
   // シーンID → シーンデータのマップ
   const sceneMap = useMemo(() => {
@@ -107,6 +120,29 @@ export default function ScriptList({ script, selectedIndex, onSelect, onAdd, onR
         </div>
       </div>
 
+      {/* フィルタバー */}
+      <div style={styles.filterBar}>
+        <select
+          value={filterType}
+          onChange={(e) => setFilterType(e.target.value)}
+          style={styles.filterSelect}
+        >
+          <option value="">全て表示</option>
+          {usedTypes.map((t) => {
+            const m = CMD_META[t];
+            return <option key={t} value={t}>{m.label}</option>;
+          })}
+        </select>
+        {filterType && (
+          <button onClick={() => setFilterType("")} style={styles.filterClear} title="フィルタ解除">✕</button>
+        )}
+        {filterType && (
+          <span style={styles.filterCount}>
+            {script.filter((c) => c.type === filterType).length}件
+          </span>
+        )}
+      </div>
+
       {/* 追加メニュー */}
       {showAddMenu && (
         <div style={styles.addMenu}>
@@ -115,7 +151,7 @@ export default function ScriptList({ script, selectedIndex, onSelect, onAdd, onR
             return (
               <button
                 key={type}
-                onClick={() => { onAdd(type, selectedIndex); setShowAddMenu(false); }}
+                onClick={() => { onAdd(type, selectedIndex); }}
                 style={styles.addMenuItem}
               >
                 <span style={{ ...styles.badge, background: meta.color + "33", color: meta.color }}>
@@ -130,6 +166,7 @@ export default function ScriptList({ script, selectedIndex, onSelect, onAdd, onR
       {/* コマンドリスト */}
       <div style={styles.list} onClick={() => setContextMenu(null)}>
         {script.map((cmd, i) => {
+          if (filterType && cmd.type !== filterType) return null;
           const meta = CMD_META[cmd.type] || { label: cmd.type, color: "#888" };
           const selected = i === selectedIndex;
           const isScene = cmd.type === CMD.SCENE;
@@ -183,7 +220,7 @@ export default function ScriptList({ script, selectedIndex, onSelect, onAdd, onR
                       childIndex={ci}
                       sceneName={scene.name}
                       scriptIndex={i}
-                      isSelected={false}
+                      isSelected={selectedSceneChild?.sceneId === cmd.sceneId && selectedSceneChild?.childIndex === ci}
                       onSelect={(si, ci2) => {
                         if (onSelectSceneChild) onSelectSceneChild(cmd.sceneId, ci2);
                       }}
@@ -239,7 +276,9 @@ const styles = {
   container: {
     display: "flex",
     flexDirection: "column",
-    height: "100%",
+    flex: 1,
+    minHeight: 0,
+    overflow: "hidden",
   },
   toolbar: {
     display: "flex",
@@ -276,6 +315,45 @@ const styles = {
     background: "rgba(90,180,255,0.2)",
     borderColor: "rgba(90,180,255,0.4)",
     color: "#5BF",
+  },
+  filterBar: {
+    display: "flex",
+    alignItems: "center",
+    gap: 6,
+    padding: "4px 12px",
+    borderBottom: "1px solid rgba(255,255,255,0.06)",
+    flexShrink: 0,
+  },
+  filterSelect: {
+    flex: 1,
+    background: "rgba(255,255,255,0.06)",
+    border: "1px solid rgba(255,255,255,0.1)",
+    color: "#ccc",
+    borderRadius: 3,
+    padding: "3px 6px",
+    fontSize: 11,
+    fontFamily: "inherit",
+    cursor: "pointer",
+  },
+  filterClear: {
+    background: "rgba(255,255,255,0.05)",
+    border: "1px solid rgba(255,255,255,0.1)",
+    color: "#aaa",
+    width: 22,
+    height: 22,
+    borderRadius: 3,
+    cursor: "pointer",
+    fontSize: 10,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+    fontFamily: "inherit",
+  },
+  filterCount: {
+    fontSize: 10,
+    color: "#888",
+    flexShrink: 0,
   },
   addMenu: {
     display: "flex",
@@ -344,6 +422,8 @@ const styles = {
     borderLeft: "2px solid rgba(100,200,100,0.15)",
     marginLeft: 20,
     background: "rgba(100,200,100,0.02)",
+    maxHeight: 300,
+    overflowY: "auto",
   },
   emptyScene: {
     padding: "8px 32px",

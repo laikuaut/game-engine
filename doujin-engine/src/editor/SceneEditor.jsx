@@ -348,7 +348,7 @@ export default function SceneEditor({
 
 const styles = {
   container: {
-    display: "flex", height: "100%", overflow: "hidden",
+    display: "flex", flex: 1, minHeight: 0, overflow: "hidden",
   },
   sidebar: {
     width: 260, flexShrink: 0, borderRight: "1px solid rgba(255,255,255,0.06)",
