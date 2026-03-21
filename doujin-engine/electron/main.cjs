@@ -160,8 +160,25 @@ function writeProjectsIndex(projects) {
 // プロジェクトのデータファイル定義
 const DATA_FILES = ["script", "characters", "items", "gameEvents", "bgStyles", "maps", "customTiles", "battleData", "minigames", "saves", "bgmCatalog", "seCatalog", "cgCatalog", "sceneCatalog", "storyScenes", "sceneOrder"];
 
+// プロジェクト名をディレクトリ名に変換（ファイルシステム安全化）
+function toSafeDirName(name) {
+  // Windows禁止文字を除去、前後の空白・ドットを除去
+  return name
+    .replace(/[<>:"/\\|?*\x00-\x1f]/g, "_")
+    .replace(/\.+$/, "")
+    .trim() || "untitled";
+}
+
+// IDからディレクトリ名を解決（インデックスの dirName を参照、なければIDフォールバック）
+function resolveProjectDirName(id) {
+  const index = readProjectsIndex();
+  const entry = index.find((p) => p.id === id);
+  return entry?.dirName || id;
+}
+
 function getProjectDir(id) {
-  const dir = path.join(getProjectsDir(), id);
+  const dirName = resolveProjectDirName(id);
+  const dir = path.join(getProjectsDir(), dirName);
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
   return dir;
 }
@@ -207,7 +224,8 @@ function migrateProjectToSplit(id) {
 
 // 分割ファイルからプロジェクト全体を読み込み
 function readProjectSplit(id) {
-  const projDir = path.join(getProjectsDir(), id);
+  const dirName = resolveProjectDirName(id);
+  const projDir = path.join(getProjectsDir(), dirName);
   const metaFile = path.join(projDir, "meta.json");
   if (!fs.existsSync(metaFile)) return null;
   try {
@@ -242,11 +260,16 @@ function writeProjectSplit(project) {
 
 // プロジェクトディレクトリを削除
 function deleteProjectSplit(id) {
-  const projDir = path.join(getProjectsDir(), id);
+  const dirName = resolveProjectDirName(id);
+  const projDir = path.join(getProjectsDir(), dirName);
   if (fs.existsSync(projDir)) {
     fs.rmSync(projDir, { recursive: true, force: true });
   }
-  // 旧形式のファイルも念のため削除
+  // 旧形式のファイルも念のため削除（IDベースのフォルダ・ファイル）
+  const oldDir = path.join(getProjectsDir(), id);
+  if (oldDir !== projDir && fs.existsSync(oldDir)) {
+    fs.rmSync(oldDir, { recursive: true, force: true });
+  }
   const oldFile = path.join(getProjectsDir(), `${id}.json`);
   if (fs.existsSync(oldFile)) fs.unlinkSync(oldFile);
 }
@@ -264,13 +287,35 @@ ipcMain.handle("project-get", async (event, id) => {
 
 // プロジェクト保存（作成 or 更新）
 ipcMain.handle("project-save", async (event, project) => {
-  writeProjectSplit(project);
-
-  // インデックス更新
   const index = readProjectsIndex();
+  const existing = index.findIndex((p) => p.id === project.id);
+  const oldEntry = existing >= 0 ? index[existing] : null;
+
+  // ディレクトリ名を作品名から生成
+  let newDirName = toSafeDirName(project.name);
+  // 他のプロジェクトと重複する場合はIDサフィックスを付ける
+  const otherDirs = index.filter((p) => p.id !== project.id).map((p) => p.dirName);
+  if (otherDirs.includes(newDirName)) {
+    newDirName = `${newDirName}_${project.id.slice(-6)}`;
+  }
+
+  const oldDirName = oldEntry?.dirName || project.id;
+
+  // 名前変更でディレクトリ名が変わった場合はリネーム
+  if (oldDirName !== newDirName) {
+    const oldDir = path.join(getProjectsDir(), oldDirName);
+    const newDir = path.join(getProjectsDir(), newDirName);
+    if (fs.existsSync(oldDir) && !fs.existsSync(newDir)) {
+      fs.renameSync(oldDir, newDir);
+      console.log(`[ProjectStore] Renamed dir: ${oldDirName} → ${newDirName}`);
+    }
+  }
+
+  // インデックス更新（dirName を含む）
   const meta = {
     id: project.id,
     name: project.name,
+    dirName: newDirName,
     description: project.description || "",
     gameType: project.gameType || "novel",
     createdAt: project.createdAt,
@@ -279,13 +324,14 @@ ipcMain.handle("project-save", async (event, project) => {
     mapCount: project.maps?.length || 0,
     minigameCount: project.minigames?.length || 0,
   };
-  const existing = index.findIndex((p) => p.id === project.id);
   if (existing >= 0) {
     index[existing] = meta;
   } else {
     index.push(meta);
   }
   writeProjectsIndex(index);
+
+  writeProjectSplit(project);
   return { success: true };
 });
 
@@ -300,7 +346,8 @@ ipcMain.handle("project-delete", async (event, id) => {
 // === アセット管理 ===
 
 function getAssetDir(projectId, type) {
-  const dir = path.join(getProjectsDir(), projectId, "assets", type);
+  const dirName = resolveProjectDirName(projectId);
+  const dir = path.join(getProjectsDir(), dirName, "assets", type);
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
   return dir;
 }
@@ -370,7 +417,7 @@ ipcMain.handle("export-game", async (event, projectId) => {
     writeJsonFile(path.join(publicDir, "game-data.json"), gameData);
 
     // アセットコピー
-    const srcAssets = path.join(getProjectsDir(), projectId, "assets");
+    const srcAssets = path.join(getProjectsDir(), resolveProjectDirName(projectId), "assets");
     const destAssets = path.join(publicDir, "game-assets");
     if (fs.existsSync(srcAssets)) copyDirSync(srcAssets, destAssets);
 

@@ -34,6 +34,18 @@ function projectApiPlugin() {
     fs.writeFileSync(fp, JSON.stringify(data, null, 2), 'utf-8')
   }
 
+  // プロジェクト名をディレクトリ名に変換
+  function toSafeDirName(name) {
+    return name.replace(/[<>:"/\\|?*\x00-\x1f]/g, '_').replace(/\.+$/, '').trim() || 'untitled'
+  }
+
+  // IDからディレクトリ名を解決
+  function resolveProjectDirName(id) {
+    const index = readIndex()
+    const entry = index.find((p) => p.id === id)
+    return entry?.dirName || id
+  }
+
   // 旧形式（単一ファイル）→ 新形式（ディレクトリ）マイグレーション
   function migrateToSplit(id) {
     ensureDir()
@@ -65,7 +77,8 @@ function projectApiPlugin() {
 
   // 分割ファイルから読み込み
   function readProjectSplit(id) {
-    const projDir = path.join(projectsDir, id)
+    const dirName = resolveProjectDirName(id)
+    const projDir = path.join(projectsDir, dirName)
     const metaFile = path.join(projDir, 'meta.json')
     if (!fs.existsSync(metaFile)) return null
     try {
@@ -83,7 +96,8 @@ function projectApiPlugin() {
 
   // 分割ファイルに保存
   function writeProjectSplit(project) {
-    const projDir = path.join(projectsDir, project.id)
+    const dirName = resolveProjectDirName(project.id)
+    const projDir = path.join(projectsDir, dirName)
     ensureDir(projDir)
     const meta = {}
     for (const [k, v] of Object.entries(project)) {
@@ -144,18 +158,41 @@ function projectApiPlugin() {
         if (req.method !== 'POST') return next()
         const project = await parseBody(req)
         ensureDir()
-        writeProjectSplit(project)
-        // インデックス更新
+
         const index = readIndex()
+        const existingIdx = index.findIndex(p => p.id === project.id)
+        const oldEntry = existingIdx >= 0 ? index[existingIdx] : null
+
+        // ディレクトリ名を作品名から生成
+        let newDirName = toSafeDirName(project.name)
+        const otherDirs = index.filter(p => p.id !== project.id).map(p => p.dirName)
+        if (otherDirs.includes(newDirName)) {
+          newDirName = `${newDirName}_${project.id.slice(-6)}`
+        }
+        const oldDirName = oldEntry?.dirName || project.id
+
+        // 名前変更でディレクトリ名が変わった場合はリネーム
+        if (oldDirName !== newDirName) {
+          const oldDir = path.join(projectsDir, oldDirName)
+          const newDir = path.join(projectsDir, newDirName)
+          if (fs.existsSync(oldDir) && !fs.existsSync(newDir)) {
+            fs.renameSync(oldDir, newDir)
+            console.log(`[Vite API] Renamed dir: ${oldDirName} → ${newDirName}`)
+          }
+        }
+
+        // インデックス更新（dirName を先に更新して writeProjectSplit が正しいパスを使えるように）
         const meta = {
-          id: project.id, name: project.name, description: project.description || '',
+          id: project.id, name: project.name, dirName: newDirName,
+          description: project.description || '',
           gameType: project.gameType || 'novel', createdAt: project.createdAt, updatedAt: project.updatedAt,
           scriptLength: project.script?.length || 0, mapCount: project.maps?.length || 0,
           minigameCount: project.minigames?.length || 0,
         }
-        const idx = index.findIndex(p => p.id === project.id)
-        if (idx >= 0) index[idx] = meta; else index.push(meta)
+        if (existingIdx >= 0) index[existingIdx] = meta; else index.push(meta)
         writeIndex(index)
+
+        writeProjectSplit(project)
         res.setHeader('Content-Type', 'application/json')
         res.end(JSON.stringify({ success: true }))
       })
@@ -169,7 +206,8 @@ function projectApiPlugin() {
           res.end(JSON.stringify({ error: 'missing fields' }))
           return
         }
-        const assetDir = path.join(projectsDir, projectId, 'assets', type)
+        const dirName = resolveProjectDirName(projectId)
+        const assetDir = path.join(projectsDir, dirName, 'assets', type)
         ensureDir(assetDir)
         const safeName = filename.replace(/[^a-zA-Z0-9_\-\.]/g, '_')
         const filePath = path.join(assetDir, safeName)
@@ -183,7 +221,8 @@ function projectApiPlugin() {
       server.middlewares.use('/api/asset-list', async (req, res, next) => {
         if (req.method !== 'POST') return next()
         const { projectId, type } = await parseBody(req)
-        const assetDir = path.join(projectsDir, projectId, 'assets', type)
+        const dirName = resolveProjectDirName(projectId)
+        const assetDir = path.join(projectsDir, dirName, 'assets', type)
         let files = []
         if (fs.existsSync(assetDir)) {
           files = fs.readdirSync(assetDir).filter(f => /\.(png|jpg|jpeg|webp|gif|ogg|mp3|wav)$/i.test(f))
@@ -196,7 +235,8 @@ function projectApiPlugin() {
       server.middlewares.use('/api/asset-delete', async (req, res, next) => {
         if (req.method !== 'POST') return next()
         const { projectId, type, filename } = await parseBody(req)
-        const filePath = path.join(projectsDir, projectId, 'assets', type, filename)
+        const dirName = resolveProjectDirName(projectId)
+        const filePath = path.join(projectsDir, dirName, 'assets', type, filename)
         if (fs.existsSync(filePath)) fs.unlinkSync(filePath)
         res.setHeader('Content-Type', 'application/json')
         res.end(JSON.stringify({ success: true }))
@@ -208,7 +248,8 @@ function projectApiPlugin() {
         if (parts.length < 3) return next()
         const [id, type, ...rest] = parts
         const filename = rest.join('/')
-        const filePath = path.join(projectsDir, id, 'assets', type, filename)
+        const dirName = resolveProjectDirName(id)
+        const filePath = path.join(projectsDir, dirName, 'assets', type, filename)
         if (!fs.existsSync(filePath)) { res.statusCode = 404; res.end(); return }
         const ext = path.extname(filename).toLowerCase()
         const mimeMap = { '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.gif': 'image/gif' }
@@ -223,8 +264,12 @@ function projectApiPlugin() {
         const { id } = await parseBody(req)
         ensureDir()
         // ディレクトリ削除
-        const projDir = path.join(projectsDir, id)
+        const dirName = resolveProjectDirName(id)
+        const projDir = path.join(projectsDir, dirName)
         if (fs.existsSync(projDir)) fs.rmSync(projDir, { recursive: true, force: true })
+        // IDベースのフォルダも削除（マイグレーション前の残骸）
+        const oldDir = path.join(projectsDir, id)
+        if (oldDir !== projDir && fs.existsSync(oldDir)) fs.rmSync(oldDir, { recursive: true, force: true })
         // 旧形式ファイルも削除
         const oldFile = path.join(projectsDir, `${id}.json`)
         if (fs.existsSync(oldFile)) fs.unlinkSync(oldFile)
@@ -314,7 +359,7 @@ function projectApiPlugin() {
           writeJson(path.join(publicDir, 'game-data.json'), gameData)
 
           // アセットをコピー
-          const srcAssets = path.join(projectsDir, projectId, 'assets')
+          const srcAssets = path.join(projectsDir, resolveProjectDirName(projectId), 'assets')
           const destAssets = path.join(publicDir, 'game-assets')
           if (fs.existsSync(srcAssets)) {
             copyDirSync(srcAssets, destAssets)

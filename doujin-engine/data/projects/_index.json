@@ -1,27 +1,5 @@
 [
   {
-    "id": "mn018fa0wv7kjr",
-    "name": "放課後の幽霊少女",
-    "description": "ラノベ風サンプルシナリオ（約10分・2ルート完結）",
-    "gameType": "novel",
-    "createdAt": "2026-03-21T07:54:36.504Z",
-    "updatedAt": "2026-03-21T07:57:00.433Z",
-    "scriptLength": 290,
-    "mapCount": 0,
-    "minigameCount": 0
-  },
-  {
-    "id": "mn018fb0sljeyd",
-    "name": "勇者レイの冒険",
-    "description": "RPGサンプル（マップ4面・ボス戦付き）",
-    "gameType": "rpg",
-    "createdAt": "2026-03-21T07:54:36.540Z",
-    "updatedAt": "2026-03-21T07:54:36.568Z",
-    "scriptLength": 80,
-    "mapCount": 4,
-    "minigameCount": 2
-  },
-  {
     "id": "mn01bv9m3r96zb",
     "name": "てｓｔ",
     "description": "",
@@ -31,5 +9,29 @@
     "scriptLength": 6,
     "mapCount": 0,
     "minigameCount": 0
+  },
+  {
+    "id": "mn0423lr1nsrvk",
+    "name": "放課後の幽霊少女",
+    "dirName": "放課後の幽霊少女",
+    "description": "ラノベ風サンプルシナリオ（約10分・2ルート完結）",
+    "gameType": "novel",
+    "createdAt": "2026-03-21T09:13:40.287Z",
+    "updatedAt": "2026-03-21T09:13:40.304Z",
+    "scriptLength": 290,
+    "mapCount": 0,
+    "minigameCount": 0
+  },
+  {
+    "id": "mn0423mwlbed1x",
+    "name": "勇者レイの冒険",
+    "dirName": "勇者レイの冒険",
+    "description": "RPGサンプル（マップ4面・ボス戦付き）",
+    "gameType": "rpg",
+    "createdAt": "2026-03-21T09:13:40.328Z",
+    "updatedAt": "2026-03-21T09:13:40.348Z",
+    "scriptLength": 80,
+    "mapCount": 4,
+    "minigameCount": 2
   }
 ]
