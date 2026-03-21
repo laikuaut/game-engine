@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
 import { getProject, updateProject } from "../project/ProjectStore";
+import { createEmptySaves } from "../engine/constants";
 
 // プロジェクトのセーブデータを直接編集するエディタ
 export default function SaveDataEditor({ projectId }) {
-  const [saves, setSaves] = useState([null, null, null]);
+  const [saves, setSaves] = useState(createEmptySaves());
   const [editSlot, setEditSlot] = useState(null);
   const [editJson, setEditJson] = useState("");
   const [error, setError] = useState(null);
@@ -13,7 +14,7 @@ export default function SaveDataEditor({ projectId }) {
     if (!projectId) return;
     (async () => {
       const project = await getProject(projectId);
-      if (project) setSaves(project.saves || [null, null, null]);
+      if (project) setSaves(project.saves || createEmptySaves());
     })();
   }, [projectId]);
 

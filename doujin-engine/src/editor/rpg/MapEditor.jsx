@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef } from "react";
 import { uploadAsset, getAssetUrl, deleteAsset, listAssets } from "../../project/ProjectStore";
+import TilesetSplitter from "./TilesetSplitter";
 
 // 組み込みタイルパレット定義
 const BUILTIN_TILES = [
@@ -49,6 +50,7 @@ export default function MapEditor({ maps: initialMaps, onUpdateMaps, projectId, 
   const [newTileId, setNewTileId] = useState("");
   const [newTileLabel, setNewTileLabel] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [showTilesetSplitter, setShowTilesetSplitter] = useState(false);
   const fileInputRef = useRef(null);
 
   // カスタムタイル（プロジェクトに保存される）
@@ -487,6 +489,12 @@ export default function MapEditor({ maps: initialMaps, onUpdateMaps, projectId, 
             <div style={styles.tileManagerHelp}>
               ドット絵画像（32×32px推奨）を登録すると、タイルパレットに追加されます
             </div>
+            <button
+              onClick={() => setShowTilesetSplitter(true)}
+              style={styles.tilesetSplitterBtn}
+            >
+              タイルセット画像から一括インポート
+            </button>
 
             {/* 登録済みカスタムタイル */}
             {customTiles.length > 0 && (
@@ -642,6 +650,16 @@ export default function MapEditor({ maps: initialMaps, onUpdateMaps, projectId, 
             maps={maps}
           />
         </div>
+      )}
+
+      {/* タイルセットスプリッター */}
+      {showTilesetSplitter && (
+        <TilesetSplitter
+          projectId={projectId}
+          customTiles={customTiles}
+          onUpdateCustomTiles={onUpdateCustomTiles}
+          onClose={() => setShowTilesetSplitter(false)}
+        />
       )}
     </div>
   );
@@ -853,5 +871,10 @@ const styles = {
     background: "rgba(200,180,140,0.12)", border: "1px solid rgba(200,180,140,0.3)",
     color: "#C8A870", padding: "5px 12px", borderRadius: 3, fontSize: 11,
     cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap",
+  },
+  tilesetSplitterBtn: {
+    background: "rgba(100,200,255,0.1)", border: "1px solid rgba(100,200,255,0.3)",
+    color: "#5BF", padding: "6px 14px", borderRadius: 4, fontSize: 12,
+    cursor: "pointer", fontFamily: "inherit", width: "100%", marginBottom: 10,
   },
 };

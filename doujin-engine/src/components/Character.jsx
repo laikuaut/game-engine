@@ -59,8 +59,7 @@ export default function Character({ id, position, expression, animState, charaDa
           src={spriteUrl}
           alt={data.name}
           style={{
-            height: "85%",
-            maxHeight: "85vh",
+            maxHeight: "75vh",
             objectFit: "contain",
             filter: `drop-shadow(0 4px 12px ${data.color}44)`,
           }}

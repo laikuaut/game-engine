@@ -2,6 +2,8 @@
 // Electron 環境: IPC 経由でファイルシステムに保存
 // ブラウザ環境: Vite dev server API 経由でファイルシステムに保存
 
+import { createEmptySaves } from "../engine/constants";
+
 const ACTIVE_KEY = "doujin-engine-active-project";
 
 // Electron 環境判定
@@ -171,7 +173,7 @@ export async function createProject(name, description = "", gameType = "novel") 
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     ...JSON.parse(JSON.stringify(template)),
-    saves: [null, null, null],
+    saves: createEmptySaves(),
   };
   await persistProject(project);
   return project;
@@ -208,7 +210,7 @@ export async function duplicateProject(id) {
     name: source.name + "（コピー）",
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
-    saves: [null, null, null],
+    saves: createEmptySaves(),
   };
   await persistProject(project);
   return project;
@@ -252,7 +254,7 @@ export async function importProject(jsonString) {
       name: data.name + "（インポート）",
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-      saves: [null, null, null],
+      saves: createEmptySaves(),
     };
     delete project._exportVersion;
     delete project._exportedAt;

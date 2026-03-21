@@ -1,3 +1,7 @@
+// セーブスロット数
+export const SAVE_SLOT_COUNT = 100;
+export const createEmptySaves = () => Array(SAVE_SLOT_COUNT).fill(null);
+
 // コマンドタイプ定数
 export const CMD = {
   BG: "bg",

@@ -365,7 +365,7 @@ ipcMain.handle("export-game", async (event, projectId) => {
       minigames: project.minigames || [],
       cgCatalog: project.cgCatalog || [],
       sceneCatalog: project.sceneCatalog || [],
-      saves: [null, null, null],
+      saves: Array(100).fill(null),
     };
     writeJsonFile(path.join(publicDir, "game-data.json"), gameData);
 

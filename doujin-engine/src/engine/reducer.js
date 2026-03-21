@@ -1,4 +1,4 @@
-import { ACTION } from "./constants";
+import { ACTION, createEmptySaves } from "./constants";
 
 export const initialState = {
   scriptIndex: 0,
@@ -18,7 +18,7 @@ export const initialState = {
   showConfig: false,
   showSaveLoad: false,
   saveLoadMode: "save",
-  saves: [null, null, null],
+  saves: createEmptySaves(),
   textSpeed: 40,
   autoMode: false,
   autoDelay: 2500,

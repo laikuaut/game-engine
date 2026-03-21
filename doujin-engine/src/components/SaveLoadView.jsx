@@ -27,7 +27,7 @@ export default function SaveLoadView({ saves, mode, dispatch, onSave, onLoad }) 
           閉じる
         </button>
       </div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 12, overflowY: "auto", maxHeight: "calc(100% - 60px)" }}>
         {saves.map((save, i) => {
           const isInteractive = save || mode === "save";
           const isHovered = hoveredSlot === i && isInteractive;

@@ -16,9 +16,20 @@
     "description": "RPGサンプル（マップ4面・ボス戦付き）",
     "gameType": "rpg",
     "createdAt": "2026-03-21T06:37:12.950Z",
-    "updatedAt": "2026-03-21T06:37:13.066Z",
+    "updatedAt": "2026-03-21T07:06:50.296Z",
     "scriptLength": 80,
     "mapCount": 4,
     "minigameCount": 2
+  },
+  {
+    "id": "mmzzm81z6w0gdu",
+    "name": "テスト",
+    "description": "",
+    "gameType": "novel",
+    "createdAt": "2026-03-21T07:09:21.095Z",
+    "updatedAt": "2026-03-21T07:25:30.666Z",
+    "scriptLength": 5,
+    "mapCount": 0,
+    "minigameCount": 0
   }
 ]

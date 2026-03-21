@@ -309,7 +309,7 @@ function projectApiPlugin() {
             minigames: project.minigames || [],
             cgCatalog: project.cgCatalog || [],
             sceneCatalog: project.sceneCatalog || [],
-            saves: [null, null, null],
+            saves: Array(100).fill(null),
           }
           writeJson(path.join(publicDir, 'game-data.json'), gameData)
 

@@ -38,3 +38,6 @@ Desktop.ini
 
 # Electron
 *.asar
+
+# Project data (user-generated)
+data/
