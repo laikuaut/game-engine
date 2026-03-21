@@ -1,33 +1,25 @@
 import { useState, useMemo } from "react";
 
 // シーン回想カタログ管理エディタ
-// catalog: [{ name, title, chapter, thumbnail }]
-export default function SceneCatalogEditor({ catalog, onUpdateCatalog, script }) {
+// catalog: [{ name (シーン名), title, chapter, thumbnail }]
+// storyScenes: [{ id, name, description, commands }]
+export default function SceneCatalogEditor({ catalog, onUpdateCatalog, script, storyScenes }) {
   const [selectedIndex, setSelectedIndex] = useState(null);
 
   const items = catalog || [];
+  const scenes = storyScenes || [];
   const selected = selectedIndex !== null ? items[selectedIndex] : null;
 
-  // スクリプト内のラベルから回想候補を自動検出
-  const scriptLabels = useMemo(() => {
-    const registered = new Set(items.map((s) => s.name));
-    const labels = [];
-    (script || []).forEach((cmd) => {
-      if (cmd.type === "label" && cmd.name) {
-        labels.push({
-          name: cmd.name,
-          registered: registered.has(cmd.name),
-          recollection: cmd.recollection || false,
-        });
-      }
-    });
-    return labels;
-  }, [script, items]);
+  // シーン名一覧（プルダウン用）
+  const sceneNames = useMemo(() => scenes.map((s) => s.name), [scenes]);
 
-  // 未登録で recollection: true のラベル
+  // 登録済みシーン名のセット
+  const registeredNames = useMemo(() => new Set(items.map((s) => s.name)), [items]);
+
+  // 未登録のシーン（回想候補として自動検出）
   const unregisteredScenes = useMemo(() => {
-    return scriptLabels.filter((l) => !l.registered && l.recollection);
-  }, [scriptLabels]);
+    return scenes.filter((s) => !registeredNames.has(s.name));
+  }, [scenes, registeredNames]);
 
   // チャプター一覧
   const chapters = useMemo(() => {
@@ -49,7 +41,7 @@ export default function SceneCatalogEditor({ catalog, onUpdateCatalog, script })
   // シーン追加
   const addScene = (preset) => {
     const newItem = {
-      name: preset?.name || `scene_${Date.now().toString(36)}`,
+      name: preset?.name || "",
       title: preset?.title || "新しいシーン",
       chapter: "その他",
       thumbnail: "",
@@ -86,6 +78,9 @@ export default function SceneCatalogEditor({ catalog, onUpdateCatalog, script })
     else if (selectedIndex === target) setSelectedIndex(idx);
   };
 
+  // 選択中シーンがstoryScenesに存在するか
+  const selectedSceneExists = selected && sceneNames.includes(selected.name);
+
   return (
     <div style={styles.container}>
       {/* 左: シーン一覧 */}
@@ -93,31 +88,33 @@ export default function SceneCatalogEditor({ catalog, onUpdateCatalog, script })
         <div style={styles.listHeader}>シーンカタログ</div>
 
         {/* チャプター別表示 */}
-        {Object.entries(grouped).map(([chapter, scenes]) => (
+        {Object.entries(grouped).map(([chapter, groupScenes]) => (
           <div key={chapter}>
             <div style={styles.chapterLabel}>{chapter}</div>
-            {scenes.map((scene) => (
-              <div
-                key={scene._idx}
-                onClick={() => setSelectedIndex(scene._idx)}
-                style={{
-                  ...styles.listItem,
-                  background: selectedIndex === scene._idx ? "rgba(200,180,140,0.15)" : "transparent",
-                  borderColor: selectedIndex === scene._idx ? "rgba(200,180,140,0.4)" : "rgba(255,255,255,0.06)",
-                }}
-              >
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={styles.listItemTitle}>{scene.title}</div>
-                  <div style={styles.listItemId}>{scene.name}</div>
+            {groupScenes.map((scene) => {
+              const exists = sceneNames.includes(scene.name);
+              return (
+                <div
+                  key={scene._idx}
+                  onClick={() => setSelectedIndex(scene._idx)}
+                  style={{
+                    ...styles.listItem,
+                    background: selectedIndex === scene._idx ? "rgba(200,180,140,0.15)" : "transparent",
+                    borderColor: selectedIndex === scene._idx ? "rgba(200,180,140,0.4)" : "rgba(255,255,255,0.06)",
+                  }}
+                >
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={styles.listItemTitle}>{scene.title}</div>
+                    <div style={styles.listItemId}>{scene.name || "(未設定)"}</div>
+                  </div>
+                  {exists ? (
+                    <span style={styles.linkedBadge}>LINK</span>
+                  ) : (
+                    <span style={styles.unlinkedBadge}>?</span>
+                  )}
                 </div>
-                {/* ラベルがスクリプト内に存在するか表示 */}
-                {scriptLabels.find((l) => l.name === scene.name) ? (
-                  <span style={styles.linkedBadge}>LINK</span>
-                ) : (
-                  <span style={styles.unlinkedBadge}>?</span>
-                )}
-              </div>
-            ))}
+              );
+            })}
           </div>
         ))}
 
@@ -125,46 +122,21 @@ export default function SceneCatalogEditor({ catalog, onUpdateCatalog, script })
           <div style={styles.empty}>シーンが登録されていません</div>
         )}
 
-        {/* 未登録ラベル検出 */}
+        {/* 未登録のシーン */}
         {unregisteredScenes.length > 0 && (
           <div style={styles.unregisteredSection}>
             <div style={styles.unregisteredTitle}>
-              未登録の回想ラベル ({unregisteredScenes.length})
+              未登録のシーン ({unregisteredScenes.length})
             </div>
-            {unregisteredScenes.map((label) => (
-              <div key={label.name} style={styles.unregisteredItem}>
-                <span style={styles.listItemId}>{label.name}</span>
+            {unregisteredScenes.map((s) => (
+              <div key={s.id} style={styles.unregisteredItem}>
+                <span style={styles.listItemId}>{s.name}</span>
                 <button
-                  onClick={() => addScene({ name: label.name, title: label.name })}
+                  onClick={() => addScene({ name: s.name, title: s.name })}
                   style={styles.addSmallBtn}
                 >
                   登録
                 </button>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* 全ラベル一覧 */}
-        {scriptLabels.length > 0 && (
-          <div style={styles.labelsSection}>
-            <div style={styles.labelsSectionTitle}>
-              スクリプト内ラベル ({scriptLabels.length})
-            </div>
-            {scriptLabels.map((label) => (
-              <div key={label.name} style={styles.labelRow}>
-                <span style={{ ...styles.listItemId, flex: 1 }}>{label.name}</span>
-                {label.recollection && <span style={styles.recollectionTag}>回想</span>}
-                {label.registered ? (
-                  <span style={styles.registeredTag}>登録済</span>
-                ) : (
-                  <button
-                    onClick={() => addScene({ name: label.name, title: label.name })}
-                    style={styles.addTinyBtn}
-                  >
-                    +
-                  </button>
-                )}
               </div>
             ))}
           </div>
@@ -181,22 +153,29 @@ export default function SceneCatalogEditor({ catalog, onUpdateCatalog, script })
           <>
             <div style={styles.section}>
               <div style={styles.sectionTitle}>基本情報</div>
-              <label style={styles.label}>シーン名 (ラベル名)</label>
-              <input
-                value={selected.name}
+              <label style={styles.label}>シーン名</label>
+              <select
+                value={selected.name || ""}
                 onChange={(e) => updateField("name", e.target.value)}
-                style={styles.input}
-                list="scene-labels"
-              />
-              <datalist id="scene-labels">
-                {scriptLabels.map((l) => <option key={l.name} value={l.name} />)}
-              </datalist>
-              {/* ラベル存在チェック */}
-              {selected.name && !scriptLabels.find((l) => l.name === selected.name) && (
+                style={{
+                  ...styles.input,
+                  cursor: "pointer",
+                  ...(!selectedSceneExists && selected.name ? { borderColor: "rgba(239,83,80,0.6)" } : {}),
+                }}
+              >
+                <option value="" style={styles.optionStyle}>-- シーンを選択 --</option>
+                {scenes.map((s) => (
+                  <option key={s.id} value={s.name} style={styles.optionStyle}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
+              {selected.name && !selectedSceneExists && (
                 <div style={styles.warning}>
-                  スクリプト内にラベル "{selected.name}" が見つかりません
+                  シーン "{selected.name}" が見つかりません
                 </div>
               )}
+
               <label style={styles.label}>表示タイトル</label>
               <input
                 value={selected.title || ""}
@@ -314,9 +293,10 @@ const styles = {
     color: "#E8E4DC", padding: "6px 10px", borderRadius: 3, fontSize: 13,
     fontFamily: "inherit", outline: "none", width: "100%", boxSizing: "border-box",
   },
+  optionStyle: { background: "#1a1a2e", color: "#E8E4DC" },
   warning: {
-    fontSize: 10, color: "#FFB74D", marginTop: 4,
-    padding: "2px 8px", background: "rgba(255,183,77,0.05)", borderRadius: 3,
+    fontSize: 10, color: "#EF5350", marginTop: 4,
+    padding: "2px 8px", background: "rgba(239,83,80,0.05)", borderRadius: 3,
   },
   previewBox: {
     marginTop: 8, borderRadius: 4, overflow: "hidden",
@@ -332,12 +312,6 @@ const styles = {
     background: "rgba(200,180,140,0.08)", border: "1px solid rgba(200,180,140,0.2)",
     color: "#C8A870", padding: "4px 10px", borderRadius: 3, fontSize: 11,
     cursor: "pointer", fontFamily: "inherit",
-  },
-  addTinyBtn: {
-    background: "rgba(200,180,140,0.08)", border: "1px solid rgba(200,180,140,0.2)",
-    color: "#C8A870", width: 20, height: 20, borderRadius: 3, fontSize: 12,
-    cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center",
-    justifyContent: "center", padding: 0, flexShrink: 0,
   },
   actionBtn: {
     background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)",
@@ -357,22 +331,6 @@ const styles = {
   unregisteredItem: {
     display: "flex", justifyContent: "space-between", alignItems: "center",
     padding: "4px 6px", marginBottom: 2,
-  },
-  labelsSection: {
-    marginTop: 16, padding: 8, borderRadius: 4,
-    background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)",
-  },
-  labelsSectionTitle: { color: "#888", fontSize: 11, marginBottom: 6, letterSpacing: 0.5 },
-  labelRow: {
-    display: "flex", alignItems: "center", gap: 6, padding: "3px 4px", marginBottom: 2,
-  },
-  recollectionTag: {
-    fontSize: 8, color: "#CE93D8", background: "rgba(206,147,216,0.1)",
-    padding: "1px 5px", borderRadius: 2, flexShrink: 0,
-  },
-  registeredTag: {
-    fontSize: 8, color: "#8BC34A", background: "rgba(139,195,74,0.1)",
-    padding: "1px 5px", borderRadius: 2, flexShrink: 0,
   },
   empty: { color: "#555", fontSize: 13, textAlign: "center", marginTop: 40 },
 };

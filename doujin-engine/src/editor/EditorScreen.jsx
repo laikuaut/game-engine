@@ -214,13 +214,13 @@ export default function EditorScreen({ onBack, initialScript, projectId, project
       [CMD.CHARA]: { type: CMD.CHARA, id: "", position: "center", expression: "neutral" },
       [CMD.CHARA_MOD]: { type: CMD.CHARA_MOD, id: "", expression: "" },
       [CMD.CHARA_HIDE]: { type: CMD.CHARA_HIDE, id: "" },
-      [CMD.CHOICE]: { type: CMD.CHOICE, options: [{ text: "選択肢1", jump: 0 }, { text: "選択肢2", jump: 0 }] },
+      [CMD.CHOICE]: { type: CMD.CHOICE, options: [{ text: "選択肢1", jump: "" }, { text: "選択肢2", jump: "" }] },
       [CMD.BGM]: { type: CMD.BGM, name: "", loop: true },
       [CMD.BGM_STOP]: { type: CMD.BGM_STOP, fadeout: 1000 },
       [CMD.SE]: { type: CMD.SE, name: "" },
       [CMD.EFFECT]: { type: CMD.EFFECT, name: "fade", color: "#000", time: 1000 },
       [CMD.WAIT]: { type: CMD.WAIT, time: 1000 },
-      [CMD.JUMP]: { type: CMD.JUMP, target: 0 },
+      [CMD.JUMP]: { type: CMD.JUMP, target: "" },
       [CMD.LABEL]: { type: CMD.LABEL, name: "" },
       [CMD.SCENE]: { type: CMD.SCENE, sceneId: "", label: "" },
     };
@@ -353,6 +353,7 @@ export default function EditorScreen({ onBack, initialScript, projectId, project
             catalog={sceneCatalog}
             onUpdateCatalog={(c) => { setSceneCatalog(c); markDirty(); }}
             script={script}
+            storyScenes={storyScenes}
           />
         );
       case "event":

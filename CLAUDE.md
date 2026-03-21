@@ -66,11 +66,25 @@ const SCRIPT = [
 | `chara_mod` | 表情変更 | `id`, `expression` |
 | `chara_hide` | キャラ非表示 | `id` |
 | `dialog` | テキスト表示 | `speaker`, `text` |
-| `choice` | 選択肢 | `options: [{ text, jump }]` |
-| `effect` | 画面効果 | `name` (shake/flash/fadeout/whitefade), `color`, `time` |
+| `choice` | 選択肢 | `options: [{ text, jump }]` ※jump はラベル名 |
+| `effect` | 画面効果 | `name` (shake/flash/fadeout/whitefade/fadein), `color`, `time` |
 | `wait` | 待機 | `time` (ms) |
-| `jump` | ジャンプ | `target` (index) |
-| `label` | ラベル | `name` ※jump先の目印 |
+| `jump` | ジャンプ | `target` (ラベル名) |
+| `label` | ラベル | `name` ※jump/choice の飛び先 |
+| `cg` | CG表示 | `id`, `src` |
+| `nvl_on` | NVLモード開始 | — |
+| `nvl_off` | NVLモード終了 | — |
+| `nvl_clear` | NVLログクリア | — |
+| `scene` | シーン参照 | `sceneId` ※シーン編集で作成した部品を参照 |
+
+### シーン（スクリプト部品化）
+
+スクリプトを「シーン」単位で分割管理できる。各シーンは独立したコマンド配列を持ち、
+スクリプトからは `{ type: "scene", sceneId: "xxx" }` で参照する。
+
+- **展開方式**: シーンのコマンドを直接スクリプトに結合（label 自動挿入）
+- **参照方式**: scene コマンドとして参照を残す（エンジンが実行時に展開）
+- スクリプトリストではシーンをツリー展開して内容を確認可能
 
 ### ステート管理
 
@@ -85,7 +99,7 @@ currentBg         現在の背景キー
 characters        表示中キャラ { id: { position, expression } }
 showChoice        選択肢表示中
 backlog           バックログ配列
-saves             セーブスロット [null, null, null]
+saves             セーブスロット（100枠）
 textSpeed         テキスト表示速度 (ms/字)
 autoMode          オートモード
 bgmPlaying        再生中BGM
@@ -98,55 +112,72 @@ showSaveLoad      セーブ/ロードUI表示
 
 ## 実装済み機能 ✅
 
+### エンジンコア
 - [x] テキストのタイプライター表示（速度調整可能）
-- [x] キャラクター表示・表情切替・非表示
-- [x] 背景切替（フェードトランジション）
-- [x] 選択肢による分岐（jump指定）
-- [x] セーブ＆ロード（3スロット、インメモリ）
+- [x] キャラクター表示・表情切替・非表示（アニメーション付き）
+- [x] 背景切替（fade/crossfade トランジション）
+- [x] 選択肢による分岐（ラベル名でジャンプ）
+- [x] セーブ＆ロード（100スロット、サムネイル付き）
+- [x] セーブデータ永続化（Electron: fs / ブラウザ: localStorage）
 - [x] バックログ表示
 - [x] オート再生モード
-- [x] 設定画面（テキスト速度スライダー）
-- [x] キーボード操作（Enter/Space で送り、Escape で閉じる）
-- [x] BGM/SE のラベル表示（再生はスタブ）
+- [x] スキップ機能（Ctrl 長押し）
+- [x] BGM/SE 再生（Web Audio API、ループ、フェードイン/アウト、音量調整）
+- [x] 画面エフェクト（shake, flash, fadeout, whitefade, fadein）
+- [x] CG表示・非表示
+- [x] NVLモード（全画面テキスト）
+- [x] キーボード操作（Enter/Space で送り、Escape で閉じる、F11 フルスクリーン）
+- [x] 画面サイズプリセット（960×540 / 1280×720 / 1600×900 / 1920×1080）
 
-## 未実装（優先順） 🔲
+### エディタ
+- [x] ビジュアルスクリプトエディタ（コマンド追加・編集・並替・削除）
+- [x] シーン編集（スクリプト部品化 — 分割管理・ドラッグ順序変更・結合）
+- [x] スクリプトリストでシーンのツリー展開表示
+- [x] テキスト一括編集モード
+- [x] キャラクターエディタ（表情管理、立ち絵アップロード）
+- [x] 背景エディタ（画像アップロード or グラデーション）
+- [x] BGM/SEエディタ（ファイルアップロード、D&D対応、テスト再生）
+- [x] CGカタログ / シーン回想カタログ
+- [x] イベントエディタ
+- [x] フローグラフ（分岐可視化）
+- [x] プレビュー（分割表示 / フルプレビュー）
+- [x] セーブデータエディタ（JSON直接編集）
+- [x] Deploy パネル（Web / Portable / NSIS ビルド）
+- [x] Undo/Redo（Ctrl+Z / Ctrl+Y）
+- [x] 入力バリデーション（未定義のキャラ/背景/BGM/SE/ラベルをエラー表示）
+- [x] 表情・ラベル・シーンのプルダウン選択
 
-### フェーズ1: エンジン完成（次にやること）
+### RPGエンジン
+- [x] タイルマップエディタ（2レイヤー、ペイント/消しゴム）
+- [x] タイルセット分割インポート（スプライトシートから一括切り出し）
+- [x] カスタムタイル（画像アップロード）
+- [x] マップイベント（ダイアログ、バトル、マップ移動等）
+- [x] ランダムマップ生成
+- [x] バトルシステム（ターン制RPG）
+- [x] ミニゲーム（じゃんけん、クイズ、スロット）
 
-- [ ] **BGM/SE の実際の再生** — Howler.js or Web Audio API
-  - BGM: ループ再生、フェードイン/アウト、音量調整
-  - SE: ワンショット再生、音量調整
-  - 設定画面に BGM/SE 別の音量スライダー追加
-- [ ] **画面エフェクト** — shake, flash, fadeout, whitefade
-  - CSS animation ベースで実装
-  - スクリプトコマンド `{ type: "effect", name: "shake" }` で呼び出し
-- [ ] **CGギャラリーモード**
-  - 回収したイベントCGをフラグ管理
-  - タイトル画面 or メニューからアクセス
-  - サムネイル一覧 → クリックで拡大表示
-- [ ] **スキップ機能**
-  - 既読テキストの高速送り（既読フラグ管理が必要）
-  - Ctrl 長押し or ボタンでトグル
-- [ ] **セーブデータ永続化**
-  - ブラウザ版: localStorage
-  - Electron版: fs.writeFileSync で JSON ファイル保存
-  - セーブ時のスクリーンショット（canvas.toDataURL）
+### タイトル・UI
+- [x] タイトル画面（NEW GAME / CONTINUE / CG GALLERY / シーン回想 / CONFIG / EXIT）
+- [x] CGギャラリーモード
+- [x] シーン回想モード
+- [x] 設定画面（テキスト速度、音量、画面サイズ）
+- [x] プロジェクト管理画面（作成/複製/インポート/エクスポート/削除）
 
-### フェーズ2: 製品化
+### パッケージング
+- [x] Electron パッケージング（electron-builder）
+- [x] Windows exe 出力（NSIS インストーラー / Portable）
+- [x] asar パッケージング
+- [x] ゲームエクスポート（game-data.json + アセットコピー）
 
-- [ ] **タイトル画面** — NEW GAME / CONTINUE / CG GALLERY / CONFIG / EXIT
-- [ ] **シーン回想モード** — クリア済みシーンの再プレイ
-- [ ] **トランジション強化** — crossfade, wipe, slide 等
-- [ ] **キャラアニメーション** — 登場/退場エフェクト、揺れ、ズーム
-- [ ] **テキストウィンドウ切替** — ADVモード / NVLモード（全画面テキスト）
+## 未実装 🔲
+
+### 優先度高
+- [ ] **トランジション強化** — wipe, slide 等の追加エフェクト
+- [ ] **キャラアニメーション強化** — 揺れ、ズーム
 - [ ] **多言語テキスト対応**（任意）
-- [ ] **Electron パッケージング** — electron-builder で Windows exe 出力
-- [ ] **ファイル隠蔽** — asar パッケージングで素材保護
 
-### フェーズ3: DLsite販売準備
-
+### DLsite販売準備
 - [ ] ゲームアイコン (.ico) 設定
-- [ ] インストーラー or ポータブル exe 選択
 - [ ] 動作環境テスト（Win10/11 64bit）
 - [ ] DLsite サークル登録
 - [ ] 予告ページ作成
@@ -156,54 +187,61 @@ showSaveLoad      セーブ/ロードUI表示
 
 ---
 
-## ディレクトリ構成（目標）
+## ディレクトリ構成
 
 ```
 doujin-engine/
-├── CLAUDE.md                 ← このファイル
 ├── package.json
+├── vite.config.js            ← Vite設定 + 開発サーバーAPI
 ├── electron/
-│   ├── main.js               ← Electron メインプロセス
-│   └── preload.js            ← IPC ブリッジ（セーブ/ロード）
-├── public/
-│   └── index.html
+│   ├── main.cjs              ← Electron メインプロセス（IPC, アセット, ビルド）
+│   └── preload.cjs           ← IPC ブリッジ
 ├── src/
-│   ├── App.jsx               ← エントリーポイント
+│   ├── App.jsx               ← エントリーポイント（画面遷移管理）
 │   ├── engine/
 │   │   ├── NovelEngine.jsx   ← メインエンジンコンポーネント
 │   │   ├── reducer.js        ← ステート管理 (useReducer)
 │   │   ├── commands.js       ← コマンド処理ロジック
-│   │   └── constants.js      ← コマンドタイプ定数
-│   ├── components/
-│   │   ├── TextBox.jsx       ← テキストボックス + 話者名
-│   │   ├── Character.jsx     ← キャラ立ち絵表示
-│   │   ├── Background.jsx    ← 背景表示
-│   │   ├── ChoiceOverlay.jsx ← 選択肢UI
-│   │   ├── BacklogView.jsx   ← バックログ
-│   │   ├── SaveLoadView.jsx  ← セーブ/ロード画面
-│   │   ├── ConfigView.jsx    ← 設定画面
-│   │   ├── TitleScreen.jsx   ← タイトル画面
-│   │   ├── CGGallery.jsx     ← CGギャラリー
-│   │   └── Controls.jsx      ← 下部コントロールバー
+│   │   └── constants.js      ← CMD/ACTION定数、SAVE_SLOT_COUNT
+│   ├── components/           ← ゲームUI（TextBox, Character, Background 等）
+│   ├── editor/
+│   │   ├── EditorScreen.jsx  ← エディタ統合画面（タブ管理）
+│   │   ├── ScriptList.jsx    ← スクリプトリスト（シーンツリー展開対応）
+│   │   ├── CommandEditor.jsx ← コマンド編集（バリデーション付き）
+│   │   ├── SceneEditor.jsx   ← シーン編集（スクリプト部品化）
+│   │   ├── AudioCatalogEditor.jsx ← BGM/SE カタログ（再生プレビュー付き）
+│   │   ├── CharacterEditor.jsx
+│   │   ├── BackgroundEditor.jsx
+│   │   ├── DeployPanel.jsx   ← ビルド実行UI
+│   │   └── rpg/
+│   │       ├── MapEditor.jsx ← タイルマップエディタ
+│   │       └── TilesetSplitter.jsx ← タイルセット分割インポート
 │   ├── audio/
-│   │   └── AudioManager.js   ← BGM/SE 再生管理
-│   ├── effects/
-│   │   └── ScreenEffects.jsx ← 画面エフェクト
+│   │   ├── AudioManager.js   ← Web Audio API ラッパー
+│   │   └── useAudio.js       ← state→audio フック
+│   ├── rpg/                  ← RPGエンジン・マップ描画
 │   ├── save/
 │   │   └── SaveManager.js    ← セーブ/ロード + 永続化
-│   └── data/
-│       ├── script.js         ← シナリオデータ
-│       ├── characters.js     ← キャラ定義
-│       └── config.js         ← ゲーム設定
-├── assets/
-│   ├── bg/                   ← 背景画像 (.png, .jpg)
-│   ├── chara/                ← 立ち絵 (.png 透過)
-│   ├── cg/                   ← イベントCG
-│   ├── bgm/                  ← BGM (.ogg)
-│   ├── se/                   ← SE (.ogg)
-│   ├── ui/                   ← UI素材
-│   └── font/                 ← フォントファイル（任意）
-└── dist/                     ← ビルド出力
+│   ├── project/
+│   │   ├── ProjectStore.js   ← プロジェクト CRUD + アセット管理
+│   │   └── ProjectManager.jsx← プロジェクト一覧UI
+│   ├── data/
+│   │   ├── config.js         ← 画面設定、カラーパレット、フォント
+│   │   ├── sample_scenario.js
+│   │   └── sample_rpg.js
+│   └── test/                 ← vitest テスト
+├── data/                     ← プロジェクトデータ（※git管理外）
+│   └── projects/{id}/
+│       ├── meta.json
+│       ├── script.json
+│       ├── characters.json
+│       ├── storyScenes.json  ← シーン部品
+│       ├── sceneOrder.json   ← シーン再生順
+│       ├── bgmCatalog.json
+│       ├── seCatalog.json
+│       └── assets/{type}/    ← アップロード画像・音声
+├── dist/                     ← Vite ビルド出力
+└── deploy/                   ← Electron ビルド出力
 ```
 
 ---

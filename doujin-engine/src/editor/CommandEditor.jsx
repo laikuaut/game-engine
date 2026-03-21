@@ -46,10 +46,10 @@ const FIELD_DEFS = {
     { key: "time", label: "待機時間 (ms)", type: "number", min: 0, step: 100 },
   ],
   [CMD.JUMP]: [
-    { key: "target", label: "ジャンプ先", type: "text", placeholder: "index or label", autocomplete: "labels" },
+    { key: "target", label: "ジャンプ先ラベル", type: "label_select", autocomplete: "labels" },
   ],
   [CMD.LABEL]: [
-    { key: "name", label: "ラベル名", type: "text", placeholder: "chapter1_start" },
+    { key: "name", label: "ラベル名", type: "label_input", autocomplete: "labels" },
   ],
   [CMD.SCENE]: [
     { key: "sceneId", label: "シーン", type: "scene_select", autocomplete: "scenes" },
@@ -197,6 +197,58 @@ function FieldInput({ field, value, onChange, suggestions }) {
         />
       );
     }
+    case "label_select": {
+      // ラベル選択（jump先など — セレクトボックスでラベル一覧から選択）
+      const labelList = suggestions || [];
+      const valStr = String(value ?? "");
+      const isInvalid = valStr !== "" && !labelList.includes(valStr);
+      return (
+        <div>
+          <select
+            value={valStr}
+            onChange={(e) => onChange(e.target.value)}
+            style={{
+              ...commonStyle, cursor: "pointer",
+              ...(isInvalid ? { borderColor: "rgba(239,83,80,0.6)" } : {}),
+            }}
+          >
+            <option value="" style={optionStyle}>-- ラベルを選択 --</option>
+            {labelList.map((l) => (
+              <option key={l} value={l} style={optionStyle}>{l}</option>
+            ))}
+          </select>
+          {isInvalid && (
+            <div style={{ fontSize: 10, color: "#EF5350", marginTop: 4 }}>
+              未定義のラベルです: "{valStr}"
+            </div>
+          )}
+        </div>
+      );
+    }
+    case "label_input": {
+      // ラベル名入力（重複チェック付き）
+      const existingLabels = suggestions || [];
+      const isDuplicate = value && existingLabels.filter((l) => l === value).length > 1;
+      return (
+        <div>
+          <input
+            type="text"
+            value={value || ""}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder="label_name"
+            style={{
+              ...commonStyle,
+              ...(isDuplicate ? { borderColor: "rgba(239,83,80,0.6)", background: "rgba(239,83,80,0.06)" } : {}),
+            }}
+          />
+          {isDuplicate && (
+            <div style={{ fontSize: 10, color: "#EF5350", marginTop: 4 }}>
+              ラベル名が重複しています
+            </div>
+          )}
+        </div>
+      );
+    }
     case "number":
       return (
         <input
@@ -253,18 +305,19 @@ function FieldInput({ field, value, onChange, suggestions }) {
 }
 
 // 選択肢コマンドの特殊エディタ
-function ChoiceEditor({ command, onChange }) {
+function ChoiceEditor({ command, onChange, labels }) {
   const options = command.options || [];
+  const labelList = labels || [];
 
   const updateOption = (i, field, value) => {
     const newOpts = options.map((opt, j) =>
-      j === i ? { ...opt, [field]: field === "jump" ? Number(value) : value } : opt
+      j === i ? { ...opt, [field]: value } : opt
     );
     onChange({ options: newOpts });
   };
 
   const addOption = () => {
-    onChange({ options: [...options, { text: "", jump: 0 }] });
+    onChange({ options: [...options, { text: "", jump: "" }] });
   };
 
   const removeOption = (i) => {
@@ -286,41 +339,57 @@ function ChoiceEditor({ command, onChange }) {
   return (
     <div>
       <div style={{ fontSize: 13, color: "#C8A870", marginBottom: 12 }}>選択肢</div>
-      {options.map((opt, i) => (
-        <div key={i} style={{ display: "flex", gap: 8, marginBottom: 8, alignItems: "center" }}>
-          <span style={{ color: "#666", fontSize: 12, width: 20 }}>{i + 1}.</span>
-          <input
-            type="text"
-            value={opt.text}
-            onChange={(e) => updateOption(i, "text", e.target.value)}
-            placeholder="選択肢テキスト"
-            style={{ ...inputStyle, flex: 1 }}
-          />
-          <input
-            type="number"
-            value={opt.jump}
-            onChange={(e) => updateOption(i, "jump", e.target.value)}
-            placeholder="jump先"
-            min={0}
-            style={{ ...inputStyle, width: 80 }}
-          />
-          <button
-            onClick={() => removeOption(i)}
-            style={{
-              background: "rgba(239,83,80,0.1)",
-              border: "1px solid rgba(239,83,80,0.3)",
-              color: "#EF5350",
-              width: 26,
-              height: 26,
-              borderRadius: 3,
-              cursor: "pointer",
-              fontSize: 12,
-            }}
-          >
-            ✕
-          </button>
-        </div>
-      ))}
+      {options.map((opt, i) => {
+        const jumpStr = String(opt.jump ?? "");
+        const isInvalid = jumpStr !== "" && !labelList.includes(jumpStr);
+        return (
+          <div key={i} style={{ marginBottom: 10 }}>
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <span style={{ color: "#666", fontSize: 12, width: 20 }}>{i + 1}.</span>
+              <input
+                type="text"
+                value={opt.text}
+                onChange={(e) => updateOption(i, "text", e.target.value)}
+                placeholder="選択肢テキスト"
+                style={{ ...inputStyle, flex: 1 }}
+              />
+              <select
+                value={jumpStr}
+                onChange={(e) => updateOption(i, "jump", e.target.value)}
+                style={{
+                  ...inputStyle, width: 160, cursor: "pointer",
+                  ...(isInvalid ? { borderColor: "rgba(239,83,80,0.6)" } : {}),
+                }}
+              >
+                <option value="">-- ジャンプ先 --</option>
+                {labelList.map((l) => (
+                  <option key={l} value={l}>{l}</option>
+                ))}
+              </select>
+              <button
+                onClick={() => removeOption(i)}
+                style={{
+                  background: "rgba(239,83,80,0.1)",
+                  border: "1px solid rgba(239,83,80,0.3)",
+                  color: "#EF5350",
+                  width: 26,
+                  height: 26,
+                  borderRadius: 3,
+                  cursor: "pointer",
+                  fontSize: 12,
+                }}
+              >
+                ✕
+              </button>
+            </div>
+            {isInvalid && (
+              <div style={{ fontSize: 10, color: "#EF5350", marginLeft: 28, marginTop: 2 }}>
+                未定義のラベルです: "{jumpStr}"
+              </div>
+            )}
+          </div>
+        );
+      })}
       <button
         onClick={addOption}
         style={{
@@ -448,10 +517,14 @@ export default function CommandEditor({ command, index, onChange, characters, sc
     });
     map.speakers = [...speakerSet];
 
-    // ラベル一覧
+    // ラベル一覧（スクリプト内ラベル + シーン名）
     const labels = [];
-    (script || []).forEach((cmd, i) => {
+    (script || []).forEach((cmd) => {
       if (cmd.type === CMD.LABEL && cmd.name) labels.push(cmd.name);
+    });
+    // シーン名もジャンプ先として有効（展開時にシーン名ラベルが挿入されるため）
+    (storyScenes || []).forEach((s) => {
+      if (s.name && !labels.includes(s.name)) labels.push(s.name);
     });
     map.labels = labels;
 
@@ -505,7 +578,7 @@ export default function CommandEditor({ command, index, onChange, characters, sc
 
         {/* 選択肢の特殊UI */}
         {command.type === CMD.CHOICE && (
-          <ChoiceEditor command={command} onChange={onChange} />
+          <ChoiceEditor command={command} onChange={onChange} labels={suggestionMap.labels} />
         )}
 
         {/* シーン参照の情報表示 */}
