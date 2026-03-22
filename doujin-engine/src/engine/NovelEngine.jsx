@@ -26,7 +26,7 @@ function log(...args) {
   if (DEBUG) console.log("[NovelEngine]", ...args);
 }
 
-export default function NovelEngine({ script, characters, bgStyles, onBack, projectId, startLabel, initialStartIndex = 0, initialConfig, onConfigChange, storyScenes, bgmCatalog, seCatalog, cgCatalog }) {
+export default function NovelEngine({ script, characters, bgStyles, onBack, projectId, startLabel, initialStartIndex = 0, initialConfig, onConfigChange, storyScenes, bgmCatalog, seCatalog, cgCatalog, onActionStage }) {
   // シーン参照を展開してフラットなスクリプトに変換
   const SCRIPT = useMemo(
     () => expandScenes(script || DEFAULT_SCRIPT, storyScenes),
@@ -89,6 +89,22 @@ export default function NovelEngine({ script, characters, bgStyles, onBack, proj
         return;
       }
 
+      if (blocking === "action_stage") {
+        const cmd = scriptRef.current[index];
+        log("action_stage ブロッキング: stageId =", cmd?.stageId);
+        dispatch({ type: ACTION.SET_SCRIPT_INDEX, payload: index });
+        if (onActionStage) {
+          onActionStage(cmd.stageId, () => {
+            log("action_stage 完了, 次へ →", index + 1);
+            proceedFrom(index + 1);
+          });
+        } else {
+          // onActionStageが未設定の場合はスキップ
+          log("action_stage: handler未設定, スキップ");
+          proceedFrom(index + 1);
+        }
+        return;
+      }
 
       // blocking なし → dialog or choice or スクリプト終端
       if (index >= scriptRef.current.length) {

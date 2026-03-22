@@ -3,6 +3,7 @@ import ConfigView from "./components/ConfigView";
 import ProjectManager from "./project/ProjectManager";
 import TitleScreen from "./components/TitleScreen";
 import NovelEngine from "./engine/NovelEngine";
+import ActionEngine from "./action/ActionEngine";
 import EditorScreen from "./editor/EditorScreen";
 import CGGallery from "./components/CGGallery";
 import SceneRecollection from "./components/SceneRecollection";
@@ -21,6 +22,8 @@ function App() {
   const [startLabel, setStartLabel] = useState(null);
   const [showTitleConfig, setShowTitleConfig] = useState(false);
   const [rpgReturnState, setRpgReturnState] = useState(null);
+  const [actionStage, setActionStage] = useState(null); // { stageId, onComplete }
+  const [selectedMinigame, setSelectedMinigame] = useState(null);
   const [fadeClass, setFadeClass] = useState("fade-in");
 
   // 設定値（localStorage から復元）
@@ -214,6 +217,9 @@ function App() {
               cgCatalog={project.cgCatalog}
               initialConfig={config}
               onConfigChange={(changes) => setConfig((prev) => ({ ...prev, ...changes }))}
+              onActionStage={(stageId, onComplete) => {
+                setActionStage({ stageId, onComplete });
+              }}
               onBack={() => {
                 setStartLabel(null);
                 if (rpgReturnState) {
@@ -225,6 +231,37 @@ function App() {
             />
           </div>
         )}
+
+        {/* アクションステージ（ゲーム画面の上にオーバーレイ） */}
+        {actionStage && project && (() => {
+          const ad = project.actionData || {};
+          const stage = (ad.stages || []).find((s) => s.id === actionStage.stageId);
+          const map = stage ? (project.maps || [])[stage.mapId || 0] : null;
+          if (!stage) return <div style={{ position: "fixed", inset: 0, zIndex: 100, background: "#000", color: "#f44", padding: 40 }}>ステージ未定義: {actionStage.stageId}</div>;
+          return (
+            <div style={{ position: "fixed", inset: 0, zIndex: 100, background: "#000" }}>
+              <ActionEngine
+                actionData={ad}
+                stage={stage}
+                map={map}
+                projectId={project.id}
+                onClear={() => {
+                  const cb = actionStage.onComplete;
+                  setActionStage(null);
+                  if (cb) setTimeout(cb, 100);
+                }}
+                onGameOver={() => {
+                  setActionStage(null);
+                  navigateTo("title");
+                }}
+                onBack={() => {
+                  setActionStage(null);
+                  navigateTo("title");
+                }}
+              />
+            </div>
+          );
+        })()}
 
         {/* RPG 画面 */}
         {screen === "rpg" && project && (
@@ -245,15 +282,38 @@ function App() {
           </div>
         )}
 
-        {/* ミニゲーム画面 */}
+        {/* ミニゲーム選択・プレイ */}
         {screen === "minigame" && project && (
           <div style={gameContainerStyle}>
-            <MinigameRunner
-              type={project.minigames?.[0]?.type || "quiz"}
-              config={project.minigames?.[0] || {}}
-              onResult={() => navigateTo("title")}
-              onBack={() => navigateTo("title")}
-            />
+            {selectedMinigame ? (
+              <MinigameRunner
+                type={selectedMinigame.type}
+                config={selectedMinigame.config || selectedMinigame}
+                onResult={() => { setSelectedMinigame(null); }}
+                onBack={() => setSelectedMinigame(null)}
+              />
+            ) : (
+              <div style={{ position: "absolute", inset: 0, background: "rgba(10,10,20,0.97)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", fontFamily: "'Noto Serif JP', serif" }}>
+                <div style={{ color: "#E8D4B0", fontSize: 20, letterSpacing: 3, marginBottom: 32 }}>ミニゲーム</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 12, width: 300 }}>
+                  {(project.minigames || []).map((mg) => (
+                    <button
+                      key={mg.id}
+                      onClick={() => setSelectedMinigame(mg)}
+                      style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(200,180,140,0.3)", color: "#E8D4B0", padding: "14px 20px", borderRadius: 6, fontSize: 15, cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}
+                    >
+                      {mg.name}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  onClick={() => navigateTo("title")}
+                  style={{ marginTop: 24, background: "none", border: "1px solid rgba(255,255,255,0.2)", color: "#aaa", padding: "8px 24px", borderRadius: 4, fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}
+                >
+                  戻る
+                </button>
+              </div>
+            )}
           </div>
         )}
 

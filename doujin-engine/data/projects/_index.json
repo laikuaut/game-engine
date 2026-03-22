@@ -1,29 +1,5 @@
 [
   {
-    "id": "mn06s87jpj3hrm",
-    "name": "放課後の幽霊少女",
-    "dirName": "放課後の幽霊少女",
-    "description": "ラノベ風サンプルシナリオ（約10分・2ルート完結）",
-    "gameType": "novel",
-    "createdAt": "2026-03-21T10:29:58.543Z",
-    "updatedAt": "2026-03-21T10:29:58.581Z",
-    "scriptLength": 290,
-    "mapCount": 0,
-    "minigameCount": 0
-  },
-  {
-    "id": "mn06s88v89cdda",
-    "name": "勇者レイの冒険",
-    "dirName": "勇者レイの冒険",
-    "description": "RPGサンプル（マップ4面・ボス戦付き）",
-    "gameType": "rpg",
-    "createdAt": "2026-03-21T10:29:58.591Z",
-    "updatedAt": "2026-03-21T10:29:58.697Z",
-    "scriptLength": 80,
-    "mapCount": 4,
-    "minigameCount": 2
-  },
-  {
     "id": "mn0f16cnumujfs",
     "name": "機能デモ（全コマンド網羅）",
     "dirName": "機能デモ（全コマンド網羅）",
@@ -60,39 +36,39 @@
     "minigameCount": 0
   },
   {
-    "id": "mn17ets5r6jg6o",
-    "name": "aaaa",
-    "dirName": "aaaa",
-    "description": "",
-    "gameType": "action",
-    "createdAt": "2026-03-22T03:35:19.109Z",
-    "updatedAt": "2026-03-22T03:35:19.109Z",
-    "scriptLength": 2,
-    "mapCount": 1,
+    "id": "mn18nwz1zkr04m",
+    "name": "放課後の幽霊少女",
+    "dirName": "放課後の幽霊少女",
+    "description": "ラノベ風サンプルシナリオ（約10分・2ルート完結）",
+    "gameType": "novel",
+    "createdAt": "2026-03-22T04:10:22.765Z",
+    "updatedAt": "2026-03-22T04:10:23.334Z",
+    "scriptLength": 290,
+    "mapCount": 0,
     "minigameCount": 0
   },
   {
-    "id": "mn18l2j6o83pqs",
-    "name": "アクションサンプル",
-    "dirName": "アクションサンプル",
-    "description": "2Dサイドスクロール アクション — 3ステージ",
+    "id": "mn18nxiq6ykao4",
+    "name": "勇者レイの冒険",
+    "dirName": "勇者レイの冒険",
+    "description": "RPGサンプル（マップ4面・ボス戦付き）",
+    "gameType": "rpg",
+    "createdAt": "2026-03-22T04:10:23.474Z",
+    "updatedAt": "2026-03-22T04:10:23.574Z",
+    "scriptLength": 80,
+    "mapCount": 4,
+    "minigameCount": 2
+  },
+  {
+    "id": "mn1a0tqv7rpkge",
+    "name": "アクションサンプル（3ステージ）",
+    "dirName": "アクションサンプル（3ステージ）",
+    "description": "2Dサイドスクロール — 草原・洞窟・ボス戦",
     "gameType": "action",
-    "createdAt": "2026-03-22T04:08:10.001Z",
-    "updatedAt": "2026-03-22T04:08:10.001Z",
+    "createdAt": "2026-03-22T04:48:24.727Z",
+    "updatedAt": "2026-03-22T04:48:24.924Z",
     "scriptLength": 8,
     "mapCount": 1,
     "minigameCount": 0
-  },
-  {
-    "id": "mn18l2jl6m2i34",
-    "name": "ミニゲームサンプル",
-    "dirName": "ミニゲームサンプル",
-    "description": "じゃんけん・クイズ・スロット 3種",
-    "gameType": "minigame",
-    "createdAt": "2026-03-22T04:08:10.001Z",
-    "updatedAt": "2026-03-22T04:08:10.001Z",
-    "scriptLength": 5,
-    "mapCount": 0,
-    "minigameCount": 3
   }
 ]

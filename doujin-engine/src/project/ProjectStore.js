@@ -380,42 +380,81 @@ export const WORK_PRESETS = [
     gameType: "action",
     description: "2Dサイドスクロール — 草原・洞窟・ボス戦",
     loader: async () => {
+      // マップ: 20x12
+      const terrain = [];
+      for (let y = 0; y < 12; y++) {
+        const row = [];
+        for (let x = 0; x < 20; x++) {
+          if (y === 11) row.push("grass");
+          else if (y === 10 && (x === 8 || x === 9 || x === 14 || x === 15)) row.push("stone");
+          else if (y === 8 && (x === 5 || x === 6)) row.push("stone");
+          else if (x === 0 || x === 19) row.push("wall");
+          else row.push(null);
+        }
+        terrain.push(row);
+      }
+      const emptyLayer = Array.from({ length: 12 }, () => Array.from({ length: 20 }, () => null));
       return {
         script: [
-          { type: "dialog", speaker: "", text: "魔物が現れた村を救うため、冒険者は旅立った。" },
-          { type: "dialog", speaker: "主人公", text: "行くぞ！" },
+          { type: "scene", sceneId: "prologue" },
+          { type: "action_stage", stageId: "stage_1" },
+          { type: "scene", sceneId: "after_stage1" },
+          { type: "action_stage", stageId: "stage_2" },
+          { type: "action_stage", stageId: "stage_3" },
+          { type: "scene", sceneId: "ending" },
+          { type: "jump", target: "script_end" },
+          { type: "label", name: "script_end" },
         ],
+        storyScenes: [
+          { id: "prologue", name: "プロローグ", description: "冒険の始まり", commands: [
+            { type: "dialog", speaker: "", text: "魔物が現れた村を救うため、冒険者は旅立った。" },
+            { type: "dialog", speaker: "主人公", text: "行くぞ！" },
+          ]},
+          { id: "after_stage1", name: "ステージ1クリア後", description: "", commands: [
+            { type: "dialog", speaker: "", text: "草原を抜けると、暗い洞窟が見えた。" },
+            { type: "dialog", speaker: "主人公", text: "この奥に、魔物の親玉がいるはず……" },
+          ]},
+          { id: "ending", name: "エンディング", description: "", commands: [
+            { type: "dialog", speaker: "", text: "ドラゴンを倒し、村に平和が戻った。" },
+            { type: "dialog", speaker: "主人公", text: "やったぞ！" },
+            { type: "dialog", speaker: "", text: "——END——" },
+            { type: "effect", name: "fadeout", color: "#000", time: 2000, clearText: true },
+          ]},
+        ],
+        sceneOrder: ["prologue", "after_stage1", "ending"],
         characters: {
-          player: {
-            name: "主人公", color: "#4488FF",
-            expressions: { neutral: "🙂", smile: "😊", damage: "😣" },
-          },
+          player: { name: "主人公", color: "#4488FF", expressions: { neutral: "🙂", smile: "😊", damage: "😣" } },
         },
+        maps: [{
+          name: "ステージ1", width: 20, height: 12, tileSize: 32,
+          layers: [{ name: "地形", tiles: terrain }, { name: "オブジェクト", tiles: emptyLayer }],
+          events: [],
+        }],
         actionData: {
           playerConfig: {
-            speed: 4, jumpPower: 10, hp: 100,
-            gravity: 0.5, maxFallSpeed: 12, invincibleTime: 1000,
+            speed: 4, jumpPower: 10, hp: 100, gravity: 0.5, maxFallSpeed: 12, invincibleTime: 1000,
             hitbox: { width: 24, height: 32 },
             attacks: [{ name: "パンチ", damage: 15, range: 32, cooldown: 300 }],
           },
           enemies: [
             { id: "slime", name: "スライム", hp: 30, damage: 10, speed: 1.5, behavior: "patrol", color: "#4CAF50", hitbox: { width: 24, height: 24 }, patrolRange: 4 },
             { id: "bat", name: "コウモリ", hp: 20, damage: 15, speed: 2, behavior: "fly_sine", color: "#9C27B0", hitbox: { width: 20, height: 20 }, patrolRange: 5 },
+            { id: "golem", name: "ゴーレム", hp: 100, damage: 25, speed: 1, behavior: "chase", color: "#795548", hitbox: { width: 32, height: 32 } },
             { id: "boss_dragon", name: "ドラゴン", hp: 200, damage: 30, speed: 1.5, behavior: "boss", color: "#F44336", hitbox: { width: 48, height: 40 } },
           ],
           stages: [
-            {
-              id: "stage_1", name: "草原ステージ", mapId: 0, bgm: "stage",
-              timeLimit: 120, clearCondition: "reach_goal",
+            { id: "stage_1", name: "草原", mapId: 0, timeLimit: 120, clearCondition: "reach_goal",
               spawnPoint: { x: 2, y: 10 }, goalPoint: { x: 18, y: 10 },
-              enemyPlacements: [
-                { enemyId: "slime", x: 7, y: 10 },
-                { enemyId: "slime", x: 12, y: 10 },
-                { enemyId: "bat", x: 10, y: 6 },
-              ],
-              itemPlacements: [{ itemId: "coin", x: 5, y: 7 }, { itemId: "heart", x: 15, y: 9 }],
-              events: [],
-            },
+              enemyPlacements: [{ enemyId: "slime", x: 7, y: 10 }, { enemyId: "slime", x: 12, y: 10 }, { enemyId: "bat", x: 10, y: 6 }],
+              itemPlacements: [{ itemId: "coin", x: 5, y: 7 }, { itemId: "heart", x: 15, y: 9 }], events: [] },
+            { id: "stage_2", name: "洞窟", mapId: 0, timeLimit: 150, clearCondition: "defeat_all",
+              spawnPoint: { x: 2, y: 10 },
+              enemyPlacements: [{ enemyId: "golem", x: 10, y: 10 }, { enemyId: "bat", x: 6, y: 5 }, { enemyId: "bat", x: 14, y: 5 }],
+              itemPlacements: [{ itemId: "heart", x: 8, y: 7 }], events: [] },
+            { id: "stage_3", name: "ボス", mapId: 0, timeLimit: 0, clearCondition: "defeat_all",
+              spawnPoint: { x: 2, y: 10 },
+              enemyPlacements: [{ enemyId: "boss_dragon", x: 14, y: 8 }],
+              itemPlacements: [{ itemId: "heart", x: 5, y: 9 }, { itemId: "heart", x: 10, y: 9 }], events: [] },
           ],
           items: [
             { id: "coin", name: "コイン", type: "score", value: 100 },
@@ -427,44 +466,37 @@ export const WORK_PRESETS = [
   },
   {
     id: "sample_minigame",
-    label: "ミニゲームサンプル（3種）",
+    label: "ミニゲームサンプル（4種）",
     gameType: "minigame",
-    description: "じゃんけん・クイズ・スロット",
+    description: "じゃんけん・クイズ・スロット・ブロック崩し",
     loader: async () => {
       return {
         script: [
           { type: "dialog", speaker: "ディーラー", text: "ようこそ、ミニゲームカジノへ！" },
+          { type: "dialog", speaker: "ディーラー", text: "4種類のゲームをご用意しています。お好きなものをどうぞ！" },
         ],
         characters: {
-          dealer: {
-            name: "ディーラー", color: "#9C27B0",
-            expressions: { neutral: "🙂", smile: "😊", surprise: "😲" },
-          },
+          dealer: { name: "ディーラー", color: "#9C27B0", expressions: { neutral: "🙂", smile: "😊", surprise: "😲" } },
         },
         minigames: [
-          {
-            id: "janken", name: "じゃんけん勝負", type: "janken",
-            config: { rounds: 3 },
-          },
-          {
-            id: "quiz_1", name: "雑学クイズ", type: "quiz",
-            config: {
-              questions: [
-                { question: "日本で一番高い山は？", choices: ["富士山", "北岳", "奥穂高岳", "槍ヶ岳"], answer: 0 },
-                { question: "1+1は？", choices: ["1", "2", "3", "11"], answer: 1 },
-                { question: "水の化学式は？", choices: ["CO2", "H2O", "NaCl", "O2"], answer: 1 },
-              ],
-              timePerQuestion: 15, passScore: 2,
-            },
-          },
-          {
-            id: "slot_1", name: "スロットマシン", type: "slot",
-            config: {
-              reels: 3,
-              symbols: ["🍒", "🍋", "🔔", "⭐", "7️⃣"],
-              initialCoins: 100, betAmount: 10,
-            },
-          },
+          { id: "janken", name: "じゃんけん勝負", type: "janken", config: { rounds: 3 } },
+          { id: "quiz_1", name: "雑学クイズ", type: "quiz", config: {
+            questions: [
+              { question: "日本で一番高い山は？", choices: ["富士山", "北岳", "奥穂高岳", "槍ヶ岳"], answer: 0 },
+              { question: "1+1は？", choices: ["1", "2", "3", "11"], answer: 1 },
+              { question: "水の化学式は？", choices: ["CO2", "H2O", "NaCl", "O2"], answer: 1 },
+              { question: "「吾輩は猫である」の作者は？", choices: ["芥川龍之介", "太宰治", "夏目漱石", "川端康成"], answer: 2 },
+              { question: "地球から一番近い恒星は？", choices: ["シリウス", "プロキシマ", "太陽", "ベテルギウス"], answer: 2 },
+            ],
+            timePerQuestion: 15, passScore: 3,
+          }},
+          { id: "slot_1", name: "スロットマシン", type: "slot", config: {
+            reels: 3, symbols: ["🍒", "🍋", "🔔", "⭐", "7️⃣"],
+            initialCoins: 100, betAmount: 10,
+          }},
+          { id: "breakout_1", name: "ブロック崩し", type: "breakout", config: {
+            rows: 5, cols: 8, lives: 3,
+          }},
         ],
       };
     },

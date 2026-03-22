@@ -1,17 +1,18 @@
 import { useState, useEffect, useRef } from "react";
 
 export default function QuizGame({ config, onComplete }) {
-  const { questions = [], timeLimit } = config;
+  const { questions = [], timeLimit, timePerQuestion } = config;
+  const effectiveTimeLimit = timeLimit || (timePerQuestion ? timePerQuestion * questions.length : null);
   const [qIndex, setQIndex] = useState(0);
   const [score, setScore] = useState(0);
   const [answered, setAnswered] = useState(null); // null | "correct" | "wrong"
-  const [timeLeft, setTimeLeft] = useState(timeLimit || null);
+  const [timeLeft, setTimeLeft] = useState(effectiveTimeLimit || null);
   const [finished, setFinished] = useState(false);
   const timerRef = useRef(null);
 
   // タイマー
   useEffect(() => {
-    if (!timeLimit || finished) return;
+    if (!effectiveTimeLimit || finished) return;
     timerRef.current = setInterval(() => {
       setTimeLeft((t) => {
         if (t <= 1) {
@@ -61,10 +62,10 @@ export default function QuizGame({ config, onComplete }) {
     <div style={styles.container}>
       <div style={styles.header}>
         <span>Q{qIndex + 1} / {questions.length}</span>
-        {timeLimit && <span>残り {timeLeft}秒</span>}
+        {effectiveTimeLimit && <span>残り {timeLeft}秒</span>}
         <span>Score: {score}</span>
       </div>
-      <div style={styles.question}>{q.text}</div>
+      <div style={styles.question}>{q.question || q.text}</div>
       <div style={styles.choices}>
         {q.choices.map((choice, i) => (
           <button

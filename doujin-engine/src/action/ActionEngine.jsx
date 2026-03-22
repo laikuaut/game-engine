@@ -173,17 +173,21 @@ export default function ActionEngine({
     else if (inp.right) { p.vx = p.speed * dt; p.facing = 1; p.state = "run"; }
     else { p.vx = 0; if (p.grounded) p.state = "idle"; }
 
-    if (inp.jump && p.grounded) {
+    if (inp.jump && p.grounded && !p._jumpKeyHeld) {
+      p._jumpKeyHeld = true;
       p.vy = -p.jumpPower;
       p.grounded = false;
       p.state = "jump";
     }
+    if (!inp.jump) p._jumpKeyHeld = false;
 
-    if (inp.attack && !p.attacking) {
+    // 攻撃（押した瞬間のみ、押しっぱなしでは連続しない）
+    if (inp.attack && !p.attacking && !p._attackKeyHeld) {
+      p._attackKeyHeld = true;
       p.attacking = true;
-      p.attackTimer = 15;
+      p.attackTimer = 20;
       p.state = "attack";
-      // 攻撃判定
+      // 攻撃判定（1回だけ）
       const atkRange = cfg.attacks?.[0]?.range || 32;
       const atkDamage = cfg.attacks?.[0]?.damage || 10;
       const atkX = p.facing > 0 ? p.x + p.width : p.x - atkRange;
@@ -198,9 +202,10 @@ export default function ActionEngine({
         }
       });
     }
+    if (!inp.attack) p._attackKeyHeld = false;
 
     if (p.attackTimer > 0) {
-      p.attackTimer -= dt;
+      p.attackTimer -= 1;
       if (p.attackTimer <= 0) p.attacking = false;
     }
 
@@ -234,8 +239,8 @@ export default function ActionEngine({
       p.hp = 0;
     }
 
-    // ゲームオーバー
-    if (p.hp <= 0) {
+    // ゲームオーバー（一度だけ）
+    if (p.hp <= 0 && !gs.gameOver) {
       gs.gameOver = true;
       setStatus("gameover");
       if (onGameOver) setTimeout(onGameOver, 2000);
@@ -273,8 +278,11 @@ export default function ActionEngine({
       }
     }
 
-    if (cond === "defeat_all") {
-      if (gs.enemies.every((e) => !e.alive)) {
+    if (cond === "defeat_all" || cond === "defeat_boss") {
+      // 敵が1体以上いて、全滅している場合にクリア（0体ステージは即クリアしない）
+      const totalEnemies = gs.enemies.length;
+      const aliveEnemies = gs.enemies.filter((e) => e.alive).length;
+      if (totalEnemies > 0 && aliveEnemies === 0 && gs.time > 0.5) {
         gs.cleared = true;
         setStatus("clear");
         if (onClear) setTimeout(onClear, 2000);

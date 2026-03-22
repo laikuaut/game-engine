@@ -3,6 +3,7 @@ import TimingGame from "./TimingGame";
 import MemoryGame from "./MemoryGame";
 import JankenGame from "./JankenGame";
 import SlotGame from "./SlotGame";
+import BreakoutGame from "./BreakoutGame";
 
 const GAMES = {
   quiz: QuizGame,
@@ -10,6 +11,7 @@ const GAMES = {
   memory: MemoryGame,
   janken: JankenGame,
   slot: SlotGame,
+  breakout: BreakoutGame,
 };
 
 export default function MinigameRunner({ type, config, onResult, onBack }) {
