@@ -70,5 +70,29 @@
     "scriptLength": 2,
     "mapCount": 1,
     "minigameCount": 0
+  },
+  {
+    "id": "mn18l2j6o83pqs",
+    "name": "アクションサンプル",
+    "dirName": "アクションサンプル",
+    "description": "2Dサイドスクロール アクション — 3ステージ",
+    "gameType": "action",
+    "createdAt": "2026-03-22T04:08:10.001Z",
+    "updatedAt": "2026-03-22T04:08:10.001Z",
+    "scriptLength": 8,
+    "mapCount": 1,
+    "minigameCount": 0
+  },
+  {
+    "id": "mn18l2jl6m2i34",
+    "name": "ミニゲームサンプル",
+    "dirName": "ミニゲームサンプル",
+    "description": "じゃんけん・クイズ・スロット 3種",
+    "gameType": "minigame",
+    "createdAt": "2026-03-22T04:08:10.001Z",
+    "updatedAt": "2026-03-22T04:08:10.001Z",
+    "scriptLength": 5,
+    "mapCount": 0,
+    "minigameCount": 3
   }
 ]

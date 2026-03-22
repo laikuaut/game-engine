@@ -374,6 +374,101 @@ export const WORK_PRESETS = [
       };
     },
   },
+  {
+    id: "sample_action",
+    label: "アクションサンプル（3ステージ）",
+    gameType: "action",
+    description: "2Dサイドスクロール — 草原・洞窟・ボス戦",
+    loader: async () => {
+      return {
+        script: [
+          { type: "dialog", speaker: "", text: "魔物が現れた村を救うため、冒険者は旅立った。" },
+          { type: "dialog", speaker: "主人公", text: "行くぞ！" },
+        ],
+        characters: {
+          player: {
+            name: "主人公", color: "#4488FF",
+            expressions: { neutral: "🙂", smile: "😊", damage: "😣" },
+          },
+        },
+        actionData: {
+          playerConfig: {
+            speed: 4, jumpPower: 10, hp: 100,
+            gravity: 0.5, maxFallSpeed: 12, invincibleTime: 1000,
+            hitbox: { width: 24, height: 32 },
+            attacks: [{ name: "パンチ", damage: 15, range: 32, cooldown: 300 }],
+          },
+          enemies: [
+            { id: "slime", name: "スライム", hp: 30, damage: 10, speed: 1.5, behavior: "patrol", color: "#4CAF50", hitbox: { width: 24, height: 24 }, patrolRange: 4 },
+            { id: "bat", name: "コウモリ", hp: 20, damage: 15, speed: 2, behavior: "fly_sine", color: "#9C27B0", hitbox: { width: 20, height: 20 }, patrolRange: 5 },
+            { id: "boss_dragon", name: "ドラゴン", hp: 200, damage: 30, speed: 1.5, behavior: "boss", color: "#F44336", hitbox: { width: 48, height: 40 } },
+          ],
+          stages: [
+            {
+              id: "stage_1", name: "草原ステージ", mapId: 0, bgm: "stage",
+              timeLimit: 120, clearCondition: "reach_goal",
+              spawnPoint: { x: 2, y: 10 }, goalPoint: { x: 18, y: 10 },
+              enemyPlacements: [
+                { enemyId: "slime", x: 7, y: 10 },
+                { enemyId: "slime", x: 12, y: 10 },
+                { enemyId: "bat", x: 10, y: 6 },
+              ],
+              itemPlacements: [{ itemId: "coin", x: 5, y: 7 }, { itemId: "heart", x: 15, y: 9 }],
+              events: [],
+            },
+          ],
+          items: [
+            { id: "coin", name: "コイン", type: "score", value: 100 },
+            { id: "heart", name: "ハート", type: "heal", value: 30 },
+          ],
+        },
+      };
+    },
+  },
+  {
+    id: "sample_minigame",
+    label: "ミニゲームサンプル（3種）",
+    gameType: "minigame",
+    description: "じゃんけん・クイズ・スロット",
+    loader: async () => {
+      return {
+        script: [
+          { type: "dialog", speaker: "ディーラー", text: "ようこそ、ミニゲームカジノへ！" },
+        ],
+        characters: {
+          dealer: {
+            name: "ディーラー", color: "#9C27B0",
+            expressions: { neutral: "🙂", smile: "😊", surprise: "😲" },
+          },
+        },
+        minigames: [
+          {
+            id: "janken", name: "じゃんけん勝負", type: "janken",
+            config: { rounds: 3 },
+          },
+          {
+            id: "quiz_1", name: "雑学クイズ", type: "quiz",
+            config: {
+              questions: [
+                { question: "日本で一番高い山は？", choices: ["富士山", "北岳", "奥穂高岳", "槍ヶ岳"], answer: 0 },
+                { question: "1+1は？", choices: ["1", "2", "3", "11"], answer: 1 },
+                { question: "水の化学式は？", choices: ["CO2", "H2O", "NaCl", "O2"], answer: 1 },
+              ],
+              timePerQuestion: 15, passScore: 2,
+            },
+          },
+          {
+            id: "slot_1", name: "スロットマシン", type: "slot",
+            config: {
+              reels: 3,
+              symbols: ["🍒", "🍋", "🔔", "⭐", "7️⃣"],
+              initialCoins: 100, betAmount: 10,
+            },
+          },
+        ],
+      };
+    },
+  },
 ];
 
 // プリセットからプロジェクトを作成
