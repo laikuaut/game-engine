@@ -59,6 +59,7 @@ const FIELD_DEFS = {
   ],
   [CMD.CG]: [
     { key: "id", label: "CG", type: "catalog_select", placeholder: "CGを選択", autocomplete: "cgIds" },
+    { key: "variant", label: "バリアント", type: "number", min: 0, step: 1, placeholder: "空欄=メイン画像" },
   ],
   [CMD.CG_HIDE]: [],
   [CMD.NVL_ON]: [],

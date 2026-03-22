@@ -32,12 +32,6 @@ export default function NovelEngine({ script, characters, bgStyles, onBack, proj
     () => expandScenes(script || DEFAULT_SCRIPT, storyScenes),
     [script, storyScenes]
   );
-  // CG ID → src 解決マップ
-  const cgMap = useMemo(() => {
-    const map = {};
-    (cgCatalog || []).forEach((cg) => { map[cg.id] = cg.src; });
-    return map;
-  }, [cgCatalog]);
   const [state, dispatch] = useReducer(engineReducer, {
     ...initialState,
     ...(initialConfig ? {
@@ -497,7 +491,10 @@ export default function NovelEngine({ script, characters, bgStyles, onBack, proj
           display: "flex", alignItems: "center", justifyContent: "center",
         }}>
           {(() => {
-            const cgSrc = cgMap[state.showCG.id] || state.showCG.src;
+            const cgEntry = (cgCatalog || []).find((c) => c.id === state.showCG.id);
+            const cgSrc = (state.showCG.variant != null && cgEntry?.variants?.[state.showCG.variant])
+              ? cgEntry.variants[state.showCG.variant]
+              : (cgEntry?.src || state.showCG.src);
             return cgSrc ? (
               <img
                 src={getAssetUrl(projectId, "cg", cgSrc) || `./assets/${cgSrc}`}

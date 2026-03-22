@@ -108,6 +108,7 @@ data/projects/
   { "type": "effect", "name": "flash", "color": "#fff" },
   { "type": "effect", "name": "fadeout", "color": "#000", "time": 1000 },
   { "type": "cg", "id": "cg01" },
+  { "type": "cg", "id": "cg01", "variant": 1 },
   { "type": "cg_hide" },
   { "type": "choice", "options": [
     { "text": "選択肢A", "jump": "route_a" },
@@ -136,7 +137,7 @@ data/projects/
 | `effect` | 画面効果 | `name` | `color`, `time` |
 | `wait` | 待機 | `time` (ms) | — |
 | `jump` | ラベルジャンプ | `target` | — |
-| `cg` | CG表示（レイヤー） | `id` | — |
+| `cg` | CG表示（レイヤー） | `id` | `variant` (差分インデックス、省略時=メイン画像) |
 | `cg_hide` | CG非表示 | — | — |
 | `nvl_on` | NVLモード開始 | — | — |
 | `nvl_off` | NVLモード終了 | — | — |

@@ -71,7 +71,7 @@ const SCRIPT = [
 | `wait` | 待機 | `time` (ms) |
 | `jump` | ジャンプ | `target` (ラベル名) |
 | `label` | ラベル | `name` ※jump/choice の飛び先 |
-| `cg` | CG表示（レイヤー） | `id` ※cgCatalog から src を解決 |
+| `cg` | CG表示（レイヤー） | `id`, `variant` (数値、差分インデックス) ※cgCatalog から src を解決 |
 | `cg_hide` | CG非表示 | — |
 | `nvl_on` | NVLモード開始 | — |
 | `nvl_off` | NVLモード終了 | — |

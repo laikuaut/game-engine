@@ -119,7 +119,16 @@ describe("processCommand", () => {
     // cg は非ブロッキング → 次の dialog まで進む
     expect(result.blocking).toBeNull();
     expect(result.index).toBe(1);
-    expect(dispatch).toHaveBeenCalledWith(expect.objectContaining({ type: "SHOW_CG" }));
+    expect(dispatch).toHaveBeenCalledWith({ type: "SHOW_CG", payload: { id: "ev01", variant: undefined } });
+
+    // variant 指定時は payload に variant が含まれる
+    const dispatch3 = vi.fn();
+    const script3 = [
+      { type: "cg", id: "ev01", variant: 2 },
+      { type: "dialog", speaker: "", text: "差分CG" },
+    ];
+    processCommand(script3, 0, dispatch3, {});
+    expect(dispatch3).toHaveBeenCalledWith({ type: "SHOW_CG", payload: { id: "ev01", variant: 2 } });
 
     // cg_hide で HIDE_CG が dispatch される
     const dispatch2 = vi.fn();

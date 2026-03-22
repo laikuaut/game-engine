@@ -272,7 +272,7 @@ export function processCommand(script, index, dispatch, labelMap) {
         dispatch({ type: ACTION.CLEAR_NVL });
         break;
       case CMD.CG:
-        dispatch({ type: ACTION.SHOW_CG, payload: { id: cmd.id } });
+        dispatch({ type: ACTION.SHOW_CG, payload: { id: cmd.id, variant: cmd.variant } });
         log("processCommand: CG 表示（レイヤー）at index", i);
         break;
       case CMD.CG_HIDE:

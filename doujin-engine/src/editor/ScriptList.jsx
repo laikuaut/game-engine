@@ -44,7 +44,7 @@ function commandSummary(cmd) {
     case CMD.JUMP:      return `→ ${cmd.target}`;
     case CMD.LABEL:     return cmd.name || "(未設定)";
     case CMD.SCENE:     return cmd.label || cmd.sceneId || "(未設定)";
-    case CMD.CG:        return cmd.id || cmd.src || "(未設定)";
+    case CMD.CG:        return (cmd.id || "(未設定)") + (cmd.variant != null ? ` #${cmd.variant}` : "");
     default:            return cmd.type;
   }
 }
