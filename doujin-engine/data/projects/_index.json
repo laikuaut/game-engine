@@ -46,5 +46,17 @@
     "scriptLength": 36,
     "mapCount": 0,
     "minigameCount": 0
+  },
+  {
+    "id": "mn152s31yjz0g0",
+    "name": "異世界転生サンプル",
+    "dirName": "異世界転生サンプル",
+    "description": "異世界転生もの 1分シナリオ",
+    "gameType": "novel",
+    "createdAt": "2026-03-22T02:29:57.805Z",
+    "updatedAt": "2026-03-22T02:29:57.805Z",
+    "scriptLength": 5,
+    "mapCount": 0,
+    "minigameCount": 0
   }
 ]

@@ -63,7 +63,7 @@ const SCRIPT = [
 | `bgm_stop` | BGM停止 | `fadeout` (ms) |
 | `se` | SE再生 | `name`, `volume` |
 | `chara` | キャラ表示 | `id`, `position` (left/center/right), `expression` |
-| `chara_mod` | 表情変更 | `id`, `expression` |
+| `chara_mod` | 表情変更 | `id`, `expression`, `anim` (shake/bounce/zoom/nod/tremble) |
 | `chara_hide` | キャラ非表示 | `id` |
 | `dialog` | テキスト表示 | `speaker`, `text` |
 | `choice` | 選択肢 | `options: [{ text, jump }]` ※jump はラベル名 |
@@ -71,7 +71,8 @@ const SCRIPT = [
 | `wait` | 待機 | `time` (ms) |
 | `jump` | ジャンプ | `target` (ラベル名) |
 | `label` | ラベル | `name` ※jump/choice の飛び先 |
-| `cg` | CG表示 | `id`, `src` |
+| `cg` | CG表示（レイヤー） | `id` ※cgCatalog から src を解決 |
+| `cg_hide` | CG非表示 | — |
 | `nvl_on` | NVLモード開始 | — |
 | `nvl_off` | NVLモード終了 | — |
 | `nvl_clear` | NVLログクリア | — |

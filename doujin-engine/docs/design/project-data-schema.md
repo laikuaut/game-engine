@@ -33,6 +33,7 @@ data/projects/
 │   └── assets/
 │       ├── bg/                          ← 背景画像
 │       ├── chara/                       ← キャラクター立ち絵
+│       ├── cg/                          ← CG画像
 │       ├── bgm/                         ← BGM音声ファイル
 │       └── se/                          ← SE音声ファイル
 ```
@@ -106,7 +107,8 @@ data/projects/
   { "type": "effect", "name": "shake" },
   { "type": "effect", "name": "flash", "color": "#fff" },
   { "type": "effect", "name": "fadeout", "color": "#000", "time": 1000 },
-  { "type": "cg", "id": "cg01", "src": "event_cg_01.png" },
+  { "type": "cg", "id": "cg01" },
+  { "type": "cg_hide" },
   { "type": "choice", "options": [
     { "text": "選択肢A", "jump": "route_a" },
     { "text": "選択肢B", "jump": "route_b" }
@@ -127,14 +129,15 @@ data/projects/
 | `bgm_stop` | BGM停止 | — | `fadeout` (ms) |
 | `se` | SE再生 | `name` | `volume` |
 | `chara` | キャラ表示 | `id`, `position`, `expression` | — |
-| `chara_mod` | 表情変更 | `id`, `expression` | — |
+| `chara_mod` | 表情変更 | `id`, `expression` | `anim` (shake/bounce/zoom/nod/tremble) |
 | `chara_hide` | キャラ非表示 | `id` | — |
 | `dialog` | テキスト表示 | `speaker`, `text` | — |
 | `choice` | 選択肢分岐 | `options[]` | — |
 | `effect` | 画面効果 | `name` | `color`, `time` |
 | `wait` | 待機 | `time` (ms) | — |
 | `jump` | ラベルジャンプ | `target` | — |
-| `cg` | CG表示 | `id`, `src` | — |
+| `cg` | CG表示（レイヤー） | `id` | — |
+| `cg_hide` | CG非表示 | — | — |
 | `nvl_on` | NVLモード開始 | — | — |
 | `nvl_off` | NVLモード終了 | — | — |
 | `nvl_clear` | NVLログクリア | — | — |
@@ -287,23 +290,31 @@ data/projects/
 
 ---
 
-## 11. `cgCatalog.json` — CGギャラリーカタログ
+## 11. `cgCatalog.json` — CGカタログ
 
-CGギャラリー画面で表示するCGの定義。
+CGの定義。`cg` コマンドは `id` のみ指定し、画像ファイルはこのカタログから解決する。
 
 ```jsonc
 [
   {
-    "id": "cg_001",
-    "name": "イベントCG 1",
-    "variants": [                       // 差分（同一CGの表情違いなど）
-      { "src": "event_cg_01a.png", "label": "通常" },
-      { "src": "event_cg_01b.png", "label": "差分" }
-    ],
-    "unlocked": false                   // ギャラリーでの開放状態
+    "id": "ch01_01",                    // cgコマンドの id で参照
+    "title": "窓際の白石凛",             // エディタ・ギャラリー上の表示名
+    "group": "第1話",                   // グループ分類（ギャラリー表示用）
+    "thumbnail": "ch01-01.png",         // サムネイル画像（assets/cg/ 配下）
+    "src": "event_cg_01.png",          // 本体画像（assets/cg/ 配下）
+    "variants": [                       // 差分画像のファイル名配列
+      "event_cg_01.png",
+      "event_cg_01b.png"
+    ]
   }
 ]
 ```
+
+### 補足
+
+- `cg` コマンドは `id` のみ指定。`src` はカタログから自動解決される
+- `variants` は差分（表情違い等）。ギャラリーで切り替え表示に使用
+- 開放状態は `UnlockStore` で管理（カタログJSON自体には含めない）
 
 ---
 
