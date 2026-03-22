@@ -426,12 +426,16 @@ ipcMain.handle("export-game", async (event, projectId) => {
       script: project.script || [],
       characters: project.characters || {},
       bgStyles: project.bgStyles || {},
+      storyScenes: project.storyScenes || [],
+      sceneOrder: project.sceneOrder || [],
       maps: project.maps || [],
       customTiles: project.customTiles || [],
       battleData: project.battleData || {},
       minigames: project.minigames || [],
       cgCatalog: project.cgCatalog || [],
       sceneCatalog: project.sceneCatalog || [],
+      bgmCatalog: project.bgmCatalog || [],
+      seCatalog: project.seCatalog || [],
       saves: Array(100).fill(null),
     };
     writeJsonFile(path.join(publicDir, "game-data.json"), gameData);

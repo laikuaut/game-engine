@@ -3,7 +3,7 @@ import { CMD } from "../engine/constants";
 import { updateProject, getProject, getAssetUrl } from "../project/ProjectStore";
 import ScriptList from "./ScriptList";
 import CommandEditor from "./CommandEditor";
-import PreviewPanel from "./PreviewPanel";
+import NovelEngine from "../engine/NovelEngine";
 import TextEditor from "./TextEditor";
 import FlowGraph from "./FlowGraph";
 import DebugPanel from "./DebugPanel";
@@ -402,8 +402,19 @@ export default function EditorScreen({ onBack, initialScript, projectId, project
         return <FlowGraph script={script} storyScenes={storyScenes} />;
       case "preview":
         return (
-          <div style={{ padding: 16, height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <PreviewPanel ref={previewRef} script={script} storyScenes={storyScenes} characters={characters} bgStyles={bgStyles} projectId={projectId} />
+          <div style={{ position: "relative", width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", background: "#000" }}>
+            <div style={{ width: "100%", maxWidth: 1280, aspectRatio: "16/9", position: "relative", overflow: "hidden" }}>
+              <NovelEngine
+                script={script}
+                characters={characters}
+                bgStyles={bgStyles}
+                projectId={projectId}
+                storyScenes={storyScenes}
+                bgmCatalog={bgmCatalog}
+                seCatalog={seCatalog}
+                onBack={() => setActiveTab("script")}
+              />
+            </div>
           </div>
         );
       case "debug":
@@ -511,7 +522,18 @@ export default function EditorScreen({ onBack, initialScript, projectId, project
                     ✕
                   </button>
                 </div>
-                <PreviewPanel ref={splitPreviewRef} script={script} storyScenes={storyScenes} characters={characters} bgStyles={bgStyles} projectId={projectId} />
+                <div style={{ position: "relative", width: "100%", aspectRatio: "16/9", overflow: "hidden" }}>
+                  <NovelEngine
+                    script={script}
+                    characters={characters}
+                    bgStyles={bgStyles}
+                    projectId={projectId}
+                    storyScenes={storyScenes}
+                    bgmCatalog={bgmCatalog}
+                    seCatalog={seCatalog}
+                    onBack={() => setShowSplitPreview(false)}
+                  />
+                </div>
               </div>
             )}
           </div>
