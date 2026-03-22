@@ -62,8 +62,18 @@ export default function CGGallery({ catalog, onBack, projectId }) {
             >
               {unlocked ? (
                 <>
-                  {cg.thumbnail ? (
-                    <img src={resolveUrl(cg.thumbnail)} alt={cg.title} style={styles.thumbImg} />
+                  {(cg.thumbnail || cg.src) ? (
+                    <img
+                      src={resolveUrl(cg.thumbnail || cg.src)}
+                      alt={cg.title}
+                      style={styles.thumbImg}
+                      onError={(e) => {
+                        // thumbnail が見つからなければ src にフォールバック
+                        if (cg.thumbnail && cg.src && e.target.src !== resolveUrl(cg.src)) {
+                          e.target.src = resolveUrl(cg.src);
+                        }
+                      }}
+                    />
                   ) : (
                     <div style={styles.thumbPlaceholder}>{cg.title}</div>
                   )}
