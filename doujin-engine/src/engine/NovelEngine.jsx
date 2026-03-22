@@ -26,7 +26,7 @@ function log(...args) {
   if (DEBUG) console.log("[NovelEngine]", ...args);
 }
 
-export default function NovelEngine({ script, characters, bgStyles, onBack, projectId, startLabel, initialConfig, onConfigChange, storyScenes, bgmCatalog, seCatalog }) {
+export default function NovelEngine({ script, characters, bgStyles, onBack, projectId, startLabel, initialStartIndex = 0, initialConfig, onConfigChange, storyScenes, bgmCatalog, seCatalog }) {
   // シーン参照を展開してフラットなスクリプトに変換
   const SCRIPT = useMemo(
     () => expandScenes(script || DEFAULT_SCRIPT, storyScenes),
@@ -318,6 +318,9 @@ export default function NovelEngine({ script, characters, bgStyles, onBack, proj
     if (startLabel && labelMap[startLabel] !== undefined) {
       startIndex = labelMap[startLabel];
       log("初回起動: startLabel =", startLabel, "→ index", startIndex);
+    } else if (initialStartIndex > 0) {
+      startIndex = initialStartIndex;
+      log("初回起動: startIndex =", startIndex);
     } else {
       log("初回起動: index 0 から開始, スクリプト長 =", scriptRef.current.length, ", ラベル =", Object.keys(labelMap));
     }

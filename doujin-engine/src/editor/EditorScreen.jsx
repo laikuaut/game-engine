@@ -86,11 +86,11 @@ export default function EditorScreen({ onBack, initialScript, projectId, project
   const [showHelp, setShowHelp] = useState(false);
   const [saveStatus, setSaveStatus] = useState(null); // null | "saving" | "saved"
   const [showSplitPreview, setShowSplitPreview] = useState(false);
-  const previewRef = useRef(null);
-  const splitPreviewRef = useRef(null);
+  const [previewStartIndex, setPreviewStartIndex] = useState(0);
+  const [previewKey, setPreviewKey] = useState(0);
   const jumpPreview = useCallback((i) => {
-    previewRef.current?.jumpTo(i);
-    splitPreviewRef.current?.jumpTo(i);
+    setPreviewStartIndex(i);
+    setPreviewKey((k) => k + 1);
   }, []);
   // Undo/Redo 履歴
   const [undoStack, setUndoStack] = useState([]);
@@ -130,9 +130,8 @@ export default function EditorScreen({ onBack, initialScript, projectId, project
   // 「この行から再生」ハンドラ
   const handlePlayFrom = useCallback((index) => {
     setShowSplitPreview(true);
-    // 次のレンダー後に ref が利用可能になるので少し遅延
-    setTimeout(() => splitPreviewRef.current?.jumpTo(index), 0);
-  }, []);
+    jumpPreview(index);
+  }, [jumpPreview]);
 
   // プロジェクトから追加データを非同期ロード
   useEffect(() => {
@@ -405,10 +404,12 @@ export default function EditorScreen({ onBack, initialScript, projectId, project
           <div style={{ position: "relative", width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", background: "#000" }}>
             <div style={{ width: "100%", maxWidth: 1280, aspectRatio: "16/9", position: "relative", overflow: "hidden" }}>
               <NovelEngine
+                key={`preview-${previewKey}`}
                 script={script}
                 characters={characters}
                 bgStyles={bgStyles}
                 projectId={projectId}
+                initialStartIndex={previewStartIndex}
                 storyScenes={storyScenes}
                 bgmCatalog={bgmCatalog}
                 seCatalog={seCatalog}
@@ -524,10 +525,12 @@ export default function EditorScreen({ onBack, initialScript, projectId, project
                 </div>
                 <div style={{ position: "relative", width: "100%", aspectRatio: "16/9", overflow: "hidden" }}>
                   <NovelEngine
+                    key={`split-${previewKey}`}
                     script={script}
                     characters={characters}
                     bgStyles={bgStyles}
                     projectId={projectId}
+                    initialStartIndex={previewStartIndex}
                     storyScenes={storyScenes}
                     bgmCatalog={bgmCatalog}
                     seCatalog={seCatalog}
@@ -582,7 +585,7 @@ export default function EditorScreen({ onBack, initialScript, projectId, project
             ↪
           </button>
           <button
-            onClick={() => { const opening = !showSplitPreview; setShowSplitPreview(opening); if (opening) setTimeout(() => splitPreviewRef.current?.jumpTo(selectedIndex), 0); }}
+            onClick={() => { const opening = !showSplitPreview; setShowSplitPreview(opening); if (opening) jumpPreview(selectedIndex); }}
             style={{
               ...styles.headerBtn,
               ...(showSplitPreview ? { background: "rgba(200,180,140,0.15)", color: "#E8D4B0" } : {}),
@@ -633,9 +636,8 @@ export default function EditorScreen({ onBack, initialScript, projectId, project
               onSelectSceneChild={(sceneId, childIndex, parentIndex) => {
                 setSelectedSceneChild({ sceneId, childIndex });
                 if (showSplitPreview || activeTab === "preview") {
-                  // 親インデックス + シーン内オフセット（ラベル1つ分 + childIndex）
-                  previewRef.current?.jumpToSceneChild(parentIndex, childIndex);
-                  splitPreviewRef.current?.jumpToSceneChild(parentIndex, childIndex);
+                  // シーン内のコマンドにジャンプ（展開後のインデックスを計算）
+                  jumpPreview(parentIndex);
                 }
               }}
             />
