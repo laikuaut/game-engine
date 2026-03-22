@@ -248,12 +248,52 @@ const GAME_TYPE_TEMPLATES = {
     seCatalog: DEFAULT_SE_CATALOG,
     minigames: [],
   },
+  action: {
+    script: [
+      { type: "bg", src: "stage_1", transition: "fade" },
+      { type: "dialog", speaker: "", text: "アクションプロジェクト開始…" },
+    ],
+    characters: {},
+    bgStyles: DEFAULT_BG_STYLES,
+    bgmCatalog: DEFAULT_BGM_CATALOG,
+    seCatalog: DEFAULT_SE_CATALOG,
+    maps: [
+      {
+        name: "ステージ1",
+        width: 20,
+        height: 12,
+        tileSize: 32,
+        layers: [
+          {
+            name: "地形",
+            tiles: Array.from({ length: 12 }, () =>
+              Array.from({ length: 20 }, () => "grass")
+            ),
+          },
+          {
+            name: "オブジェクト",
+            tiles: Array.from({ length: 12 }, () =>
+              Array.from({ length: 20 }, () => null)
+            ),
+          },
+        ],
+        events: [],
+      },
+    ],
+    actionData: {
+      playerConfig: { speed: 4, jumpPower: 10, hp: 100 },
+      enemies: [],
+      stages: [],
+      items: [],
+    },
+  },
 };
 
 // ゲーム種別のラベル
 export const GAME_TYPE_LABELS = {
   novel: "ノベル",
   rpg: "RPG",
+  action: "アクション",
   minigame: "ミニゲーム",
 };
 

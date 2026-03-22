@@ -1,6 +1,7 @@
-# CLAUDE_json.md — ノベルゲームエンジン JSON データ作成ガイド
+# CLAUDE_json.md — ゲームエンジン JSON データ作成ガイド
 
-Claude Code でプロジェクトの JSON データ（シナリオ・キャラ・背景・BGM/SE・CG）を作成・編集するための仕様書。
+Claude Code でプロジェクトの JSON データ（シナリオ・キャラ・背景・BGM/SE・CG・アクション）を作成・編集するための仕様書。
+対応ゲーム種別: ノベル / RPG / アクション / ミニゲーム
 
 ---
 
@@ -423,3 +424,111 @@ data/projects/{プロジェクト名}/
 - **半角英数のみ**（日本語ファイル名は `file://` URLで問題を起こす）
 - BGM/SE の `name` も半角英数
 - 背景キーは日本語OK（`classroom_夕方` など）
+
+---
+
+## アクションゲーム（gameType: "action"）
+
+### actionData.json
+
+```json
+{
+  "playerConfig": {
+    "speed": 4,
+    "jumpPower": 10,
+    "hp": 100,
+    "gravity": 0.5,
+    "maxFallSpeed": 12,
+    "invincibleTime": 1000,
+    "sprites": {
+      "idle": "player_idle.png",
+      "run": "player_run.png",
+      "jump": "player_jump.png",
+      "attack": "player_attack.png"
+    },
+    "hitbox": { "width": 24, "height": 32 },
+    "attacks": [
+      { "name": "通常攻撃", "damage": 10, "range": 32, "cooldown": 300 }
+    ]
+  },
+  "enemies": [
+    {
+      "id": "slime",
+      "name": "スライム",
+      "hp": 30,
+      "damage": 10,
+      "speed": 1.5,
+      "behavior": "patrol",
+      "sprite": "enemy_slime.png",
+      "hitbox": { "width": 24, "height": 24 },
+      "drops": [{ "itemId": "coin", "chance": 0.5 }]
+    }
+  ],
+  "stages": [
+    {
+      "id": "stage_1",
+      "name": "草原ステージ",
+      "mapId": 0,
+      "bgm": "adventure",
+      "timeLimit": 180,
+      "clearCondition": "reach_goal",
+      "spawnPoint": { "x": 2, "y": 10 },
+      "goalPoint": { "x": 38, "y": 10 },
+      "enemyPlacements": [
+        { "enemyId": "slime", "x": 10, "y": 10 }
+      ],
+      "itemPlacements": [
+        { "itemId": "coin", "x": 5, "y": 8 }
+      ],
+      "events": [
+        { "trigger": "clear", "action": "novel", "sceneId": "stage_clear" }
+      ]
+    }
+  ],
+  "items": [
+    { "id": "coin", "name": "コイン", "type": "score", "value": 100 },
+    { "id": "heart", "name": "ハート", "type": "heal", "value": 20 }
+  ]
+}
+```
+
+### 敵behavior一覧
+
+| behavior | 動作 |
+|---|---|
+| `patrol` | 左右往復 |
+| `chase` | プレイヤー追跡 |
+| `fly_sine` | 正弦波で飛行 |
+| `stationary` | 固定（砲台等） |
+| `boss` | ボス（専用AI） |
+
+### clearCondition一覧
+
+| 条件 | 説明 |
+|---|---|
+| `reach_goal` | ゴール地点到達 |
+| `defeat_all` | 全敵撃破 |
+| `defeat_boss` | ボス撃破 |
+| `survive` | 制限時間生存 |
+| `collect_all` | 全アイテム収集 |
+
+### ノベルパート連携コマンド
+
+```json
+{ "type": "action_stage", "stageId": "stage_1" }
+```
+
+script.json でノベルとアクションを交互に配置:
+```json
+[
+  { "type": "scene", "sceneId": "prologue" },
+  { "type": "action_stage", "stageId": "stage_1" },
+  { "type": "scene", "sceneId": "after_stage1" },
+  { "type": "action_stage", "stageId": "stage_2" },
+  { "type": "scene", "sceneId": "ending" }
+]
+```
+
+### 詳細設計
+
+`doujin-engine/docs/design/action-pipeline.md` を参照。

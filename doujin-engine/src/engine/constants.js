@@ -23,6 +23,7 @@ export const CMD = {
   NVL_OFF: "nvl_off",
   NVL_CLEAR: "nvl_clear",
   SCENE: "scene",
+  ACTION_STAGE: "action_stage",
 };
 
 // アクションタイプ定数

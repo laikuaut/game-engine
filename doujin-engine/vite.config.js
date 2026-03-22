@@ -7,7 +7,7 @@ import path from 'path'
 // 開発サーバー用: data/projects へのファイル保存API（ジャンル別分割対応）
 function projectApiPlugin() {
   const projectsDir = path.resolve(__dirname, 'data', 'projects')
-  const DATA_FILES = ['script', 'characters', 'items', 'gameEvents', 'bgStyles', 'maps', 'customTiles', 'battleData', 'minigames', 'saves', 'bgmCatalog', 'seCatalog', 'cgCatalog', 'sceneCatalog', 'storyScenes', 'sceneOrder']
+  const DATA_FILES = ['script', 'characters', 'items', 'gameEvents', 'bgStyles', 'maps', 'customTiles', 'battleData', 'actionData', 'minigames', 'saves', 'bgmCatalog', 'seCatalog', 'cgCatalog', 'sceneCatalog', 'storyScenes', 'sceneOrder']
 
   function ensureDir(dir) {
     if (!fs.existsSync(dir || projectsDir)) {
@@ -379,6 +379,7 @@ function projectApiPlugin() {
             maps: project.maps || [],
             customTiles: project.customTiles || [],
             battleData: project.battleData || {},
+            actionData: project.actionData || {},
             minigames: project.minigames || [],
             cgCatalog: project.cgCatalog || [],
             sceneCatalog: project.sceneCatalog || [],

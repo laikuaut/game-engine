@@ -158,7 +158,7 @@ function writeProjectsIndex(projects) {
 
 // --- ジャンル別ファイル分割ヘルパー ---
 // プロジェクトのデータファイル定義
-const DATA_FILES = ["script", "characters", "items", "gameEvents", "bgStyles", "maps", "customTiles", "battleData", "minigames", "saves", "bgmCatalog", "seCatalog", "cgCatalog", "sceneCatalog", "storyScenes", "sceneOrder"];
+const DATA_FILES = ["script", "characters", "items", "gameEvents", "bgStyles", "maps", "customTiles", "battleData", "actionData", "minigames", "saves", "bgmCatalog", "seCatalog", "cgCatalog", "sceneCatalog", "storyScenes", "sceneOrder"];
 
 // プロジェクト名をディレクトリ名に変換（ファイルシステム安全化）
 function toSafeDirName(name) {
@@ -431,6 +431,7 @@ ipcMain.handle("export-game", async (event, projectId) => {
       maps: project.maps || [],
       customTiles: project.customTiles || [],
       battleData: project.battleData || {},
+      actionData: project.actionData || {},
       minigames: project.minigames || [],
       cgCatalog: project.cgCatalog || [],
       sceneCatalog: project.sceneCatalog || [],

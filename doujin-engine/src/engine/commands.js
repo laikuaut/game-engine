@@ -299,6 +299,9 @@ export function processCommand(script, index, dispatch, labelMap) {
         });
         log("processCommand: effect ブロッキング at index", i, ", name =", cmd.name);
         return { index: i, blocking: "effect" };
+      case CMD.ACTION_STAGE:
+        log("processCommand: action_stage ブロッキング at index", i, ", stageId =", cmd.stageId);
+        return { index: i, blocking: "action_stage" };
       default:
         log("processCommand: 未知のコマンド型 →", cmd.type, "at index", i);
         break;

@@ -19,6 +19,7 @@ import {
 const BADGE_COLORS = {
   novel: { bg: "rgba(200,180,140,0.12)", text: "#C8A870", border: "rgba(200,180,140,0.3)" },
   rpg: { bg: "rgba(100,180,255,0.12)", text: "#64B4FF", border: "rgba(100,180,255,0.3)" },
+  action: { bg: "rgba(255,140,100,0.12)", text: "#FF8C64", border: "rgba(255,140,100,0.3)" },
   minigame: { bg: "rgba(140,220,140,0.12)", text: "#8CDC8C", border: "rgba(140,220,140,0.3)" },
 };
 

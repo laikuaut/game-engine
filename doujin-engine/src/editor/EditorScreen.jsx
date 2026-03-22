@@ -46,6 +46,7 @@ const TABS = [
   { id: "flow",     label: "フロー",     group: "novel" },
   { id: "map",      label: "マップ",     group: "rpg" },
   { id: "battle",   label: "バトル",     group: "rpg" },
+  { id: "action",   label: "アクション", group: "action" },
   { id: "minigame", label: "ミニゲーム", group: "extra" },
   { id: "preview",  label: "プレビュー", group: "tool" },
   { id: "debug",    label: "DEBUG",      group: "tool" },
@@ -57,6 +58,7 @@ const TABS = [
 const TAB_GROUPS = {
   novel: ["novel", "tool"],
   rpg: ["novel", "rpg", "tool"],
+  action: ["novel", "rpg", "action", "tool"],
   minigame: ["novel", "extra", "tool"],
 };
 
@@ -482,6 +484,27 @@ export default function EditorScreen({ onBack, initialScript, projectId, project
         );
       case "deploy":
         return <DeployPanel projectId={projectId} projectName={projectName} />;
+      case "action":
+        return (
+          <div style={{ padding: 20, color: "#ccc" }}>
+            <h3 style={{ color: "#FF8C64", marginBottom: 12 }}>アクションステージ設定</h3>
+            <p style={{ fontSize: 12, color: "#888", marginBottom: 16 }}>
+              マップタブでステージマップを作成し、ここでプレイヤー・敵・アイテムを設定します。
+            </p>
+            <div style={{ background: "rgba(255,140,100,0.08)", border: "1px solid rgba(255,140,100,0.2)", borderRadius: 6, padding: 16 }}>
+              <pre style={{ fontSize: 11, color: "#aaa", margin: 0, whiteSpace: "pre-wrap" }}>
+{JSON.stringify({
+  playerConfig: { speed: 4, jumpPower: 10, hp: 100 },
+  enemies: "（マップタブで敵タイルを配置）",
+  stages: "（ステージ定義をここで管理）",
+}, null, 2)}
+              </pre>
+            </div>
+            <p style={{ fontSize: 10, color: "#555", marginTop: 12 }}>
+              ※ アクションエンジンは開発中です。プレビュータブでテストプレイ可能になる予定です。
+            </p>
+          </div>
+        );
       case "script":
       default: {
         // シーン子コマンドの解決

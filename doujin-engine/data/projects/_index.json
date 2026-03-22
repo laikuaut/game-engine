@@ -58,5 +58,17 @@
     "scriptLength": 5,
     "mapCount": 0,
     "minigameCount": 0
+  },
+  {
+    "id": "mn17ets5r6jg6o",
+    "name": "aaaa",
+    "dirName": "aaaa",
+    "description": "",
+    "gameType": "action",
+    "createdAt": "2026-03-22T03:35:19.109Z",
+    "updatedAt": "2026-03-22T03:35:19.109Z",
+    "scriptLength": 2,
+    "mapCount": 1,
+    "minigameCount": 0
   }
 ]
