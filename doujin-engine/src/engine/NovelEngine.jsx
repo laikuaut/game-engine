@@ -48,6 +48,7 @@ export default function NovelEngine({ script, characters, bgStyles, onBack, proj
   const autoRef = useRef(null);
   const waitRef = useRef(null);
   const skipRef = useRef(null);
+  const actionBlockingRef = useRef(false);
   const [showHelp, setShowHelp] = useState(false);
   const fullTextRef = useRef("");
   const containerRef = useRef(null);
@@ -93,14 +94,16 @@ export default function NovelEngine({ script, characters, bgStyles, onBack, proj
         const cmd = scriptRef.current[index];
         log("action_stage ブロッキング: stageId =", cmd?.stageId);
         dispatch({ type: ACTION.SET_SCRIPT_INDEX, payload: index });
+        actionBlockingRef.current = true;
         if (onActionStage) {
           onActionStage(cmd.stageId, () => {
             log("action_stage 完了, 次へ →", index + 1);
+            actionBlockingRef.current = false;
             proceedFrom(index + 1);
           });
         } else {
-          // onActionStageが未設定の場合はスキップ
           log("action_stage: handler未設定, スキップ");
+          actionBlockingRef.current = false;
           proceedFrom(index + 1);
         }
         return;
@@ -188,6 +191,10 @@ export default function NovelEngine({ script, characters, bgStyles, onBack, proj
 
   // テキスト送り
   const advance = useCallback(() => {
+    if (actionBlockingRef.current) {
+      log("advance: action_stage ブロッキング中のためスキップ");
+      return;
+    }
     if (state.showChoice || state.showBacklog || state.showConfig || state.showSaveLoad) {
       log("advance: UI表示中のためスキップ (choice:", state.showChoice, ", backlog:", state.showBacklog, ", config:", state.showConfig, ", saveLoad:", state.showSaveLoad, ")");
       return;
@@ -362,6 +369,8 @@ export default function NovelEngine({ script, characters, bgStyles, onBack, proj
   // キーボード操作
   useEffect(() => {
     const onKeyDown = (e) => {
+      // アクションステージ中はNovelEngineのキー入力を無視
+      if (actionBlockingRef.current) return;
       if (e.key === "Control") {
         dispatch({ type: ACTION.SET_CTRL_PRESSED, payload: true });
       }

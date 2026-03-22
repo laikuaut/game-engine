@@ -23,9 +23,11 @@ export function useActionInput() {
     };
 
     const onKeyDown = (e) => {
+      if (e.repeat) return;
       const action = keyMap[e.key];
       if (action) {
         e.preventDefault();
+        e.stopPropagation();
         inputRef.current[action] = true;
       }
     };
@@ -33,12 +35,14 @@ export function useActionInput() {
     const onKeyUp = (e) => {
       const action = keyMap[e.key];
       if (action) {
+        e.stopPropagation();
         inputRef.current[action] = false;
       }
     };
 
-    window.addEventListener("keydown", onKeyDown);
-    window.addEventListener("keyup", onKeyUp);
+    // captureフェーズでNovelEngineより先にイベントを処理
+    window.addEventListener("keydown", onKeyDown, true);
+    window.addEventListener("keyup", onKeyUp, true);
 
     // ゲームパッド対応（ポーリング）
     let gamepadRaf;
@@ -59,8 +63,8 @@ export function useActionInput() {
     gamepadRaf = requestAnimationFrame(pollGamepad);
 
     return () => {
-      window.removeEventListener("keydown", onKeyDown);
-      window.removeEventListener("keyup", onKeyUp);
+      window.removeEventListener("keydown", onKeyDown, true);
+      window.removeEventListener("keyup", onKeyUp, true);
       cancelAnimationFrame(gamepadRaf);
     };
   }, []);
