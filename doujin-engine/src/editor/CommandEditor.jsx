@@ -58,9 +58,9 @@ const FIELD_DEFS = {
     { key: "sceneId", label: "シーン", type: "scene_select", autocomplete: "scenes" },
   ],
   [CMD.CG]: [
-    { key: "id", label: "CG ID", type: "text", placeholder: "cg01" },
-    { key: "src", label: "画像ファイル", type: "text", placeholder: "event_cg_01.png" },
+    { key: "id", label: "CG", type: "catalog_select", placeholder: "CGを選択", autocomplete: "cgIds" },
   ],
+  [CMD.CG_HIDE]: [],
   [CMD.NVL_ON]: [],
   [CMD.NVL_OFF]: [],
   [CMD.NVL_CLEAR]: [],
@@ -504,7 +504,7 @@ function AudioPreview({ command, projectId, bgmCatalog, seCatalog }) {
   );
 }
 
-export default function CommandEditor({ command, index, onChange, characters, script, storyScenes, projectId, bgmCatalog, seCatalog, bgStyles }) {
+export default function CommandEditor({ command, index, onChange, characters, script, storyScenes, projectId, bgmCatalog, seCatalog, bgStyles, cgCatalog }) {
   const fields = FIELD_DEFS[command.type] || [];
 
   // オートコンプリート候補を構築
@@ -556,8 +556,11 @@ export default function CommandEditor({ command, index, onChange, characters, sc
     // 背景キー一覧
     map.bgKeys = Object.keys(bgStyles || {});
 
+    // CG ID一覧（カタログから）
+    map.cgIds = (cgCatalog || []).map((cg) => cg.id).filter(Boolean);
+
     return map;
-  }, [characters, command.id, script, storyScenes, bgmCatalog, seCatalog, bgStyles]);
+  }, [characters, command.id, script, storyScenes, bgmCatalog, seCatalog, bgStyles, cgCatalog]);
 
   return (
     <div>

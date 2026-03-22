@@ -7,9 +7,10 @@ export default function CharacterEditor({ characters, onUpdateCharacters, projec
   const [newId, setNewId] = useState("");
   const [newExprKey, setNewExprKey] = useState("");
   const [newExprVal, setNewExprVal] = useState("");
-  const [uploading, setUploading] = useState(null); // アップロード中の表情キー
+  const [uploading, setUploading] = useState(null);
+  const [previewExpr, setPreviewExpr] = useState(null);
   const fileInputRef = useRef(null);
-  const [uploadTarget, setUploadTarget] = useState(null); // { exprKey }
+  const [uploadTarget, setUploadTarget] = useState(null);
 
   const charEntries = Object.entries(characters || {});
   const selected = selectedId ? characters[selectedId] : null;
@@ -101,21 +102,11 @@ export default function CharacterEditor({ characters, onUpdateCharacters, projec
     setSelectedId(newIdVal);
   };
 
-  // 画像アップロード開始
-  const startUpload = (exprKey) => {
-    setUploadTarget({ exprKey });
-    fileInputRef.current?.click();
-  };
-
-  // ファイル選択時のハンドラ
-  const handleFileSelect = useCallback(async (e) => {
-    const file = e.target.files?.[0];
-    if (!file || !uploadTarget || !selectedId || !projectId) return;
-
-    const { exprKey } = uploadTarget;
+  // 画像アップロード（共通処理）
+  const uploadSpriteFile = useCallback(async (file, exprKey) => {
+    if (!file || !selectedId || !projectId) return;
     setUploading(exprKey);
     try {
-      // ファイル名: {charaId}_{expression}.{ext}
       const ext = file.name.split(".").pop();
       const uploadName = `${selectedId}_${exprKey}.${ext}`;
       const renamedFile = new File([file], uploadName, { type: file.type });
@@ -128,10 +119,35 @@ export default function CharacterEditor({ characters, onUpdateCharacters, projec
       console.error("アップロード失敗:", err);
     } finally {
       setUploading(null);
-      setUploadTarget(null);
-      e.target.value = "";
     }
-  }, [uploadTarget, selectedId, projectId, selected, updateField]);
+  }, [selectedId, projectId, selected, updateField]);
+
+  // ボタンクリックでアップロード
+  const startUpload = (exprKey) => {
+    setUploadTarget({ exprKey });
+    fileInputRef.current?.click();
+  };
+
+  // ファイル選択時のハンドラ
+  const handleFileSelect = useCallback(async (e) => {
+    const file = e.target.files?.[0];
+    if (!file || !uploadTarget) return;
+    await uploadSpriteFile(file, uploadTarget.exprKey);
+    setUploadTarget(null);
+    e.target.value = "";
+  }, [uploadTarget, uploadSpriteFile]);
+
+  // ドラッグ&ドロップハンドラ
+  const handleDrop = useCallback((e, exprKey) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const file = e.dataTransfer?.files?.[0];
+    if (file && /\.(png|jpg|jpeg|webp|gif)$/i.test(file.name)) {
+      uploadSpriteFile(file, exprKey);
+    }
+  }, [uploadSpriteFile]);
+
+  const handleDragOver = (e) => { e.preventDefault(); e.stopPropagation(); };
 
   // スプライト画像を削除
   const removeSpriteImage = async (exprKey) => {
@@ -286,7 +302,12 @@ export default function CharacterEditor({ characters, onUpdateCharacters, projec
                 const spriteFile = selected.sprites?.[key];
                 const spriteUrl = getSpriteUrl(spriteFile);
                 return (
-                  <div key={key} style={styles.exprCard}>
+                  <div
+                    key={key}
+                    style={styles.exprCard}
+                    onDrop={(e) => handleDrop(e, key)}
+                    onDragOver={handleDragOver}
+                  >
                     <div style={styles.exprCardHeader}>
                       <span style={styles.exprKey}>{key}</span>
                       <input
@@ -316,14 +337,14 @@ export default function CharacterEditor({ characters, onUpdateCharacters, projec
                           </button>
                         </div>
                       ) : (
-                        <div style={styles.spriteEmpty}>画像なし</div>
+                        <div style={styles.dropZone}>D&D or クリック</div>
                       )}
                       <button
                         onClick={() => startUpload(key)}
                         disabled={uploading === key}
                         style={styles.uploadBtn}
                       >
-                        {uploading === key ? "アップロード中..." : spriteUrl ? "画像を変更" : "立ち絵を設定"}
+                        {uploading === key ? "..." : spriteUrl ? "変更" : "設定"}
                       </button>
                     </div>
                   </div>
@@ -351,53 +372,54 @@ export default function CharacterEditor({ characters, onUpdateCharacters, projec
             {/* プレビュー */}
             <div style={styles.section}>
               <div style={styles.sectionTitle}>プレビュー</div>
-              <div style={styles.preview}>
+              {/* 表情切替ボタン */}
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: 8 }}>
+                {Object.keys(selected.expressions || {}).map((key) => {
+                  const hasSprite = !!selected.sprites?.[key];
+                  return (
+                    <button
+                      key={key}
+                      onClick={() => setPreviewExpr(key)}
+                      style={{
+                        ...styles.previewExprBtn,
+                        ...(previewExpr === key ? styles.previewExprBtnActive : {}),
+                        opacity: hasSprite ? 1 : 0.5,
+                      }}
+                    >
+                      {key}
+                    </button>
+                  );
+                })}
+              </div>
+              {/* 大きなプレビュー画像 */}
+              <div style={styles.largePreview}>
                 {(() => {
-                  const firstExpr = Object.keys(selected.expressions || {})[0];
-                  const firstSprite = firstExpr && selected.sprites?.[firstExpr];
-                  const spriteUrl = getSpriteUrl(firstSprite);
+                  const expr = previewExpr || Object.keys(selected.expressions || {})[0];
+                  const spriteFile = selected.sprites?.[expr];
+                  const spriteUrl = getSpriteUrl(spriteFile);
                   if (spriteUrl) {
                     return (
-                      <div style={{
-                        width: 120, height: 200, borderRadius: 8, overflow: "hidden",
-                        border: `2px solid ${selected.color}99`,
-                        position: "relative",
-                      }}>
-                        <img src={spriteUrl} alt="" style={{
-                          width: "100%", height: "100%", objectFit: "cover",
-                        }} />
-                        <span style={{
-                          position: "absolute", bottom: 4, left: "50%", transform: "translateX(-50%)",
-                          fontSize: 10, color: "#fff",
-                          background: "rgba(0,0,0,0.5)", padding: "2px 8px", borderRadius: 8,
-                          whiteSpace: "nowrap",
-                        }}>
-                          {selected.name}
-                        </span>
-                      </div>
+                      <img src={spriteUrl} alt={`${selected.name} ${expr}`} style={styles.largePreviewImg}
+                        onError={(e) => { e.target.style.display = "none"; }} />
                     );
                   }
                   return (
                     <div style={{
-                      width: 100, height: 160,
-                      borderRadius: "50px 50px 16px 16px",
-                      background: `linear-gradient(180deg, ${selected.color}88, ${selected.color}44)`,
-                      border: `2px solid ${selected.color}99`,
                       display: "flex", alignItems: "center", justifyContent: "center",
-                      flexDirection: "column",
+                      flexDirection: "column", height: "100%",
                     }}>
-                      <span style={{ fontSize: 40 }}>
-                        {Object.values(selected.expressions || {})[0] || "🙂"}
+                      <span style={{ fontSize: 64 }}>
+                        {selected.expressions?.[expr] || "🙂"}
                       </span>
-                      <span style={{
-                        fontSize: 10, color: "#fff", marginTop: 6,
-                        background: "rgba(0,0,0,0.4)", padding: "2px 8px", borderRadius: 8,
-                      }}>
-                        {selected.name}
-                      </span>
+                      <span style={{ fontSize: 12, color: "#888", marginTop: 8 }}>{expr || "—"}</span>
                     </div>
                   );
                 })()}
+                <div style={styles.largePreviewLabel}>
+                  <span style={{ background: selected.color + "44", padding: "2px 10px", borderRadius: 8 }}>
+                    {selected.name}
+                  </span>
+                </div>
               </div>
             </div>
 
@@ -500,6 +522,13 @@ const styles = {
     display: "flex", alignItems: "center", justifyContent: "center",
     padding: 0, lineHeight: 1,
   },
+  dropZone: {
+    width: 64, height: 80, borderRadius: 4,
+    border: "2px dashed rgba(200,180,140,0.3)",
+    display: "flex", alignItems: "center", justifyContent: "center",
+    color: "#888", fontSize: 9, flexShrink: 0, textAlign: "center",
+    cursor: "pointer",
+  },
   spriteEmpty: {
     width: 64, height: 80, borderRadius: 4,
     border: "1px dashed rgba(255,255,255,0.15)",
@@ -538,6 +567,28 @@ const styles = {
   preview: {
     display: "flex", justifyContent: "center", padding: 16,
     background: "rgba(0,0,0,0.3)", borderRadius: 6,
+  },
+  previewExprBtn: {
+    background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)",
+    color: "#aaa", padding: "2px 8px", borderRadius: 3,
+    fontSize: 10, cursor: "pointer", fontFamily: "inherit",
+  },
+  previewExprBtnActive: {
+    background: "rgba(200,180,140,0.2)", borderColor: "rgba(200,180,140,0.4)",
+    color: "#E8D4B0",
+  },
+  largePreview: {
+    position: "relative", width: "100%", maxWidth: 300,
+    aspectRatio: "3/5", borderRadius: 8, overflow: "hidden",
+    background: "rgba(0,0,0,0.4)", border: "1px solid rgba(255,255,255,0.08)",
+    display: "flex", alignItems: "center", justifyContent: "center",
+  },
+  largePreviewImg: {
+    width: "100%", height: "100%", objectFit: "contain",
+  },
+  largePreviewLabel: {
+    position: "absolute", bottom: 8, left: "50%", transform: "translateX(-50%)",
+    fontSize: 11, color: "#fff", whiteSpace: "nowrap",
   },
   empty: {
     color: "#555", fontSize: 13, textAlign: "center", marginTop: 40,

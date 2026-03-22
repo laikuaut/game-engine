@@ -26,12 +26,18 @@ function log(...args) {
   if (DEBUG) console.log("[NovelEngine]", ...args);
 }
 
-export default function NovelEngine({ script, characters, bgStyles, onBack, projectId, startLabel, initialStartIndex = 0, initialConfig, onConfigChange, storyScenes, bgmCatalog, seCatalog }) {
+export default function NovelEngine({ script, characters, bgStyles, onBack, projectId, startLabel, initialStartIndex = 0, initialConfig, onConfigChange, storyScenes, bgmCatalog, seCatalog, cgCatalog }) {
   // シーン参照を展開してフラットなスクリプトに変換
   const SCRIPT = useMemo(
     () => expandScenes(script || DEFAULT_SCRIPT, storyScenes),
     [script, storyScenes]
   );
+  // CG ID → src 解決マップ
+  const cgMap = useMemo(() => {
+    const map = {};
+    (cgCatalog || []).forEach((cg) => { map[cg.id] = cg.src; });
+    return map;
+  }, [cgCatalog]);
   const [state, dispatch] = useReducer(engineReducer, {
     ...initialState,
     ...(initialConfig ? {
@@ -89,11 +95,6 @@ export default function NovelEngine({ script, characters, bgStyles, onBack, proj
         return;
       }
 
-      if (blocking === "cg") {
-        log("CG 表示中, クリック待ち");
-        dispatch({ type: ACTION.SET_SCRIPT_INDEX, payload: index });
-        return;
-      }
 
       // blocking なし → dialog or choice or スクリプト終端
       if (index >= scriptRef.current.length) {
@@ -182,14 +183,7 @@ export default function NovelEngine({ script, characters, bgStyles, onBack, proj
       return;
     }
 
-    // CG 表示中 → 閉じて次へ
-    if (state.showCG) {
-      log("advance: CG 閉じる →", state.showCG.id);
-      unlockCG("cg", state.showCG.id);
-      dispatch({ type: ACTION.HIDE_CG });
-      proceedFrom(state.scriptIndex + 1);
-      return;
-    }
+    // CG は cg_hide コマンドで明示的に閉じる（ブロッキングしない）
 
     // wait 中のクリック → 即座にスキップ
     if (state.isWaiting) {
@@ -496,32 +490,29 @@ export default function NovelEngine({ script, characters, bgStyles, onBack, proj
         )}
       </div>
 
-      {/* CG オーバーレイ */}
+      {/* CG レイヤー（背景の上、テキストボックスの下） */}
       {state.showCG && (
         <div style={{
-          position: "absolute", inset: 0, zIndex: 45,
-          background: "rgba(0,0,0,0.9)",
+          position: "absolute", inset: 0, zIndex: 5,
           display: "flex", alignItems: "center", justifyContent: "center",
-          cursor: "pointer",
         }}>
-          <img
-            src={getAssetUrl(projectId, "cg", state.showCG.src) || `./assets/${state.showCG.src}`}
-            alt=""
-            style={{ maxWidth: "95%", maxHeight: "95%", objectFit: "contain" }}
-            onError={(e) => {
-              e.target.style.display = "none";
-              e.target.parentNode.querySelector("span") && (e.target.parentNode.querySelector("span").style.display = "block");
-            }}
-          />
+          {(() => {
+            const cgSrc = cgMap[state.showCG.id] || state.showCG.src;
+            return cgSrc ? (
+              <img
+                src={getAssetUrl(projectId, "cg", cgSrc) || `./assets/${cgSrc}`}
+                alt=""
+                style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                onError={(e) => {
+                  e.target.style.display = "none";
+                  e.target.parentNode.querySelector("span") && (e.target.parentNode.querySelector("span").style.display = "block");
+                }}
+              />
+            ) : null;
+          })()}
           <span style={{ display: "none", color: "#888", fontSize: 14 }}>
-            CG: {state.showCG.id} ({state.showCG.src})
+            CG: {state.showCG.id}
           </span>
-          <div style={{
-            position: "absolute", bottom: 20, right: 20,
-            color: "rgba(255,255,255,0.4)", fontSize: 12,
-          }}>
-            Click to continue
-          </div>
         </div>
       )}
 

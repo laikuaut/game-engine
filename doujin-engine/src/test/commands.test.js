@@ -109,13 +109,27 @@ describe("processCommand", () => {
     expect(result.blocking).toBe("effect");
   });
 
-  it("cg で blocking を返す", () => {
+  it("cg はレイヤー表示（非ブロッキング）、cg_hide で非表示", () => {
     const dispatch = vi.fn();
     const script = [
-      { type: "cg", id: "ev01", src: "cg/ev01.png" },
+      { type: "cg", id: "ev01" },
+      { type: "dialog", speaker: "", text: "CG表示中のテキスト" },
     ];
     const result = processCommand(script, 0, dispatch, {});
-    expect(result.blocking).toBe("cg");
+    // cg は非ブロッキング → 次の dialog まで進む
+    expect(result.blocking).toBeNull();
+    expect(result.index).toBe(1);
+    expect(dispatch).toHaveBeenCalledWith(expect.objectContaining({ type: "SHOW_CG" }));
+
+    // cg_hide で HIDE_CG が dispatch される
+    const dispatch2 = vi.fn();
+    const script2 = [
+      { type: "cg_hide" },
+      { type: "dialog", speaker: "", text: "CG閉じた" },
+    ];
+    const result2 = processCommand(script2, 0, dispatch2, {});
+    expect(dispatch2).toHaveBeenCalledWith({ type: "HIDE_CG" });
+    expect(result2.index).toBe(1);
   });
 
   it("bgm_stop を処理する", () => {

@@ -18,6 +18,7 @@ export const CMD = {
   JUMP: "jump",
   LABEL: "label",
   CG: "cg",
+  CG_HIDE: "cg_hide",
   NVL_ON: "nvl_on",
   NVL_OFF: "nvl_off",
   NVL_CLEAR: "nvl_clear",

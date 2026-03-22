@@ -18,6 +18,8 @@ export default function CGCatalogEditor({ catalog, onUpdateCatalog, script, proj
   const mainFileRef = useRef(null);
   const variantFileRef = useRef(null);
 
+  const [fullscreenImg, setFullscreenImg] = useState(null);
+
   const items = catalog || [];
   const selected = selectedIndex !== null ? items[selectedIndex] : null;
 
@@ -102,6 +104,17 @@ export default function CGCatalogEditor({ catalog, onUpdateCatalog, script, proj
     next[selectedIndex] = { ...next[selectedIndex], [field]: value };
     onUpdateCatalog(next);
   };
+
+  // ドラッグ&ドロップハンドラ
+  const handleDrop = (e, field) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const file = e.dataTransfer?.files?.[0];
+    if (file && /\.(png|jpg|jpeg|webp|gif)$/i.test(file.name)) {
+      handleUpload(file, field);
+    }
+  };
+  const handleDragOver = (e) => { e.preventDefault(); e.stopPropagation(); };
 
   // 画像アップロード
   const handleUpload = async (file, field) => {
@@ -278,8 +291,11 @@ export default function CGCatalogEditor({ catalog, onUpdateCatalog, script, proj
               </datalist>
             </div>
 
-            <div style={styles.section}>
+            <div style={styles.section} onDrop={(e) => handleDrop(e, "src")} onDragOver={handleDragOver}>
               <div style={styles.sectionTitle}>メイン画像</div>
+              {!selected.src && (
+                <div style={styles.dropZone}>画像をドラッグ&ドロップ</div>
+              )}
               <div style={styles.uploadRow}>
                 <input
                   value={selected.src || ""}
@@ -305,11 +321,15 @@ export default function CGCatalogEditor({ catalog, onUpdateCatalog, script, proj
               </div>
               {/* プレビュー */}
               {selected.src && (
-                <div style={styles.previewBox}>
+                <div
+                  style={styles.largePreviewBox}
+                  onClick={() => setFullscreenImg(resolveImageUrl(selected.src))}
+                  title="クリックで拡大"
+                >
                   <img
                     src={resolveImageUrl(selected.src)}
                     alt=""
-                    style={styles.previewImg}
+                    style={styles.largePreviewImg}
                     onError={(e) => { e.target.style.display = "none"; }}
                   />
                 </div>
@@ -424,6 +444,17 @@ export default function CGCatalogEditor({ catalog, onUpdateCatalog, script, proj
           </div>
         )}
       </div>
+
+      {/* フルスクリーンプレビュー */}
+      {fullscreenImg && (
+        <div
+          onClick={() => setFullscreenImg(null)}
+          style={styles.fullscreenOverlay}
+        >
+          <img src={fullscreenImg} alt="" style={styles.fullscreenImg} />
+          <div style={styles.fullscreenHint}>クリックで閉じる</div>
+        </div>
+      )}
     </div>
   );
 }
@@ -544,5 +575,31 @@ const styles = {
   },
   optionStyle: { background: "#1a1a2e", color: "#E8E4DC" },
   hint: { fontSize: 10, color: "#666", marginTop: 6, fontStyle: "italic" },
+  dropZone: {
+    border: "2px dashed rgba(200,180,140,0.3)",
+    borderRadius: 6, padding: "20px 0", textAlign: "center",
+    color: "#888", fontSize: 12, marginBottom: 8, cursor: "pointer",
+  },
+  largePreviewBox: {
+    marginTop: 8, borderRadius: 6, overflow: "hidden",
+    border: "1px solid rgba(255,255,255,0.08)",
+    cursor: "pointer", maxWidth: "100%",
+    background: "rgba(0,0,0,0.3)",
+  },
+  largePreviewImg: {
+    width: "100%", display: "block", maxHeight: 300, objectFit: "contain",
+  },
+  fullscreenOverlay: {
+    position: "fixed", inset: 0, zIndex: 1000,
+    background: "rgba(0,0,0,0.95)",
+    display: "flex", alignItems: "center", justifyContent: "center",
+    flexDirection: "column", cursor: "pointer",
+  },
+  fullscreenImg: {
+    maxWidth: "90%", maxHeight: "85%", objectFit: "contain",
+  },
+  fullscreenHint: {
+    color: "rgba(255,255,255,0.3)", fontSize: 12, marginTop: 12,
+  },
   empty: { color: "#555", fontSize: 13, textAlign: "center", marginTop: 40 },
 };

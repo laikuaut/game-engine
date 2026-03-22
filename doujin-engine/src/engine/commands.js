@@ -178,6 +178,7 @@ function cmdStr(cmd) {
     case CMD.JUMP: return `jump[→ ${cmd.target}]`;
     case CMD.LABEL: return `label[${cmd.name}]`;
     case CMD.CG: return `cg[${cmd.id}]`;
+    case CMD.CG_HIDE: return `cg_hide`;
     case CMD.NVL_ON: return "nvl_on";
     case CMD.NVL_OFF: return "nvl_off";
     case CMD.NVL_CLEAR: return "nvl_clear";
@@ -271,9 +272,13 @@ export function processCommand(script, index, dispatch, labelMap) {
         dispatch({ type: ACTION.CLEAR_NVL });
         break;
       case CMD.CG:
-        dispatch({ type: ACTION.SHOW_CG, payload: { id: cmd.id, src: cmd.src } });
-        log("processCommand: CG ブロッキング at index", i);
-        return { index: i, blocking: "cg" };
+        dispatch({ type: ACTION.SHOW_CG, payload: { id: cmd.id } });
+        log("processCommand: CG 表示（レイヤー）at index", i);
+        break;
+      case CMD.CG_HIDE:
+        dispatch({ type: ACTION.HIDE_CG });
+        log("processCommand: CG 非表示 at index", i);
+        break;
       case CMD.WAIT:
         dispatch({ type: ACTION.START_WAIT });
         log("processCommand: wait ブロッキング at index", i, ", time =", cmd.time);

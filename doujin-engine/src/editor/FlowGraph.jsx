@@ -149,7 +149,8 @@ export default function FlowGraph({ script, storyScenes }) {
       case CMD.NVL_ON:   return { icon: "📖", label: "NVL ON", detail: "", color: "#A5D6A7" };
       case CMD.NVL_OFF:  return { icon: "📖", label: "NVL OFF", detail: "", color: "#A5D6A7" };
       case CMD.NVL_CLEAR:return { icon: "📖", label: "NVL CLR", detail: "", color: "#A5D6A7" };
-      case CMD.CG:       return { icon: "🖼", label: "CG", detail: cmd.id, color: "#F48FB1" };
+      case CMD.CG:       return { icon: "🖼", label: "CG表示", detail: cmd.id, color: "#F48FB1" };
+      case CMD.CG_HIDE:  return { icon: "🖼", label: "CG非表示", detail: "", color: "#F48FB1" };
       default:           return { icon: "?", label: cmd.type, detail: "", color: "#888" };
     }
   };

@@ -1,5 +1,6 @@
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { CMD } from "../engine/constants";
+import { expandScenes } from "../engine/commands";
 import { updateProject, getProject, getAssetUrl } from "../project/ProjectStore";
 import ScriptList from "./ScriptList";
 import CommandEditor from "./CommandEditor";
@@ -88,10 +89,41 @@ export default function EditorScreen({ onBack, initialScript, projectId, project
   const [showSplitPreview, setShowSplitPreview] = useState(false);
   const [previewStartIndex, setPreviewStartIndex] = useState(0);
   const [previewKey, setPreviewKey] = useState(0);
-  const jumpPreview = useCallback((i) => {
-    setPreviewStartIndex(i);
+
+  // 展開前インデックス → 展開後インデックスのマッピング
+  const expandedIndexMap = useMemo(() => {
+    const sceneMap = {};
+    (storyScenes || []).forEach((s) => { sceneMap[s.id] = s; });
+    const map = []; // map[展開前i] = 展開後i
+    let expanded = 0;
+    for (let i = 0; i < script.length; i++) {
+      map[i] = expanded;
+      const cmd = script[i];
+      if (cmd.type === CMD.SCENE) {
+        const scene = sceneMap[cmd.sceneId];
+        expanded += 1 + (scene?.commands?.length || 0); // label + commands
+      } else {
+        expanded += 1;
+      }
+    }
+    return map;
+  }, [script, storyScenes]);
+
+  // シーン内のコマンドの展開後インデックスを計算
+  const getExpandedSceneChildIndex = useCallback((parentIndex, childIndex) => {
+    return (expandedIndexMap[parentIndex] || 0) + 1 + childIndex; // +1 for label
+  }, [expandedIndexMap]);
+
+  const jumpPreview = useCallback((rawIndex, childIndex) => {
+    let idx;
+    if (childIndex !== undefined) {
+      idx = getExpandedSceneChildIndex(rawIndex, childIndex);
+    } else {
+      idx = expandedIndexMap[rawIndex] ?? rawIndex;
+    }
+    setPreviewStartIndex(idx);
     setPreviewKey((k) => k + 1);
-  }, []);
+  }, [expandedIndexMap, getExpandedSceneChildIndex]);
   // Undo/Redo 履歴
   const [undoStack, setUndoStack] = useState([]);
   const [redoStack, setRedoStack] = useState([]);
@@ -311,6 +343,7 @@ export default function EditorScreen({ onBack, initialScript, projectId, project
             projectId={projectId}
             bgmCatalog={bgmCatalog}
             seCatalog={seCatalog}
+            cgCatalog={cgCatalog}
           />
         );
       case "text":
@@ -413,6 +446,7 @@ export default function EditorScreen({ onBack, initialScript, projectId, project
                 storyScenes={storyScenes}
                 bgmCatalog={bgmCatalog}
                 seCatalog={seCatalog}
+                cgCatalog={cgCatalog}
                 onBack={() => setActiveTab("script")}
               />
             </div>
@@ -492,6 +526,7 @@ export default function EditorScreen({ onBack, initialScript, projectId, project
                     bgmCatalog={bgmCatalog}
                     seCatalog={seCatalog}
                     bgStyles={bgStyles}
+                    cgCatalog={cgCatalog}
                   />
                 </>
               ) : script[selectedIndex] ? (
@@ -506,6 +541,7 @@ export default function EditorScreen({ onBack, initialScript, projectId, project
                   bgmCatalog={bgmCatalog}
                   seCatalog={seCatalog}
                   bgStyles={bgStyles}
+                  cgCatalog={cgCatalog}
                 />
               ) : (
                 <div style={styles.emptyState}>コマンドを選択してください</div>
@@ -534,6 +570,7 @@ export default function EditorScreen({ onBack, initialScript, projectId, project
                     storyScenes={storyScenes}
                     bgmCatalog={bgmCatalog}
                     seCatalog={seCatalog}
+                    cgCatalog={cgCatalog}
                     onBack={() => setShowSplitPreview(false)}
                   />
                 </div>
@@ -637,7 +674,7 @@ export default function EditorScreen({ onBack, initialScript, projectId, project
                 setSelectedSceneChild({ sceneId, childIndex });
                 if (showSplitPreview || activeTab === "preview") {
                   // シーン内のコマンドにジャンプ（展開後のインデックスを計算）
-                  jumpPreview(parentIndex);
+                  jumpPreview(parentIndex, childIndex);
                 }
               }}
             />

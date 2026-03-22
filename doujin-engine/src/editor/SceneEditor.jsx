@@ -12,7 +12,7 @@ export default function SceneEditor({
   sceneOrder, onUpdateSceneOrder,
   script, onUpdateScript,
   characters, bgStyles,
-  projectId, bgmCatalog, seCatalog,
+  projectId, bgmCatalog, seCatalog, cgCatalog,
 }) {
   const [selectedSceneId, setSelectedSceneId] = useState(null);
   const [selectedCmdIndex, setSelectedCmdIndex] = useState(0);
@@ -329,6 +329,7 @@ export default function SceneEditor({
                 bgmCatalog={bgmCatalog}
                 seCatalog={seCatalog}
                 bgStyles={bgStyles}
+                cgCatalog={cgCatalog}
               />
             ) : (
               <div style={styles.empty}>コマンドを選択してください</div>
