@@ -42,7 +42,7 @@ const TABS = [
   { id: "item",     label: "アイテム",   group: "rpg" },
   { id: "cg",       label: "CG",         group: "novel" },
   { id: "scene",    label: "シーン",     group: "novel" },
-  { id: "event",    label: "イベント",   group: "novel" },
+  { id: "event",    label: "フラグ管理", group: "novel" },
   { id: "flow",     label: "フロー",     group: "novel" },
   { id: "map",      label: "マップ",     group: "rpg" },
   { id: "battle",   label: "バトル",     group: "rpg" },
@@ -91,6 +91,7 @@ export default function EditorScreen({ onBack, initialScript, projectId, project
   const [showSplitPreview, setShowSplitPreview] = useState(false);
   const [previewStartIndex, setPreviewStartIndex] = useState(0);
   const [previewKey, setPreviewKey] = useState(0);
+  const [debugEngineState, setDebugEngineState] = useState(null);
 
   // 展開前インデックス → 展開後インデックスのマッピング
   const expandedIndexMap = useMemo(() => {
@@ -274,8 +275,21 @@ export default function EditorScreen({ onBack, initialScript, projectId, project
       [CMD.JUMP]: { type: CMD.JUMP, target: "" },
       [CMD.LABEL]: { type: CMD.LABEL, name: "" },
       [CMD.SCENE]: { type: CMD.SCENE, sceneId: "", label: "" },
+      [CMD.CG]: { type: CMD.CG, id: "", variant: 0 },
+      [CMD.CG_HIDE]: { type: CMD.CG_HIDE },
+      [CMD.NVL_ON]: { type: CMD.NVL_ON },
+      [CMD.NVL_OFF]: { type: CMD.NVL_OFF },
+      [CMD.NVL_CLEAR]: { type: CMD.NVL_CLEAR },
+      [CMD.SET_FLAG]: { type: CMD.SET_FLAG, key: "", value: true },
+      [CMD.SET_VARIABLE]: { type: CMD.SET_VARIABLE, key: "", operator: "=", value: 0 },
+      [CMD.IF_FLAG]: { type: CMD.IF_FLAG, key: "", operator: "==", value: true, jump: "" },
+      [CMD.IF_VARIABLE]: { type: CMD.IF_VARIABLE, key: "", operator: "==", value: 0, jump: "" },
+      [CMD.ADD_ITEM]: { type: CMD.ADD_ITEM, id: "", amount: 1 },
+      [CMD.REMOVE_ITEM]: { type: CMD.REMOVE_ITEM, id: "", amount: 1 },
+      [CMD.CHECK_ITEM]: { type: CMD.CHECK_ITEM, id: "", amount: 1, jump: "" },
+      [CMD.ACTION_STAGE]: { type: CMD.ACTION_STAGE, stageId: "" },
     };
-    const newCmd = templates[type] || { type: CMD.DIALOG, speaker: "", text: "" };
+    const newCmd = templates[type] || { type, };
     pushUndo(script);
     setScript((prev) => {
       const next = [...prev];
@@ -433,7 +447,7 @@ export default function EditorScreen({ onBack, initialScript, projectId, project
           />
         );
       case "flow":
-        return <FlowGraph script={script} storyScenes={storyScenes} />;
+        return <FlowGraph script={script} storyScenes={storyScenes} onNodeSelect={(index) => { setSelectedIndex(index); setActiveTab("script"); }} />;
       case "preview":
         return (
           <div style={{ position: "relative", width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", background: "#000" }}>
@@ -450,12 +464,13 @@ export default function EditorScreen({ onBack, initialScript, projectId, project
                 seCatalog={seCatalog}
                 cgCatalog={cgCatalog}
                 onBack={() => setActiveTab("script")}
+                onStateChange={setDebugEngineState}
               />
             </div>
           </div>
         );
       case "debug":
-        return <DebugPanel script={script} characters={characters} />;
+        return <DebugPanel script={script} characters={characters} engineState={debugEngineState} cgCatalog={cgCatalog} sceneCatalog={sceneCatalog} />;
       case "save":
         return <SaveDataEditor projectId={projectId} />;
       case "map":
@@ -595,6 +610,7 @@ export default function EditorScreen({ onBack, initialScript, projectId, project
                     seCatalog={seCatalog}
                     cgCatalog={cgCatalog}
                     onBack={() => setShowSplitPreview(false)}
+                    onStateChange={setDebugEngineState}
                   />
                 </div>
               </div>

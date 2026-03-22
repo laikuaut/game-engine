@@ -65,6 +65,44 @@ const FIELD_DEFS = {
   [CMD.NVL_ON]: [],
   [CMD.NVL_OFF]: [],
   [CMD.NVL_CLEAR]: [],
+  // イベント・フラグ・変数
+  [CMD.SET_FLAG]: [
+    { key: "key", label: "フラグ名", type: "text", placeholder: "purchased_lips" },
+    { key: "value", label: "値", type: "select", options: [{ label: "ON (true)", value: "true" }, { label: "OFF (false)", value: "false" }] },
+  ],
+  [CMD.SET_VARIABLE]: [
+    { key: "key", label: "変数名", type: "text", placeholder: "points" },
+    { key: "operator", label: "演算子", type: "select", options: ["=", "+=", "-=", "*="] },
+    { key: "value", label: "値", type: "number", step: 1 },
+  ],
+  [CMD.IF_FLAG]: [
+    { key: "key", label: "フラグ名", type: "text", placeholder: "purchased_lips" },
+    { key: "operator", label: "条件", type: "select", options: ["==", "!="] },
+    { key: "value", label: "値", type: "select", options: [{ label: "ON (true)", value: "true" }, { label: "OFF (false)", value: "false" }] },
+    { key: "jump", label: "ジャンプ先", type: "label_select", autocomplete: "labels" },
+  ],
+  [CMD.IF_VARIABLE]: [
+    { key: "key", label: "変数名", type: "text", placeholder: "points" },
+    { key: "operator", label: "条件", type: "select", options: ["==", "!=", ">", "<", ">=", "<="] },
+    { key: "value", label: "値", type: "number", step: 1 },
+    { key: "jump", label: "ジャンプ先", type: "label_select", autocomplete: "labels" },
+  ],
+  [CMD.ADD_ITEM]: [
+    { key: "id", label: "アイテムID", type: "text", placeholder: "key_item" },
+    { key: "amount", label: "個数", type: "number", min: 1, step: 1 },
+  ],
+  [CMD.REMOVE_ITEM]: [
+    { key: "id", label: "アイテムID", type: "text", placeholder: "key_item" },
+    { key: "amount", label: "個数", type: "number", min: 1, step: 1 },
+  ],
+  [CMD.CHECK_ITEM]: [
+    { key: "id", label: "アイテムID", type: "text", placeholder: "key_item" },
+    { key: "amount", label: "必要数", type: "number", min: 1, step: 1 },
+    { key: "jump", label: "所持時ジャンプ先", type: "label_select", autocomplete: "labels" },
+  ],
+  [CMD.ACTION_STAGE]: [
+    { key: "stageId", label: "ステージID", type: "text", placeholder: "stage_1" },
+  ],
 };
 
 function FieldInput({ field, value, onChange, suggestions }) {
@@ -95,18 +133,23 @@ function FieldInput({ field, value, onChange, suggestions }) {
           style={{ ...commonStyle, minHeight: 100, resize: "vertical", lineHeight: 1.8 }}
         />
       );
-    case "select":
+    case "select": {
+      const firstOpt = field.options[0];
+      const defaultVal = typeof firstOpt === "object" ? firstOpt.value : firstOpt;
       return (
         <select
-          value={value || field.options[0]}
+          value={value ?? defaultVal}
           onChange={(e) => onChange(e.target.value)}
           style={{ ...commonStyle, cursor: "pointer" }}
         >
-          {field.options.map((opt) => (
-            <option key={opt} value={opt} style={optionStyle}>{opt}</option>
-          ))}
+          {field.options.map((opt) => {
+            const optValue = typeof opt === "object" ? opt.value : opt;
+            const optLabel = typeof opt === "object" ? opt.label : opt;
+            return <option key={optValue} value={optValue} style={optionStyle}>{optLabel}</option>;
+          })}
         </select>
       );
+    }
     case "checkbox":
       return (
         <label style={{ display: "flex", alignItems: "center", gap: 8, color: "#ccc", fontSize: 14 }}>

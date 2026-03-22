@@ -52,6 +52,11 @@ export const initialState = {
   // NVL モード
   nvlMode: false,
   nvlLog: [], // NVL モード用のテキスト蓄積
+  // イベント・フラグ・変数
+  flags: {},        // { flagName: boolean }
+  variables: {},    // { varName: number }
+  items: {},        // { itemId: count }
+  choiceHistory: [],
 };
 
 export function engineReducer(state, action) {
@@ -181,6 +186,10 @@ export function engineReducer(state, action) {
         speaker: state.currentSpeaker,
         text: state.displayedText,
         thumbnail: action.payload.thumbnail || null,
+        flags: { ...state.flags },
+        variables: { ...state.variables },
+        items: { ...state.items },
+        choiceHistory: [...state.choiceHistory],
       };
       return { ...state, saves: newSaves };
     }
@@ -206,6 +215,10 @@ export function engineReducer(state, action) {
         showSaveLoad: false,
         showBacklog: false,
         showConfig: false,
+        flags: save.flags || {},
+        variables: save.variables || {},
+        items: save.items || {},
+        choiceHistory: save.choiceHistory || [],
       };
     }
     case ACTION.SET_SAVES:
@@ -266,6 +279,32 @@ export function engineReducer(state, action) {
       return { ...state, nvlLog: [...state.nvlLog, action.payload] };
     case ACTION.CLEAR_NVL:
       return { ...state, nvlLog: [] };
+    // フラグ・変数・アイテム
+    case ACTION.SET_FLAG:
+      return { ...state, flags: { ...state.flags, [action.payload.key]: action.payload.value } };
+    case ACTION.SET_VARIABLE: {
+      const { key, value, operator } = action.payload;
+      const prev = state.variables[key] || 0;
+      let next;
+      switch (operator) {
+        case "+=": next = prev + value; break;
+        case "-=": next = prev - value; break;
+        case "*=": next = prev * value; break;
+        default: next = value; break;
+      }
+      return { ...state, variables: { ...state.variables, [key]: next } };
+    }
+    case ACTION.ADD_ITEM: {
+      const { id, amount } = action.payload;
+      return { ...state, items: { ...state.items, [id]: (state.items[id] || 0) + (amount || 1) } };
+    }
+    case ACTION.REMOVE_ITEM: {
+      const { id, amount } = action.payload;
+      const newItems = { ...state.items };
+      const remain = (newItems[id] || 0) - (amount || 1);
+      if (remain <= 0) delete newItems[id]; else newItems[id] = remain;
+      return { ...state, items: newItems };
+    }
     default:
       log("未知のアクション:", action.type);
       return state;

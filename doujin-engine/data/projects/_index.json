@@ -70,5 +70,17 @@
     "scriptLength": 8,
     "mapCount": 1,
     "minigameCount": 0
+  },
+  {
+    "id": "mn1q56nxecuaxe",
+    "name": "aaa",
+    "dirName": "aaa",
+    "description": "",
+    "gameType": "novel",
+    "createdAt": "2026-03-22T12:19:41.949Z",
+    "updatedAt": "2026-03-22T12:19:41.949Z",
+    "scriptLength": 2,
+    "mapCount": 0,
+    "minigameCount": 0
   }
 ]

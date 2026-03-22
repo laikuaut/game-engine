@@ -26,7 +26,7 @@ function log(...args) {
   if (DEBUG) console.log("[NovelEngine]", ...args);
 }
 
-export default function NovelEngine({ script, characters, bgStyles, onBack, projectId, startLabel, initialStartIndex = 0, initialConfig, onConfigChange, storyScenes, bgmCatalog, seCatalog, cgCatalog, onActionStage }) {
+export default function NovelEngine({ script, characters, bgStyles, onBack, projectId, startLabel, initialStartIndex = 0, initialConfig, onConfigChange, storyScenes, bgmCatalog, seCatalog, cgCatalog, onActionStage, onStateChange }) {
   // シーン参照を展開してフラットなスクリプトに変換
   const SCRIPT = useMemo(
     () => expandScenes(script || DEFAULT_SCRIPT, storyScenes),
@@ -54,14 +54,25 @@ export default function NovelEngine({ script, characters, bgStyles, onBack, proj
   const containerRef = useRef(null);
   const scriptRef = useRef(SCRIPT);
   scriptRef.current = SCRIPT;
+  // 最新ステートをref経由で参照（useCallback内から最新値を取得するため）
+  const stateRef = useRef(state);
+  stateRef.current = state;
 
   // ラベルマップ構築
   const labelMap = useMemo(() => buildLabelMap(SCRIPT), [SCRIPT]);
 
+  // gameState取得ヘルパー
+  const getGameState = useCallback(() => ({
+    flags: stateRef.current.flags,
+    variables: stateRef.current.variables,
+    items: stateRef.current.items,
+    choiceHistory: stateRef.current.choiceHistory,
+  }), []);
+
   // dialog / choice / wait / effect 以外を連続処理
   const runCommands = useCallback(
-    (index) => processCommand(scriptRef.current, index, dispatch, labelMap),
-    [labelMap]
+    (index) => processCommand(scriptRef.current, index, dispatch, labelMap, getGameState(), unlockCG),
+    [labelMap, getGameState]
   );
 
   // コマンド結果を処理する共通ヘルパー
@@ -141,10 +152,10 @@ export default function NovelEngine({ script, characters, bgStyles, onBack, proj
         if (onBack) setTimeout(() => onBack(), 500);
         return;
       }
-      const result = processCommand(scriptRef.current, index, dispatch, labelMap);
+      const result = processCommand(scriptRef.current, index, dispatch, labelMap, getGameState(), unlockCG);
       handleCommandResult(result);
     },
-    [labelMap, handleCommandResult]
+    [labelMap, handleCommandResult, getGameState]
   );
 
   // テキストのタイプライター表示開始
@@ -400,6 +411,20 @@ export default function NovelEngine({ script, characters, bgStyles, onBack, proj
       return () => clearTimeout(t);
     }
   }, [state.bgTransition]);
+
+  // ステート変更通知（デバッグパネル用）
+  // 高頻度のタイプライター更新は除外
+  useEffect(() => {
+    if (onStateChange) {
+      onStateChange({
+        flags: state.flags,
+        variables: state.variables,
+        items: state.items,
+        scriptIndex: state.scriptIndex,
+        dispatch,
+      });
+    }
+  }, [state.flags, state.variables, state.items, state.scriptIndex, onStateChange]);
 
   return (
     <div

@@ -1,15 +1,29 @@
 import { useState, useMemo } from "react";
-import { CMD } from "../engine/constants";
+import { CMD, ACTION } from "../engine/constants";
+import { getUnlocks, unlock, resetUnlocks, unlockAll } from "../save/UnlockStore";
 
-// スクリプト解析 & バリデーション デバッグパネル
-export default function DebugPanel({ script, characters }) {
+// スクリプト解析 & バリデーション & ランタイムデバッグパネル
+export default function DebugPanel({ script, characters, engineState, cgCatalog, sceneCatalog }) {
   const [expanded, setExpanded] = useState({
     stats: true,
     labels: true,
     errors: true,
     commands: false,
+    gameState: false,
+    unlocks: false,
+    position: false,
   });
   const toggle = (key) => setExpanded((prev) => ({ ...prev, [key]: !prev[key] }));
+
+  // --- インライン編集用 state ---
+  const [editingFlag, setEditingFlag] = useState(null); // { key, value }
+  const [editingVar, setEditingVar] = useState(null);   // { key, value }
+  const [editingItem, setEditingItem] = useState(null);  // { key, value }
+  const [newFlag, setNewFlag] = useState({ key: "", value: true });
+  const [newVar, setNewVar] = useState({ key: "", value: 0 });
+  const [newItem, setNewItem] = useState({ key: "", value: 1 });
+  // CG/シーン解放の再描画用
+  const [unlockVersion, setUnlockVersion] = useState(0);
 
   // コマンド種別ごとのカウント
   const stats = useMemo(() => {
@@ -119,6 +133,69 @@ export default function DebugPanel({ script, characters }) {
     return Math.ceil(totalMs / 60000);
   }, [totalChars, script]);
 
+  // CG/シーン解放データ
+  const unlockData = useMemo(() => {
+    // unlockVersion を参照して再計算をトリガー
+    void unlockVersion;
+    return getUnlocks();
+  }, [unlockVersion]);
+
+  // ゲームステートの参照
+  const flags = engineState?.flags || {};
+  const variables = engineState?.variables || {};
+  const items = engineState?.items || {};
+  const scriptIndex = engineState?.scriptIndex ?? null;
+  const dispatch = engineState?.dispatch || null;
+
+  // --- ゲームステート操作 ---
+  const handleSetFlag = (key, value) => {
+    if (dispatch) dispatch({ type: ACTION.SET_FLAG, payload: { key, value } });
+  };
+  const handleSetVariable = (key, value) => {
+    if (dispatch) dispatch({ type: ACTION.SET_VARIABLE, payload: { key, value } });
+  };
+  const handleAddItem = (key, amount) => {
+    if (dispatch) dispatch({ type: ACTION.ADD_ITEM, payload: { id: key, amount } });
+  };
+  const handleRemoveItem = (key) => {
+    if (dispatch) dispatch({ type: ACTION.REMOVE_ITEM, payload: { id: key, amount: items[key] || 1 } });
+  };
+
+  // --- CG/シーン解放操作 ---
+  const handleToggleCG = (cgId) => {
+    if (unlockData.cg.includes(cgId)) {
+      // 解放済み → 解除（resetして再追加）
+      const newCg = unlockData.cg.filter((id) => id !== cgId);
+      const newData = { ...unlockData, cg: newCg };
+      localStorage.setItem("doujin-engine-unlocks", JSON.stringify(newData));
+    } else {
+      unlock("cg", cgId);
+    }
+    setUnlockVersion((v) => v + 1);
+  };
+
+  const handleToggleScene = (sceneId) => {
+    if (unlockData.scene.includes(sceneId)) {
+      const newScene = unlockData.scene.filter((id) => id !== sceneId);
+      const newData = { ...unlockData, scene: newScene };
+      localStorage.setItem("doujin-engine-unlocks", JSON.stringify(newData));
+    } else {
+      unlock("scene", sceneId);
+    }
+    setUnlockVersion((v) => v + 1);
+  };
+
+  const handleUnlockAllCG = () => {
+    if (cgCatalog) unlockAll(cgCatalog, "cg");
+    if (sceneCatalog) unlockAll(sceneCatalog, "scene");
+    setUnlockVersion((v) => v + 1);
+  };
+
+  const handleResetAll = () => {
+    resetUnlocks();
+    setUnlockVersion((v) => v + 1);
+  };
+
   return (
     <div style={styles.container}>
       <div style={styles.header}>
@@ -131,10 +208,286 @@ export default function DebugPanel({ script, characters }) {
       </div>
 
       <div style={styles.content}>
+        {/* 実行位置表示 */}
+        <div style={styles.section}>
+          <div style={styles.sectionHeader} onClick={() => toggle("position")}>
+            <span>{expanded.position ? "\u25BC" : "\u25B6"} 実行位置</span>
+          </div>
+          {expanded.position && (
+            <div style={styles.sectionBody}>
+              <Row label="scriptIndex" value={scriptIndex !== null ? scriptIndex : "(未接続)"} />
+              <Row label="スクリプト長" value={script?.length || 0} />
+              {scriptIndex !== null && script?.[scriptIndex] && (
+                <Row label="現在コマンド" value={`${script[scriptIndex].type}`} />
+              )}
+              {scriptIndex === null && (
+                <div style={styles.hintRow}>
+                  プレビュー再生中にステートが反映されます
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* ゲームステート */}
+        <div style={styles.section}>
+          <div style={styles.sectionHeader} onClick={() => toggle("gameState")}>
+            <span>{expanded.gameState ? "\u25BC" : "\u25B6"} ゲームステート</span>
+          </div>
+          {expanded.gameState && (
+            <div style={styles.sectionBody}>
+              {/* Flags */}
+              <div style={styles.subHeader}>Flags</div>
+              {Object.keys(flags).length === 0 && <div style={styles.emptyRow}>フラグなし</div>}
+              {Object.entries(flags).map(([key, value]) => (
+                <div key={`flag-${key}`} style={styles.stateRow}>
+                  <span style={styles.stateKey}>{key}</span>
+                  {editingFlag?.key === key ? (
+                    <div style={styles.editGroup}>
+                      <select
+                        value={editingFlag.value ? "true" : "false"}
+                        onChange={(e) => setEditingFlag({ key, value: e.target.value === "true" })}
+                        style={styles.editSelect}
+                      >
+                        <option value="true">true</option>
+                        <option value="false">false</option>
+                      </select>
+                      <button
+                        style={styles.editBtn}
+                        onClick={() => { handleSetFlag(key, editingFlag.value); setEditingFlag(null); }}
+                      >OK</button>
+                      <button style={styles.editBtn} onClick={() => setEditingFlag(null)}>x</button>
+                    </div>
+                  ) : (
+                    <div style={styles.editGroup}>
+                      <span style={{ color: value ? "#8BC34A" : "#EF5350" }}>{String(value)}</span>
+                      <button style={styles.editBtn} onClick={() => setEditingFlag({ key, value })}>edit</button>
+                    </div>
+                  )}
+                </div>
+              ))}
+              {/* 新規フラグ追加 */}
+              <div style={styles.addRow}>
+                <input
+                  style={styles.addInput}
+                  placeholder="flag名"
+                  value={newFlag.key}
+                  onChange={(e) => setNewFlag((p) => ({ ...p, key: e.target.value }))}
+                />
+                <select
+                  style={styles.editSelect}
+                  value={newFlag.value ? "true" : "false"}
+                  onChange={(e) => setNewFlag((p) => ({ ...p, value: e.target.value === "true" }))}
+                >
+                  <option value="true">true</option>
+                  <option value="false">false</option>
+                </select>
+                <button
+                  style={styles.editBtn}
+                  onClick={() => {
+                    if (newFlag.key && dispatch) {
+                      handleSetFlag(newFlag.key, newFlag.value);
+                      setNewFlag({ key: "", value: true });
+                    }
+                  }}
+                >+</button>
+              </div>
+
+              {/* Variables */}
+              <div style={{ ...styles.subHeader, marginTop: 8 }}>Variables</div>
+              {Object.keys(variables).length === 0 && <div style={styles.emptyRow}>変数なし</div>}
+              {Object.entries(variables).map(([key, value]) => (
+                <div key={`var-${key}`} style={styles.stateRow}>
+                  <span style={styles.stateKey}>{key}</span>
+                  {editingVar?.key === key ? (
+                    <div style={styles.editGroup}>
+                      <input
+                        type="number"
+                        value={editingVar.value}
+                        onChange={(e) => setEditingVar({ key, value: Number(e.target.value) })}
+                        style={styles.editInput}
+                      />
+                      <button
+                        style={styles.editBtn}
+                        onClick={() => { handleSetVariable(key, editingVar.value); setEditingVar(null); }}
+                      >OK</button>
+                      <button style={styles.editBtn} onClick={() => setEditingVar(null)}>x</button>
+                    </div>
+                  ) : (
+                    <div style={styles.editGroup}>
+                      <span style={{ color: "#64B5F6" }}>{value}</span>
+                      <button style={styles.editBtn} onClick={() => setEditingVar({ key, value })}>edit</button>
+                    </div>
+                  )}
+                </div>
+              ))}
+              {/* 新規変数追加 */}
+              <div style={styles.addRow}>
+                <input
+                  style={styles.addInput}
+                  placeholder="変数名"
+                  value={newVar.key}
+                  onChange={(e) => setNewVar((p) => ({ ...p, key: e.target.value }))}
+                />
+                <input
+                  type="number"
+                  style={styles.editInput}
+                  value={newVar.value}
+                  onChange={(e) => setNewVar((p) => ({ ...p, value: Number(e.target.value) }))}
+                />
+                <button
+                  style={styles.editBtn}
+                  onClick={() => {
+                    if (newVar.key && dispatch) {
+                      handleSetVariable(newVar.key, newVar.value);
+                      setNewVar({ key: "", value: 0 });
+                    }
+                  }}
+                >+</button>
+              </div>
+
+              {/* Items */}
+              <div style={{ ...styles.subHeader, marginTop: 8 }}>Items</div>
+              {Object.keys(items).length === 0 && <div style={styles.emptyRow}>アイテムなし</div>}
+              {Object.entries(items).map(([key, value]) => (
+                <div key={`item-${key}`} style={styles.stateRow}>
+                  <span style={styles.stateKey}>{key}</span>
+                  {editingItem?.key === key ? (
+                    <div style={styles.editGroup}>
+                      <input
+                        type="number"
+                        value={editingItem.value}
+                        onChange={(e) => setEditingItem({ key, value: Number(e.target.value) })}
+                        style={styles.editInput}
+                      />
+                      <button
+                        style={styles.editBtn}
+                        onClick={() => {
+                          const diff = editingItem.value - (items[key] || 0);
+                          if (diff > 0) handleAddItem(key, diff);
+                          else if (diff < 0) {
+                            if (dispatch) dispatch({ type: ACTION.REMOVE_ITEM, payload: { id: key, amount: -diff } });
+                          }
+                          setEditingItem(null);
+                        }}
+                      >OK</button>
+                      <button style={styles.editBtn} onClick={() => setEditingItem(null)}>x</button>
+                    </div>
+                  ) : (
+                    <div style={styles.editGroup}>
+                      <span style={{ color: "#FFD54F" }}>{value}</span>
+                      <button style={styles.editBtn} onClick={() => setEditingItem({ key, value })}>edit</button>
+                      <button style={{ ...styles.editBtn, color: "#EF5350" }} onClick={() => handleRemoveItem(key)}>del</button>
+                    </div>
+                  )}
+                </div>
+              ))}
+              {/* 新規アイテム追加 */}
+              <div style={styles.addRow}>
+                <input
+                  style={styles.addInput}
+                  placeholder="アイテムID"
+                  value={newItem.key}
+                  onChange={(e) => setNewItem((p) => ({ ...p, key: e.target.value }))}
+                />
+                <input
+                  type="number"
+                  style={styles.editInput}
+                  value={newItem.value}
+                  onChange={(e) => setNewItem((p) => ({ ...p, value: Number(e.target.value) }))}
+                />
+                <button
+                  style={styles.editBtn}
+                  onClick={() => {
+                    if (newItem.key && dispatch) {
+                      handleAddItem(newItem.key, newItem.value);
+                      setNewItem({ key: "", value: 1 });
+                    }
+                  }}
+                >+</button>
+              </div>
+
+              {!dispatch && (
+                <div style={styles.hintRow}>
+                  プレビュー再生中に編集が有効になります
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* CG/シーン解放管理 */}
+        <div style={styles.section}>
+          <div style={styles.sectionHeader} onClick={() => toggle("unlocks")}>
+            <span>{expanded.unlocks ? "\u25BC" : "\u25B6"} CG/シーン解放管理</span>
+          </div>
+          {expanded.unlocks && (
+            <div style={styles.sectionBody}>
+              {/* 一括操作ボタン */}
+              <div style={styles.unlockBtnRow}>
+                <button style={styles.unlockAllBtn} onClick={handleUnlockAllCG}>全解放</button>
+                <button style={styles.unlockResetBtn} onClick={handleResetAll}>全リセット</button>
+              </div>
+
+              {/* CG一覧 */}
+              <div style={styles.subHeader}>CG ({unlockData.cg.length} / {(cgCatalog || []).length})</div>
+              {(cgCatalog || []).length === 0 && <div style={styles.emptyRow}>CGカタログなし</div>}
+              {(cgCatalog || []).map((cg) => {
+                const cgId = cg.id || cg.name;
+                const isUnlocked = unlockData.cg.includes(cgId);
+                return (
+                  <div key={`cg-${cgId}`} style={styles.unlockRow}>
+                    <span style={{ ...styles.unlockName, color: isUnlocked ? "#8BC34A" : "#555" }}>
+                      {cgId}
+                    </span>
+                    <button
+                      style={{
+                        ...styles.toggleBtn,
+                        background: isUnlocked ? "rgba(139,195,74,0.15)" : "rgba(255,255,255,0.04)",
+                        color: isUnlocked ? "#8BC34A" : "#666",
+                        borderColor: isUnlocked ? "rgba(139,195,74,0.3)" : "rgba(255,255,255,0.1)",
+                      }}
+                      onClick={() => handleToggleCG(cgId)}
+                    >
+                      {isUnlocked ? "解放済" : "未解放"}
+                    </button>
+                  </div>
+                );
+              })}
+
+              {/* シーン一覧 */}
+              <div style={{ ...styles.subHeader, marginTop: 8 }}>シーン ({unlockData.scene.length} / {(sceneCatalog || []).length})</div>
+              {(sceneCatalog || []).length === 0 && <div style={styles.emptyRow}>シーンカタログなし</div>}
+              {(sceneCatalog || []).map((sc) => {
+                const scId = sc.id || sc.name;
+                const isUnlocked = unlockData.scene.includes(scId);
+                return (
+                  <div key={`sc-${scId}`} style={styles.unlockRow}>
+                    <span style={{ ...styles.unlockName, color: isUnlocked ? "#8BC34A" : "#555" }}>
+                      {scId}
+                    </span>
+                    <button
+                      style={{
+                        ...styles.toggleBtn,
+                        background: isUnlocked ? "rgba(139,195,74,0.15)" : "rgba(255,255,255,0.04)",
+                        color: isUnlocked ? "#8BC34A" : "#666",
+                        borderColor: isUnlocked ? "rgba(139,195,74,0.3)" : "rgba(255,255,255,0.1)",
+                      }}
+                      onClick={() => handleToggleScene(scId)}
+                    >
+                      {isUnlocked ? "解放済" : "未解放"}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
         {/* 統計 */}
         <div style={styles.section}>
           <div style={styles.sectionHeader} onClick={() => toggle("stats")}>
-            <span>{expanded.stats ? "▼" : "▶"} スクリプト統計</span>
+            <span>{expanded.stats ? "\u25BC" : "\u25B6"} スクリプト統計</span>
           </div>
           {expanded.stats && (
             <div style={styles.sectionBody}>
@@ -158,7 +511,7 @@ export default function DebugPanel({ script, characters }) {
         {/* ラベル一覧 */}
         <div style={styles.section}>
           <div style={styles.sectionHeader} onClick={() => toggle("labels")}>
-            <span>{expanded.labels ? "▼" : "▶"} ラベル一覧 ({labels.length})</span>
+            <span>{expanded.labels ? "\u25BC" : "\u25B6"} ラベル一覧 ({labels.length})</span>
           </div>
           {expanded.labels && (
             <div style={styles.sectionBody}>
@@ -178,7 +531,7 @@ export default function DebugPanel({ script, characters }) {
         <div style={styles.section}>
           <div style={styles.sectionHeader} onClick={() => toggle("errors")}>
             <span>
-              {expanded.errors ? "▼" : "▶"} バリデーション ({errors.length})
+              {expanded.errors ? "\u25BC" : "\u25B6"} バリデーション ({errors.length})
             </span>
           </div>
           {expanded.errors && (
@@ -207,7 +560,7 @@ export default function DebugPanel({ script, characters }) {
         {/* コマンド分布 */}
         <div style={styles.section}>
           <div style={styles.sectionHeader} onClick={() => toggle("commands")}>
-            <span>{expanded.commands ? "▼" : "▶"} コマンド分布</span>
+            <span>{expanded.commands ? "\u25BC" : "\u25B6"} コマンド分布</span>
           </div>
           {expanded.commands && (
             <div style={styles.sectionBody}>
@@ -237,7 +590,7 @@ function Row({ label, value }) {
   return (
     <div style={styles.row}>
       <span style={styles.rowLabel}>{label}</span>
-      <span style={styles.rowValue}>{value ?? "—"}</span>
+      <span style={styles.rowValue}>{value ?? "\u2014"}</span>
     </div>
   );
 }
@@ -268,6 +621,68 @@ const styles = {
   rowLabel: { color: "#888" },
   rowValue: { color: "#ccc", textAlign: "right" },
   emptyRow: { fontSize: 10, color: "#555", fontFamily: "monospace", padding: "2px 0" },
+  hintRow: { fontSize: 9, color: "#666", fontFamily: "monospace", padding: "4px 0", fontStyle: "italic" },
+  // サブヘッダー
+  subHeader: {
+    fontSize: 10, color: "#9E9E9E", fontFamily: "monospace",
+    fontWeight: 700, padding: "4px 0 2px", borderBottom: "1px solid rgba(255,255,255,0.06)",
+    letterSpacing: 1,
+  },
+  // ゲームステート行
+  stateRow: {
+    display: "flex", alignItems: "center", justifyContent: "space-between",
+    padding: "3px 0", fontSize: 10, fontFamily: "monospace",
+    borderBottom: "1px solid rgba(255,255,255,0.03)",
+  },
+  stateKey: { color: "#aaa", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
+  editGroup: { display: "flex", alignItems: "center", gap: 4, flexShrink: 0 },
+  editBtn: {
+    background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)",
+    color: "#999", padding: "1px 6px", borderRadius: 2, fontSize: 9, cursor: "pointer",
+    fontFamily: "monospace",
+  },
+  editInput: {
+    background: "rgba(0,0,0,0.4)", border: "1px solid rgba(255,255,255,0.15)",
+    color: "#ccc", padding: "1px 4px", borderRadius: 2, fontSize: 10, width: 50,
+    fontFamily: "monospace", outline: "none",
+  },
+  editSelect: {
+    background: "rgba(0,0,0,0.4)", border: "1px solid rgba(255,255,255,0.15)",
+    color: "#ccc", padding: "1px 4px", borderRadius: 2, fontSize: 10,
+    fontFamily: "monospace", outline: "none",
+  },
+  addRow: {
+    display: "flex", alignItems: "center", gap: 4, padding: "4px 0",
+  },
+  addInput: {
+    background: "rgba(0,0,0,0.4)", border: "1px solid rgba(255,255,255,0.15)",
+    color: "#ccc", padding: "1px 4px", borderRadius: 2, fontSize: 10, flex: 1,
+    fontFamily: "monospace", outline: "none",
+  },
+  // CG/シーン解放
+  unlockBtnRow: {
+    display: "flex", gap: 6, padding: "4px 0 8px",
+  },
+  unlockAllBtn: {
+    background: "rgba(139,195,74,0.12)", border: "1px solid rgba(139,195,74,0.3)",
+    color: "#8BC34A", padding: "3px 12px", borderRadius: 3, fontSize: 10,
+    cursor: "pointer", fontFamily: "monospace",
+  },
+  unlockResetBtn: {
+    background: "rgba(239,83,80,0.1)", border: "1px solid rgba(239,83,80,0.3)",
+    color: "#EF5350", padding: "3px 12px", borderRadius: 3, fontSize: 10,
+    cursor: "pointer", fontFamily: "monospace",
+  },
+  unlockRow: {
+    display: "flex", alignItems: "center", justifyContent: "space-between",
+    padding: "3px 0", fontSize: 10, fontFamily: "monospace",
+    borderBottom: "1px solid rgba(255,255,255,0.03)",
+  },
+  unlockName: { flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
+  toggleBtn: {
+    padding: "1px 8px", borderRadius: 2, fontSize: 9, cursor: "pointer",
+    fontFamily: "monospace", borderWidth: 1, borderStyle: "solid", flexShrink: 0,
+  },
   // ラベル
   labelRow: {
     display: "flex", alignItems: "center", gap: 8, padding: "3px 0",

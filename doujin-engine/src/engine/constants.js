@@ -24,6 +24,15 @@ export const CMD = {
   NVL_CLEAR: "nvl_clear",
   SCENE: "scene",
   ACTION_STAGE: "action_stage",
+  // イベント・フラグ・変数
+  SET_FLAG: "set_flag",
+  SET_VARIABLE: "set_variable",
+  IF_FLAG: "if_flag",
+  IF_VARIABLE: "if_variable",
+  ADD_ITEM: "add_item",
+  REMOVE_ITEM: "remove_item",
+  CHECK_ITEM: "check_item",
+  EVAL_EVENT: "eval_event",
 };
 
 // アクションタイプ定数
@@ -78,4 +87,9 @@ export const ACTION = {
   CLEAR_NVL: "CLEAR_NVL",
   // セーブ
   SET_SAVES: "SET_SAVES",
+  // イベント・フラグ・変数
+  SET_FLAG: "SET_FLAG",
+  SET_VARIABLE: "SET_VARIABLE",
+  ADD_ITEM: "ADD_ITEM",
+  REMOVE_ITEM: "REMOVE_ITEM",
 };

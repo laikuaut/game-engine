@@ -115,7 +115,7 @@ describe("processCommand", () => {
       { type: "cg", id: "ev01" },
       { type: "dialog", speaker: "", text: "CG表示中のテキスト" },
     ];
-    const result = processCommand(script, 0, dispatch, {});
+    const result = processCommand(script, 0, dispatch, {}, null, null);
     // cg は非ブロッキング → 次の dialog まで進む
     expect(result.blocking).toBeNull();
     expect(result.index).toBe(1);
@@ -127,7 +127,7 @@ describe("processCommand", () => {
       { type: "cg", id: "ev01", variant: 2 },
       { type: "dialog", speaker: "", text: "差分CG" },
     ];
-    processCommand(script3, 0, dispatch3, {});
+    processCommand(script3, 0, dispatch3, {}, null, null);
     expect(dispatch3).toHaveBeenCalledWith({ type: "SHOW_CG", payload: { id: "ev01", variant: 2 } });
 
     // cg_hide で HIDE_CG が dispatch される
@@ -136,7 +136,7 @@ describe("processCommand", () => {
       { type: "cg_hide" },
       { type: "dialog", speaker: "", text: "CG閉じた" },
     ];
-    const result2 = processCommand(script2, 0, dispatch2, {});
+    const result2 = processCommand(script2, 0, dispatch2, {}, null, null);
     expect(dispatch2).toHaveBeenCalledWith({ type: "HIDE_CG" });
     expect(result2.index).toBe(1);
   });

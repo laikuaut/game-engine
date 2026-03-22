@@ -182,13 +182,27 @@ function cmdStr(cmd) {
     case CMD.NVL_ON: return "nvl_on";
     case CMD.NVL_OFF: return "nvl_off";
     case CMD.NVL_CLEAR: return "nvl_clear";
+    case CMD.SET_FLAG: return `set_flag[${cmd.key}=${cmd.value}]`;
+    case CMD.SET_VARIABLE: return `set_var[${cmd.key}${cmd.operator || "="}${cmd.value}]`;
+    case CMD.IF_FLAG: return `if_flag[${cmd.key}→${cmd.jump}]`;
+    case CMD.IF_VARIABLE: return `if_var[${cmd.key}${cmd.operator}${cmd.value}→${cmd.jump}]`;
+    case CMD.ADD_ITEM: return `add_item[${cmd.id}+${cmd.amount || 1}]`;
+    case CMD.REMOVE_ITEM: return `rm_item[${cmd.id}-${cmd.amount || 1}]`;
+    case CMD.CHECK_ITEM: return `chk_item[${cmd.id}→${cmd.jump}]`;
+    case CMD.ACTION_STAGE: return `action[${cmd.stageId}]`;
     default: return `unknown[${cmd.type}]`;
   }
 }
 
 // dialog / choice / wait / effect 以外のコマンドを連続処理
 // 戻り値: { index, blocking } — blocking が true のとき NovelEngine 側で非同期処理が必要
-export function processCommand(script, index, dispatch, labelMap) {
+export function processCommand(script, index, dispatch, labelMap, gameState, unlockFn) {
+  // gameState: { flags, variables, items } — 条件分岐コマンドで参照
+  // unlockFn: (type, id) => void — CG/シーン解放トリガー
+  // gsはローカルコピー: set_flag等で即座に更新し、後続のif_flagで参照可能にする
+  const gs = gameState
+    ? { flags: { ...gameState.flags }, variables: { ...gameState.variables }, items: { ...gameState.items } }
+    : { flags: {}, variables: {}, items: {} };
   log("processCommand: 開始 index =", index);
   let i = index;
   let processed = 0;
@@ -252,12 +266,16 @@ export function processCommand(script, index, dispatch, labelMap) {
         break;
       case CMD.LABEL:
         log("processCommand: ラベル通過 →", cmd.name);
+        if (cmd.recollection && unlockFn) {
+          unlockFn("scene", cmd.name);
+          log("processCommand: シーン解放 →", cmd.name);
+        }
         break;
       case CMD.JUMP: {
         const jumpIndex = resolveTarget(cmd.target, labelMap);
         if (jumpIndex >= 0 && jumpIndex !== i) {
           log("processCommand: ジャンプ実行", i, "→", jumpIndex);
-          return processCommand(script, jumpIndex, dispatch, labelMap);
+          return processCommand(script, jumpIndex, dispatch, labelMap, gs, unlockFn);
         }
         log("processCommand: ジャンプ無効 (jumpIndex =", jumpIndex, ", 現在 =", i, ")");
         break;
@@ -273,7 +291,8 @@ export function processCommand(script, index, dispatch, labelMap) {
         break;
       case CMD.CG:
         dispatch({ type: ACTION.SHOW_CG, payload: { id: cmd.id, variant: cmd.variant } });
-        log("processCommand: CG 表示（レイヤー）at index", i);
+        if (unlockFn) unlockFn("cg", cmd.id);
+        log("processCommand: CG 表示（レイヤー）+ 解放 at index", i);
         break;
       case CMD.CG_HIDE:
         dispatch({ type: ACTION.HIDE_CG });
@@ -302,6 +321,87 @@ export function processCommand(script, index, dispatch, labelMap) {
       case CMD.ACTION_STAGE:
         log("processCommand: action_stage ブロッキング at index", i, ", stageId =", cmd.stageId);
         return { index: i, blocking: "action_stage" };
+      // フラグ・変数・アイテム
+      case CMD.SET_FLAG: {
+        const flagValue = cmd.value !== false;
+        dispatch({ type: ACTION.SET_FLAG, payload: { key: cmd.key, value: flagValue } });
+        gs.flags[cmd.key] = flagValue; // ローカル即時反映
+        log("processCommand: set_flag →", cmd.key, "=", flagValue);
+        break;
+      }
+      case CMD.SET_VARIABLE: {
+        const varValue = Number(cmd.value) || 0;
+        const varOp = cmd.operator || "=";
+        dispatch({ type: ACTION.SET_VARIABLE, payload: { key: cmd.key, value: varValue, operator: varOp } });
+        // ローカル即時反映
+        const prev = gs.variables[cmd.key] || 0;
+        switch (varOp) {
+          case "+=": gs.variables[cmd.key] = prev + varValue; break;
+          case "-=": gs.variables[cmd.key] = prev - varValue; break;
+          case "*=": gs.variables[cmd.key] = prev * varValue; break;
+          default:   gs.variables[cmd.key] = varValue; break;
+        }
+        log("processCommand: set_variable →", cmd.key, varOp, varValue);
+        break;
+      }
+      case CMD.IF_FLAG: {
+        const flagVal = !!gs.flags[cmd.key];
+        const expected = cmd.value !== false;
+        const match = cmd.operator === "!=" ? (flagVal !== expected) : (flagVal === expected);
+        log("processCommand: if_flag →", cmd.key, "=", flagVal, cmd.operator || "==", expected, "→", match);
+        if (match && cmd.jump) {
+          const target = resolveTarget(cmd.jump, labelMap);
+          if (target >= 0) return processCommand(script, target, dispatch, labelMap, gs, unlockFn);
+        }
+        break;
+      }
+      case CMD.IF_VARIABLE: {
+        const varVal = gs.variables[cmd.key] || 0;
+        const cmpVal = Number(cmd.value) || 0;
+        let varMatch = false;
+        switch (cmd.operator) {
+          case "==": varMatch = varVal === cmpVal; break;
+          case "!=": varMatch = varVal !== cmpVal; break;
+          case ">":  varMatch = varVal > cmpVal; break;
+          case "<":  varMatch = varVal < cmpVal; break;
+          case ">=": varMatch = varVal >= cmpVal; break;
+          case "<=": varMatch = varVal <= cmpVal; break;
+          default:   varMatch = varVal === cmpVal; break;
+        }
+        log("processCommand: if_variable →", cmd.key, "=", varVal, cmd.operator || "==", cmpVal, "→", varMatch);
+        if (varMatch && cmd.jump) {
+          const target = resolveTarget(cmd.jump, labelMap);
+          if (target >= 0) return processCommand(script, target, dispatch, labelMap, gs, unlockFn);
+        }
+        break;
+      }
+      case CMD.ADD_ITEM: {
+        const addAmt = Number(cmd.amount) || 1;
+        dispatch({ type: ACTION.ADD_ITEM, payload: { id: cmd.id, amount: addAmt } });
+        gs.items[cmd.id] = (gs.items[cmd.id] || 0) + addAmt; // ローカル即時反映
+        log("processCommand: add_item →", cmd.id, "+", addAmt);
+        break;
+      }
+      case CMD.REMOVE_ITEM: {
+        const rmAmt = Number(cmd.amount) || 1;
+        dispatch({ type: ACTION.REMOVE_ITEM, payload: { id: cmd.id, amount: rmAmt } });
+        // ローカル即時反映
+        const remain = (gs.items[cmd.id] || 0) - rmAmt;
+        if (remain <= 0) delete gs.items[cmd.id]; else gs.items[cmd.id] = remain;
+        log("processCommand: remove_item →", cmd.id, "-", rmAmt);
+        break;
+      }
+      case CMD.CHECK_ITEM: {
+        const itemCount = gs.items[cmd.id] || 0;
+        const reqAmount = Number(cmd.amount) || 1;
+        const itemMatch = itemCount >= reqAmount;
+        log("processCommand: check_item →", cmd.id, "所持:", itemCount, ">=", reqAmount, "→", itemMatch);
+        if (itemMatch && cmd.jump) {
+          const target = resolveTarget(cmd.jump, labelMap);
+          if (target >= 0) return processCommand(script, target, dispatch, labelMap, gs, unlockFn);
+        }
+        break;
+      }
       default:
         log("processCommand: 未知のコマンド型 →", cmd.type, "at index", i);
         break;

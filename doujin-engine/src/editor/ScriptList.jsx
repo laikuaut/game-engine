@@ -22,7 +22,28 @@ const CMD_META = {
   [CMD.NVL_ON]:     { label: "NVL開始", color: "#A5D6A7" },
   [CMD.NVL_OFF]:    { label: "NVL終了", color: "#A5D6A7" },
   [CMD.NVL_CLEAR]:  { label: "NVLクリア", color: "#A5D6A7" },
+  // イベント・フラグ・変数
+  [CMD.SET_FLAG]:     { label: "フラグ設定", color: "#7E57C2" },
+  [CMD.SET_VARIABLE]: { label: "変数設定", color: "#7E57C2" },
+  [CMD.IF_FLAG]:      { label: "フラグ分岐", color: "#AB47BC" },
+  [CMD.IF_VARIABLE]:  { label: "変数分岐", color: "#AB47BC" },
+  [CMD.ADD_ITEM]:     { label: "アイテム追加", color: "#26A69A" },
+  [CMD.REMOVE_ITEM]:  { label: "アイテム削除", color: "#26A69A" },
+  [CMD.CHECK_ITEM]:   { label: "アイテム確認", color: "#26A69A" },
+  // 拡張
+  [CMD.ACTION_STAGE]: { label: "アクション", color: "#FF7043" },
 };
+
+// コマンド追加メニューのカテゴリ分類
+const CMD_CATEGORIES = [
+  { label: "テキスト", types: [CMD.DIALOG, CMD.CHOICE, CMD.NVL_ON, CMD.NVL_OFF, CMD.NVL_CLEAR] },
+  { label: "キャラ",   types: [CMD.CHARA, CMD.CHARA_MOD, CMD.CHARA_HIDE] },
+  { label: "演出",     types: [CMD.BG, CMD.EFFECT, CMD.CG, CMD.CG_HIDE, CMD.WAIT] },
+  { label: "音声",     types: [CMD.BGM, CMD.BGM_STOP, CMD.SE] },
+  { label: "制御",     types: [CMD.JUMP, CMD.LABEL, CMD.SCENE] },
+  { label: "イベント", types: [CMD.SET_FLAG, CMD.SET_VARIABLE, CMD.IF_FLAG, CMD.IF_VARIABLE, CMD.ADD_ITEM, CMD.REMOVE_ITEM, CMD.CHECK_ITEM] },
+  { label: "拡張",     types: [CMD.ACTION_STAGE] },
+];
 
 // コマンドの1行サマリー
 function commandSummary(cmd) {
@@ -45,6 +66,14 @@ function commandSummary(cmd) {
     case CMD.LABEL:     return cmd.name || "(未設定)";
     case CMD.SCENE:     return cmd.label || cmd.sceneId || "(未設定)";
     case CMD.CG:        return (cmd.id || "(未設定)") + (cmd.variant != null ? ` #${cmd.variant}` : "");
+    case CMD.SET_FLAG:    return `${cmd.key || "?"} = ${cmd.value !== false ? "ON" : "OFF"}`;
+    case CMD.SET_VARIABLE:return `${cmd.key || "?"} ${cmd.operator || "="} ${cmd.value ?? 0}`;
+    case CMD.IF_FLAG:     return `${cmd.key || "?"} ${cmd.operator || "=="} ${cmd.value !== false ? "ON" : "OFF"} → ${cmd.jump || "?"}`;
+    case CMD.IF_VARIABLE: return `${cmd.key || "?"} ${cmd.operator || "=="} ${cmd.value ?? 0} → ${cmd.jump || "?"}`;
+    case CMD.ADD_ITEM:    return `${cmd.id || "?"} +${cmd.amount || 1}`;
+    case CMD.REMOVE_ITEM: return `${cmd.id || "?"} -${cmd.amount || 1}`;
+    case CMD.CHECK_ITEM:  return `${cmd.id || "?"} >= ${cmd.amount || 1} → ${cmd.jump || "?"}`;
+    case CMD.ACTION_STAGE:return cmd.stageId || "(未設定)";
     default:            return cmd.type;
   }
 }
@@ -144,23 +173,33 @@ export default function ScriptList({ script, selectedIndex, onSelect, onAdd, onR
         )}
       </div>
 
-      {/* 追加メニュー */}
+      {/* 追加メニュー（カテゴリ分類） */}
       {showAddMenu && (
         <div style={styles.addMenu}>
-          {cmdTypes.map((type) => {
-            const meta = CMD_META[type];
-            return (
-              <button
-                key={type}
-                onClick={() => { onAdd(type, selectedIndex); }}
-                style={styles.addMenuItem}
-              >
-                <span style={{ ...styles.badge, background: meta.color + "33", color: meta.color }}>
-                  {meta.label}
-                </span>
-              </button>
-            );
-          })}
+          {CMD_CATEGORIES.map((cat) => (
+            <div key={cat.label} style={{ marginBottom: 4 }}>
+              <div style={{ fontSize: 10, color: "#888", padding: "4px 8px", textTransform: "uppercase", letterSpacing: 1 }}>
+                {cat.label}
+              </div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 2, padding: "0 4px" }}>
+                {cat.types.map((type) => {
+                  const meta = CMD_META[type];
+                  if (!meta) return null;
+                  return (
+                    <button
+                      key={type}
+                      onClick={() => { onAdd(type, selectedIndex); }}
+                      style={styles.addMenuItem}
+                    >
+                      <span style={{ ...styles.badge, background: meta.color + "33", color: meta.color }}>
+                        {meta.label}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </div>
       )}
 

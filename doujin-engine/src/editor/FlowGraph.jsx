@@ -3,7 +3,7 @@ import { CMD } from "../engine/constants";
 import { expandScenes } from "../engine/commands";
 
 // スクリプト内の choice / jump / label を解析し、分岐フローを可視化する
-export default function FlowGraph({ script, storyScenes }) {
+export default function FlowGraph({ script, storyScenes, onNodeSelect }) {
   // シーン参照を展開してからフロー解析
   const expandedScript = useMemo(() => expandScenes(script, storyScenes), [script, storyScenes]);
 
@@ -196,6 +196,7 @@ export default function FlowGraph({ script, storyScenes }) {
               {/* ノード */}
               <div
                 onClick={isClickable ? () => toggleExpand(node.index) : undefined}
+                onDoubleClick={() => onNodeSelect && onNodeSelect(node.index)}
                 style={{
                   ...styles.node,
                   borderColor: nodeColor(node.type) + "66",
@@ -204,6 +205,7 @@ export default function FlowGraph({ script, storyScenes }) {
                     : nodeColor(node.type) + "11",
                   cursor: isClickable ? "pointer" : "default",
                 }}
+                title="ダブルクリックでスクリプトにジャンプ"
               >
                 <span style={{ ...styles.nodeType, color: nodeColor(node.type) }}>
                   {node.type === "block" ? "BLOCK" : node.type.toUpperCase()}

@@ -152,4 +152,183 @@ describe("engineReducer", () => {
     const s = engineReducer(initialState, { type: "UNKNOWN" });
     expect(s).toEqual(initialState);
   });
+
+  // フラグ・変数・アイテム
+  describe("SET_FLAG", () => {
+    it("key/value を設定する", () => {
+      const s = engineReducer(initialState, {
+        type: ACTION.SET_FLAG,
+        payload: { key: "talked", value: true },
+      });
+      expect(s.flags.talked).toBe(true);
+    });
+
+    it("既存フラグを上書きする", () => {
+      const prev = { ...initialState, flags: { talked: true } };
+      const s = engineReducer(prev, {
+        type: ACTION.SET_FLAG,
+        payload: { key: "talked", value: false },
+      });
+      expect(s.flags.talked).toBe(false);
+    });
+  });
+
+  describe("SET_VARIABLE", () => {
+    it("= 演算子で値を設定", () => {
+      const s = engineReducer(initialState, {
+        type: ACTION.SET_VARIABLE,
+        payload: { key: "score", value: 100, operator: "=" },
+      });
+      expect(s.variables.score).toBe(100);
+    });
+
+    it("+= 演算子で加算", () => {
+      const prev = { ...initialState, variables: { score: 10 } };
+      const s = engineReducer(prev, {
+        type: ACTION.SET_VARIABLE,
+        payload: { key: "score", value: 5, operator: "+=" },
+      });
+      expect(s.variables.score).toBe(15);
+    });
+
+    it("-= 演算子で減算", () => {
+      const prev = { ...initialState, variables: { hp: 100 } };
+      const s = engineReducer(prev, {
+        type: ACTION.SET_VARIABLE,
+        payload: { key: "hp", value: 30, operator: "-=" },
+      });
+      expect(s.variables.hp).toBe(70);
+    });
+
+    it("*= 演算子で乗算", () => {
+      const prev = { ...initialState, variables: { dmg: 10 } };
+      const s = engineReducer(prev, {
+        type: ACTION.SET_VARIABLE,
+        payload: { key: "dmg", value: 3, operator: "*=" },
+      });
+      expect(s.variables.dmg).toBe(30);
+    });
+
+    it("未定義変数は 0 として演算", () => {
+      const s = engineReducer(initialState, {
+        type: ACTION.SET_VARIABLE,
+        payload: { key: "newVar", value: 5, operator: "+=" },
+      });
+      expect(s.variables.newVar).toBe(5);
+    });
+  });
+
+  describe("ADD_ITEM", () => {
+    it("新規アイテムを追加する", () => {
+      const s = engineReducer(initialState, {
+        type: ACTION.ADD_ITEM,
+        payload: { id: "potion", amount: 3 },
+      });
+      expect(s.items.potion).toBe(3);
+    });
+
+    it("既存アイテムに加算する", () => {
+      const prev = { ...initialState, items: { potion: 2 } };
+      const s = engineReducer(prev, {
+        type: ACTION.ADD_ITEM,
+        payload: { id: "potion", amount: 5 },
+      });
+      expect(s.items.potion).toBe(7);
+    });
+
+    it("amount 省略時は 1 を加算", () => {
+      const s = engineReducer(initialState, {
+        type: ACTION.ADD_ITEM,
+        payload: { id: "key" },
+      });
+      expect(s.items.key).toBe(1);
+    });
+  });
+
+  describe("REMOVE_ITEM", () => {
+    it("アイテムを減算する", () => {
+      const prev = { ...initialState, items: { potion: 5 } };
+      const s = engineReducer(prev, {
+        type: ACTION.REMOVE_ITEM,
+        payload: { id: "potion", amount: 2 },
+      });
+      expect(s.items.potion).toBe(3);
+    });
+
+    it("0 以下になったら削除する", () => {
+      const prev = { ...initialState, items: { potion: 1 } };
+      const s = engineReducer(prev, {
+        type: ACTION.REMOVE_ITEM,
+        payload: { id: "potion", amount: 1 },
+      });
+      expect(s.items.potion).toBeUndefined();
+    });
+
+    it("残数がマイナスになっても削除する", () => {
+      const prev = { ...initialState, items: { potion: 1 } };
+      const s = engineReducer(prev, {
+        type: ACTION.REMOVE_ITEM,
+        payload: { id: "potion", amount: 5 },
+      });
+      expect(s.items.potion).toBeUndefined();
+    });
+  });
+
+  describe("SAVE_GAME に flags/variables/items/choiceHistory が含まれる", () => {
+    it("セーブデータに全フィールドが保存される", () => {
+      const prev = {
+        ...initialState,
+        scriptIndex: 10,
+        flags: { talked: true },
+        variables: { score: 50 },
+        items: { potion: 3 },
+        choiceHistory: [{ label: "q1", choice: "A" }],
+      };
+      const s = engineReducer(prev, { type: ACTION.SAVE_GAME, payload: { slot: 0 } });
+      const save = s.saves[0];
+      expect(save.flags).toEqual({ talked: true });
+      expect(save.variables).toEqual({ score: 50 });
+      expect(save.items).toEqual({ potion: 3 });
+      expect(save.choiceHistory).toEqual([{ label: "q1", choice: "A" }]);
+    });
+  });
+
+  describe("LOAD_GAME に flags/variables/items/choiceHistory が復元される", () => {
+    it("セーブデータから全フィールドが復元される", () => {
+      const saves = [...initialState.saves];
+      saves[0] = {
+        scriptIndex: 10,
+        currentBg: "forest",
+        flags: { talked: true },
+        variables: { score: 50 },
+        items: { potion: 3 },
+        choiceHistory: [{ label: "q1", choice: "A" }],
+      };
+      const s = engineReducer(
+        { ...initialState, saves },
+        { type: ACTION.LOAD_GAME, payload: { slot: 0 } }
+      );
+      expect(s.flags).toEqual({ talked: true });
+      expect(s.variables).toEqual({ score: 50 });
+      expect(s.items).toEqual({ potion: 3 });
+      expect(s.choiceHistory).toEqual([{ label: "q1", choice: "A" }]);
+    });
+
+    it("後方互換: 古いセーブに flags 等がない場合は空オブジェクトになる", () => {
+      const saves = [...initialState.saves];
+      saves[0] = {
+        scriptIndex: 5,
+        currentBg: "school",
+        // flags, variables, items, choiceHistory は無し
+      };
+      const s = engineReducer(
+        { ...initialState, saves },
+        { type: ACTION.LOAD_GAME, payload: { slot: 0 } }
+      );
+      expect(s.flags).toEqual({});
+      expect(s.variables).toEqual({});
+      expect(s.items).toEqual({});
+      expect(s.choiceHistory).toEqual([]);
+    });
+  });
 });
